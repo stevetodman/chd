@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-neutral-100 text-neutral-900 antialiased;
+}
+
+a {
+  @apply text-brand-600 hover:text-brand-500 underline;
+}
+
+main {
+  @apply flex-1 w-full;
+}
