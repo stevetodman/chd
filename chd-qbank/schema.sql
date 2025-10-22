@@ -4,6 +4,8 @@ create extension if not exists pgcrypto;
 create extension if not exists pg_stat_statements;
 create extension if not exists pg_cron;
 
+create schema if not exists app;
+
 -- ROLES
 create type user_role as enum ('student','admin');
 
@@ -262,12 +264,17 @@ alter table cxr_items enable row level security;
 alter table cxr_labels enable row level security;
 alter table cxr_attempts enable row level security;
 
-create or replace function is_admin() returns boolean
+create or replace function app.is_admin() returns boolean
 language sql stable as $$
   select exists (
     select 1 from app_users au
     where au.id = auth.uid() and au.role = 'admin'
   );
+$$;
+
+create or replace function is_admin() returns boolean
+language sql stable as $$
+  select app.is_admin();
 $$;
 
 create or replace function leaderboard_is_enabled() returns boolean
