@@ -51,6 +51,14 @@ export default function ItemEditor() {
       setMessage(error.message);
     } else {
       setMessage("Saved!");
+      setItem((prev) =>
+        prev
+          ? {
+              ...prev,
+              version: prev.version + 1
+            }
+          : prev
+      );
     }
   };
 
