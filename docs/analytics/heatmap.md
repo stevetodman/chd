@@ -53,3 +53,17 @@ npm run verify:analytics:heatmap
 ```
 
 The script cleans up all inserted rows and users, then triggers a final refresh so the materialized view returns to a clean state. Capture the reported runtime in your pull request when modifying analytics logic so reviewers can track performance trends.
+
+### Safe staging workflow
+
+The verification utility includes two safeguards:
+
+- Passing `--dry-run` performs authentication, schema checks, and permission probes without writing any data. Use this first to make sure credentials and policies are correct.
+- A production guard inspects `SUPABASE_URL` and aborts if it detects the production hostname unless `--allow-prod` is explicitly provided. Even with the override, the command prompts for confirmation before running.
+
+Recommended staging checklist:
+
+1. Point `.env` at the staging project and run `npm run verify:analytics:heatmap -- --dry-run`.
+2. Review the summary output for “ready to write synthetic data.”
+3. Rerun without `--dry-run` to perform the full write/refresh/cleanup cycle.
+4. Only use `--allow-prod` for break-glass scenarios in production; record the justification in the deployment log.
