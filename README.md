@@ -145,9 +145,37 @@ Run the script from `chd-qbank/` after provisioning the database to keep invite 
 
 Contributions are welcome! Please open an issue before submitting major features or architecture changes. Bugfix pull requests should include reproduction steps, screenshots (for UI changes), and tests when applicable. See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for detailed expectations and the review checklist.
 
+## Offline & Service Worker Behavior
+
+The production build ships with a custom service worker that pre-caches the application shell (`/`, `/index.html`, and static assets) and keeps a runtime cache of fetched resources. When a newer build is published the client receives an in-app banner that reads **“A new version is ready.”** Selecting **Reload** activates the waiting worker immediately; dismissing the banner keeps the current session until the next navigation.
+
+If a navigation happens while the network is unavailable, the worker serves the cached app shell first. When no cached HTML exists (for example, on a first visit before the worker warmed), users receive a lightweight offline fallback page instead of a generic browser error so they can retry the request once connectivity returns.
+
+See [`docs/runtime/service-worker.md`](./docs/runtime/service-worker.md) for operator notes, cache versioning tips, and manual update testing steps.
+
 ## Security & Compliance
 
 Security-sensitive changes (authentication, RLS, analytics functions) require an additional reviewer and may necessitate a Supabase service-role key rotation. Refer to [`SECURITY.md`](./SECURITY.md) for disclosure guidelines and contact information.
+
+### Admin role management
+
+Admin access is granted by attaching the `admin` role to a Supabase user in the `app_roles` table. Grab the user’s UUID from `auth.users`, then connect to the project with the Supabase SQL editor or `psql` and run:
+
+```sql
+insert into app_roles (user_id, role)
+values ('00000000-0000-0000-0000-000000000000', 'admin')
+on conflict (user_id, role) do nothing;
+```
+
+To revoke elevated access, delete the mapping:
+
+```sql
+delete from app_roles
+where user_id = '00000000-0000-0000-0000-000000000000'
+  and role = 'admin';
+```
+
+The UI reflects the change the next time the affected user signs in. Additional guidance—including recommended staging verification and auditing queries—lives in [`docs/security/admin-roles.md`](./docs/security/admin-roles.md).
 
 ## Future Work
 
