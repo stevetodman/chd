@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest",
     "lint": "eslint --ext .ts,.tsx src",
-    "seed:invite": "node scripts/seed-invite.mjs"
+    "seed:invite": "node scripts/seed-invite.mjs",
+    "verify:analytics:heatmap": "node scripts/verify-analytics-heatmap.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.0.5",

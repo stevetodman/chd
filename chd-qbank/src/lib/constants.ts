@@ -91,11 +91,16 @@ export type DistractorStats = {
   pick_rate: number | null;
 };
 
-export type HeatRow = {
-  lesion: string;
-  topic: string;
+export type HeatmapAggregateRow = {
+  question_id: string;
+  lesion: string | null;
+  topic: string | null;
+  week_start: string;
   attempts: number;
+  correct_attempts: number;
+  incorrect_attempts: number;
   correct_rate: number;
+  avg_time_ms: number | null;
 };
 
 export type DashboardMetrics = {
