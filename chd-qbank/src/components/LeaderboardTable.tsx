@@ -18,6 +18,8 @@ export default function LeaderboardTable() {
   const [filter, setFilter] = useState<Filter>("weekly");
 
   useEffect(() => {
+    let active = true;
+
     const fetchData = async () => {
       const source = filter === "weekly" ? "leaderboard_weekly" : "leaderboard";
       const { data, error } = await supabase
@@ -26,17 +28,24 @@ export default function LeaderboardTable() {
         .order("points", { ascending: false })
         .limit(100);
       if (error) throw error;
+      if (!active) return;
+
       const rowsWithIds = (data ?? []) as LeaderboardRowWithId[];
       const ids = Array.from(new Set(rowsWithIds.map((row) => row.user_id)));
       const aliasMap = new Map<string, string>();
+
       if (ids.length > 0) {
         const { data: aliases, error: aliasError } = await supabase
           .from("public_aliases")
           .select("user_id, alias")
           .in("user_id", ids);
         if (aliasError) throw aliasError;
+        if (!active) return;
         (aliases ?? []).forEach((entry) => aliasMap.set(entry.user_id, entry.alias));
       }
+
+      if (!active) return;
+
       setRows(
         rowsWithIds.map((row) => ({
           alias: aliasMap.get(row.user_id) ?? "Anon",
@@ -44,7 +53,17 @@ export default function LeaderboardTable() {
         }))
       );
     };
-    fetchData().catch((err) => console.error(err));
+
+    fetchData().catch((err) => {
+      if (active) {
+        console.error(err);
+        setRows([]);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
   }, [filter]);
 
   return (
