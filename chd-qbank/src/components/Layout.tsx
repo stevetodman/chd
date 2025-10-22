@@ -7,12 +7,12 @@ import { useSessionStore } from "../lib/auth";
 
 export default function Layout() {
   const loadSettings = useSettingsStore((state) => state.loadSettings);
-  const { session, loading: sessionLoading } = useSessionStore();
+  const { session, loading: sessionLoading, initialized } = useSessionStore();
 
   useEffect(() => {
-    if (sessionLoading || !session) return;
+    if (sessionLoading || !initialized || !session) return;
     void loadSettings();
-  }, [loadSettings, session, sessionLoading]);
+  }, [loadSettings, session, sessionLoading, initialized]);
 
   return (
     <div className="min-h-screen bg-neutral-100 text-neutral-900 flex flex-col">
