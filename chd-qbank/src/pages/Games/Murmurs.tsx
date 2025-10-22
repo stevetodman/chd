@@ -58,25 +58,43 @@ export default function Murmurs() {
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<MurmurOption | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase
-      .from("murmur_items")
-      .select("id, prompt_md, rationale_md, media_url, murmur_options(id,label,text_md,is_correct)")
-      .limit(20)
-      .then(({ data }) => {
-        if (data && data.length > 0) {
-          setItems(
-            ((data ?? []) as MurmurItemRow[]).map((item) => ({
-              id: item.id,
-              prompt_md: item.prompt_md,
-              rationale_md: item.rationale_md,
-              media_url: item.media_url,
-              options: item.murmur_options ?? []
-            }))
-          );
-        }
-      });
+    let isMounted = true;
+
+    const loadMurmurs = async () => {
+      setError(null);
+      const { data, error: fetchError } = await supabase
+        .from("murmur_items")
+        .select("id, prompt_md, rationale_md, media_url, murmur_options(id,label,text_md,is_correct)")
+        .limit(20);
+
+      if (!isMounted) return;
+
+      if (fetchError) {
+        setError(fetchError.message);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        setItems(
+          ((data ?? []) as MurmurItemRow[]).map((item) => ({
+            id: item.id,
+            prompt_md: item.prompt_md,
+            rationale_md: item.rationale_md,
+            media_url: item.media_url,
+            options: item.murmur_options ?? []
+          }))
+        );
+      }
+    };
+
+    void loadMurmurs();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const current = items[index];
@@ -108,6 +126,7 @@ export default function Murmurs() {
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Guess the Murmur</h1>
+      {error ? <div className="text-sm text-red-600">{error}</div> : null}
       <audio controls src={current.media_url} className="w-full" />
       <div className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm">
         <div className="mb-4 text-sm text-neutral-700">

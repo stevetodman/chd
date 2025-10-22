@@ -14,23 +14,42 @@ type FlaggedResponse = {
 export default function Review() {
   const { session } = useSessionStore();
   const [flags, setFlags] = useState<FlaggedResponse[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session) return;
-    supabase
-      .from("responses")
-      .select("*, questions(stem_md, lead_in)")
-      .eq("user_id", session.user.id)
-      .eq("flagged", true)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        setFlags((data ?? []) as FlaggedResponse[]);
-      });
+    let isMounted = true;
+
+    const loadFlags = async () => {
+      setError(null);
+      const { data, error: fetchError } = await supabase
+        .from("responses")
+        .select("*, questions(stem_md, lead_in)")
+        .eq("user_id", session.user.id)
+        .eq("flagged", true)
+        .order("created_at", { ascending: false });
+
+      if (!isMounted) return;
+
+      if (fetchError) {
+        setError(fetchError.message);
+        return;
+      }
+
+      setFlags((data ?? []) as FlaggedResponse[]);
+    };
+
+    void loadFlags();
+
+    return () => {
+      isMounted = false;
+    };
   }, [session]);
 
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Flagged for Review</h1>
+      {error ? <p className="text-sm text-red-600">{error}</p> : null}
       <ul className="space-y-3">
         {flags.map((flag) => (
           <li key={flag.id} className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm">
@@ -44,7 +63,7 @@ export default function Review() {
             </ReactMarkdown>
           </li>
         ))}
-        {flags.length === 0 ? <p className="text-sm text-neutral-600">No flagged questions yet.</p> : null}
+        {flags.length === 0 && !error ? <p className="text-sm text-neutral-600">No flagged questions yet.</p> : null}
       </ul>
     </div>
   );
