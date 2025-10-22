@@ -29,10 +29,16 @@ export async function signOut() {
 }
 
 export async function getSession() {
-  const { data } = await supabase.auth.getSession();
-  useSessionStore.getState().setSession(data.session);
-  useSessionStore.getState().setLoading(false);
-  return data.session;
+  try {
+    const { data } = await supabase.auth.getSession();
+    useSessionStore.getState().setSession(data.session);
+    return data.session;
+  } catch (error) {
+    useSessionStore.getState().setSession(null);
+    throw error;
+  } finally {
+    useSessionStore.getState().setLoading(false);
+  }
 }
 
 export async function requireAuth() {
