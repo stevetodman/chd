@@ -1,26 +1,27 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { Button } from "../../components/ui/Button";
+import { useSettingsStore } from "../../lib/settings";
 
 export default function Settings() {
-  const [leaderboardEnabled, setLeaderboardEnabled] = useState(true);
+  const loadSettings = useSettingsStore((state) => state.loadSettings);
+  const globalLeaderboardEnabled = useSettingsStore((state) => state.leaderboardEnabled);
+  const setGlobalLeaderboardEnabled = useSettingsStore((state) => state.setLeaderboardEnabled);
+  const [leaderboardEnabled, setLeaderboardEnabled] = useState(globalLeaderboardEnabled);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    // Supabase integration: read setting stored in app_settings table.
-    supabase
-      .from("app_settings")
-      .select("value")
-      .eq("key", "leaderboard_enabled")
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.value) setLeaderboardEnabled(data.value === "true");
-      });
-  }, []);
+    void loadSettings();
+  }, [loadSettings]);
+
+  useEffect(() => {
+    setLeaderboardEnabled(globalLeaderboardEnabled);
+  }, [globalLeaderboardEnabled]);
 
   const save = async () => {
     setMessage(null);
     await supabase.from("app_settings").upsert({ key: "leaderboard_enabled", value: leaderboardEnabled ? "true" : "false" });
+    setGlobalLeaderboardEnabled(leaderboardEnabled);
     setMessage("Settings saved");
   };
 
