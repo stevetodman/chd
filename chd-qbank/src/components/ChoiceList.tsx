@@ -20,12 +20,24 @@ export default function ChoiceList({ choices, disabled, onSelect, selectedId }: 
     const handler = (e: KeyboardEvent) => {
       if (disabled) return;
       if (!e.key) return;
-      const index = parseInt(e.key, 10) - 1;
+
+      const key = e.key.toLowerCase();
+
+      if (key === "x") {
+        const activeElement = document.activeElement;
+        if (activeElement instanceof HTMLElement) {
+          const choiceId = activeElement.dataset.choiceId;
+          if (choiceId) {
+            e.preventDefault();
+            toggleStrike(choiceId);
+          }
+        }
+        return;
+      }
+
+      const index = Number.parseInt(key, 10) - 1;
       if (index >= 0 && index < choices.length) {
         onSelect(choices[index]);
-      }
-      if (e.key.toLowerCase() === "x" && index >= 0 && index < choices.length) {
-        toggleStrike(choices[index].id);
       }
     };
     window.addEventListener("keydown", handler);
@@ -48,6 +60,7 @@ export default function ChoiceList({ choices, disabled, onSelect, selectedId }: 
             type="button"
             aria-keyshortcuts={`${choice.label.toLowerCase()},${choice.label}`}
             disabled={disabled}
+            data-choice-id={choice.id}
             onClick={() => onSelect(choice)}
             onContextMenu={(e) => {
               e.preventDefault();
