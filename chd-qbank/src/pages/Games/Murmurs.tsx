@@ -72,14 +72,31 @@ export default function Murmurs() {
     setSelected(option);
     setFeedback(feedbackForMurmurOption(option));
     if (session) {
-      await supabase.from("murmur_attempts").insert({
-        user_id: session.user.id,
-        item_id: current.id,
-        option_id: option.id,
-        is_correct: option.is_correct
-      });
-      if (option.is_correct) {
-        await supabase.rpc("increment_points", { delta: 1 });
+      const { data: attempt, error: attemptError } = await supabase
+        .from("murmur_attempts")
+        .insert({
+          user_id: session.user.id,
+          item_id: current.id,
+          option_id: option.id,
+          is_correct: option.is_correct
+        })
+        .select("id")
+        .single();
+
+      if (attemptError) {
+        setError("We couldn't record your attempt. Please try again.");
+        return;
+      }
+
+      if (option.is_correct && attempt) {
+        const { error: rpcError } = await supabase.rpc("increment_points", {
+          source: "murmur_attempt",
+          source_id: attempt.id
+        });
+
+        if (rpcError) {
+          setError("Your answer was saved, but we couldn't update your points. Please try again later.");
+        }
       }
     }
   };

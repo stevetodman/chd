@@ -195,7 +195,10 @@ describe("practice flow", () => {
     await user.click(screen.getByRole("button", { name: /answer one/i }));
     await waitFor(() => expect(updatePayloads).toHaveLength(1));
     expect(updatePayloads[0]).toMatchObject({ question_id: "q1", choice_id: "c1", flagged: true, is_correct: true });
-    expect(rpcMock).toHaveBeenCalledWith("increment_points", { delta: 1 });
+    expect(rpcMock).toHaveBeenCalledWith("increment_points", {
+      source: "practice_response",
+      source_id: "response-1"
+    });
 
     await user.click(screen.getByRole("button", { name: /next question/i }));
     expect(await screen.findByText("Second question")).toBeInTheDocument();

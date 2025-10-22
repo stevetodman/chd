@@ -294,8 +294,8 @@ for select using (
   or auth.uid() = user_id
   or leaderboard_is_enabled()
 );
-create policy "leader upsert own" on leaderboard
-for all using (auth.uid() = user_id or is_admin()) with check (auth.uid() = user_id or is_admin());
+create policy "leader manage admin" on leaderboard
+for all using (is_admin()) with check (is_admin());
 
 create policy "aliases read" on public_aliases
 for select using (
@@ -622,16 +622,66 @@ language sql stable as $$
   group by q.lesion, q.topic;
 $$;
 
-create or replace function increment_points(delta int)
+create table if not exists leaderboard_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references app_users(id) on delete cascade,
+  source text not null,
+  source_id uuid not null,
+  created_at timestamptz not null default now(),
+  unique (source, source_id)
+);
+
+alter table leaderboard_events enable row level security;
+
+create policy "leaderboard events admin" on leaderboard_events
+for all using (is_admin()) with check (is_admin());
+
+create or replace function increment_points(source text, source_id uuid)
 returns void
 language plpgsql security definer set search_path = public as $$
+declare
+  v_user uuid := auth.uid();
+  v_is_valid boolean := false;
 begin
-  if auth.uid() is null then
+  if v_user is null then
     raise exception 'auth required';
   end if;
+
+  if source is null or source_id is null then
+    raise exception 'invalid point source';
+  end if;
+
+  if source = 'practice_response' then
+    select exists(
+      select 1 from responses r where r.id = source_id and r.user_id = v_user and r.is_correct
+    ) into v_is_valid;
+  elsif source = 'murmur_attempt' then
+    select exists(
+      select 1 from murmur_attempts ma where ma.id = source_id and ma.user_id = v_user and ma.is_correct
+    ) into v_is_valid;
+  elsif source = 'cxr_attempt' then
+    select exists(
+      select 1 from cxr_attempts ca where ca.id = source_id and ca.user_id = v_user and ca.is_correct
+    ) into v_is_valid;
+  else
+    raise exception 'unsupported point source %', source;
+  end if;
+
+  if not v_is_valid then
+    raise exception 'invalid point source';
+  end if;
+
+  insert into leaderboard_events(user_id, source, source_id)
+  values (v_user, source, source_id)
+  on conflict (source, source_id) do nothing;
+
+  if not found then
+    return;
+  end if;
+
   insert into leaderboard(user_id, points)
-  values (auth.uid(), delta)
-  on conflict (user_id) do update set points = leaderboard.points + delta;
+  values (v_user, 1)
+  on conflict (user_id) do update set points = leaderboard.points + 1;
 end;
 $$;
 
