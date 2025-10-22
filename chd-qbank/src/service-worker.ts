@@ -1,40 +1,55 @@
 /* eslint-env serviceworker */
 /// <reference lib="webworker" />
 
-// Offline-first service worker with runtime caching for core assets.
-
 declare const self: ServiceWorkerGlobalScope;
+declare const __BUILD_HASH__: string;
 
-const CACHE_VERSION = "v1";
-const APP_SHELL_CACHE = `app-shell-${CACHE_VERSION}`;
-const RUNTIME_CACHE = `runtime-${CACHE_VERSION}`;
-const APP_SHELL_ASSETS = ["/", "/index.html", "/manifest.json"];
+type ServiceWorkerClientMessage = {
+  type?: string;
+  version?: string;
+};
+
+type SkipWaitingMessage = {
+  type: "SKIP_WAITING";
+};
+
+const BUILD_HASH = typeof __BUILD_HASH__ === "string" ? __BUILD_HASH__ : "dev";
+const APP_SHELL_CACHE = `app-shell-v${BUILD_HASH}`;
+const STATIC_CACHE = `static-v${BUILD_HASH}`;
+const DYNAMIC_CACHE = `dynamic-v${BUILD_HASH}`;
+const EXPECTED_CACHES = new Set([APP_SHELL_CACHE, STATIC_CACHE, DYNAMIC_CACHE]);
+const APP_SHELL_ASSETS = ["/", "/index.html", "/offline.html", "/manifest.json"];
 const STATIC_ASSET_PATTERN = /\.(?:css|js|woff2?|png|jpg|jpeg|svg|gif|webp|ico)$/i;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(APP_SHELL_CACHE).then((cache) => cache.addAll(APP_SHELL_ASSETS))
   );
-  void self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
-  const expectedCaches = new Set([APP_SHELL_CACHE, RUNTIME_CACHE]);
-
   event.waitUntil(
-    caches
-      .keys()
-      .then((cacheNames) =>
-        Promise.all(
-          cacheNames.map((cacheName) => {
-            if (!expectedCaches.has(cacheName)) {
-              return caches.delete(cacheName);
-            }
-            return Promise.resolve(true);
-          })
-        )
-      )
-      .then(() => self.clients.claim())
+    (async () => {
+      const cacheNames = await caches.keys();
+      const hadPreviousCache = cacheNames.some(
+        (name) => name.startsWith("app-shell-v") && name !== APP_SHELL_CACHE
+      );
+
+      await Promise.all(
+        cacheNames.map((cacheName) => {
+          if (!EXPECTED_CACHES.has(cacheName)) {
+            return caches.delete(cacheName);
+          }
+          return Promise.resolve(true);
+        })
+      );
+
+      await logCacheUsage();
+
+      if (hadPreviousCache) {
+        await notifyClientsAboutUpdate();
+      }
+    })()
   );
 });
 
@@ -45,41 +60,117 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  const url = new URL(request.url);
-
   if (request.mode === "navigate") {
     event.respondWith(handleNavigationRequest(request));
     return;
   }
+
+  const url = new URL(request.url);
 
   if (url.origin !== self.location.origin) {
     return;
   }
 
   if (STATIC_ASSET_PATTERN.test(url.pathname)) {
-    event.respondWith(cacheFirst(request));
+    event.respondWith(staleWhileRevalidate(request));
+    return;
+  }
+
+  if (isApiRequest(request)) {
+    event.respondWith(networkFirst(request));
   }
 });
 
-async function cacheFirst(request: Request): Promise<Response> {
-  const cache = await caches.open(RUNTIME_CACHE);
+self.addEventListener("message", (event: ExtendableMessageEvent) => {
+  const data = event.data as SkipWaitingMessage | ServiceWorkerClientMessage | undefined;
+
+  if (!data || data.type !== "SKIP_WAITING") {
+    return;
+  }
+
+  event.waitUntil(
+    (async () => {
+      await self.skipWaiting();
+      await self.clients.claim();
+      const clients = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true
+      });
+
+      for (const client of clients) {
+        client.postMessage({ type: "UPDATED", version: BUILD_HASH });
+      }
+    })()
+  );
+});
+
+function isApiRequest(request: Request): boolean {
+  const acceptHeader = request.headers.get("accept") ?? "";
+  return acceptHeader.includes("application/json");
+}
+
+async function networkFirst(request: Request): Promise<Response> {
+  const cache = await caches.open(DYNAMIC_CACHE);
+
+  try {
+    const response = await fetch(request);
+
+    if (response.ok) {
+      void cache.put(request, response.clone());
+    }
+
+    return response;
+  } catch (error) {
+    const cachedResponse = await cache.match(request);
+
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+
+    throw error;
+  }
+}
+
+async function staleWhileRevalidate(request: Request): Promise<Response> {
+  const cache = await caches.open(STATIC_CACHE);
   const cachedResponse = await cache.match(request);
 
+  const fetchPromise = fetch(request)
+    .then((response) => {
+      if (response.ok) {
+        void cache.put(request, response.clone());
+      }
+      return response;
+    })
+    .catch(() => undefined);
+
   if (cachedResponse) {
+    void fetchPromise;
     return cachedResponse;
   }
 
-  const networkResponse = await fetch(request);
-  void cache.put(request, networkResponse.clone());
-  return networkResponse;
+  const networkResponse = await fetchPromise;
+
+  if (networkResponse) {
+    return networkResponse;
+  }
+
+  return new Response("Service Unavailable", {
+    status: 503,
+    statusText: "Service Unavailable"
+  });
 }
 
 async function handleNavigationRequest(request: Request): Promise<Response> {
   try {
-    const networkResponse = await fetch(request);
-    const cache = await caches.open(APP_SHELL_CACHE);
-    void cache.put("/index.html", networkResponse.clone());
-    return networkResponse;
+    const response = await fetch(request);
+
+    if (response.ok) {
+      const cache = await caches.open(APP_SHELL_CACHE);
+      void cache.put("/index.html", response.clone());
+    }
+
+    return response;
   } catch (error) {
     const cache = await caches.open(APP_SHELL_CACHE);
     const cachedResponse = await cache.match("/index.html");
@@ -88,10 +179,37 @@ async function handleNavigationRequest(request: Request): Promise<Response> {
       return cachedResponse;
     }
 
+    const offlineResponse = await cache.match("/offline.html");
+
+    if (offlineResponse) {
+      return offlineResponse;
+    }
+
     return new Response("Offline", {
       status: 503,
       statusText: "Service Unavailable",
       headers: { "Content-Type": "text/plain" }
     });
+  }
+}
+
+async function notifyClientsAboutUpdate(): Promise<void> {
+  const clients = await self.clients.matchAll({
+    type: "window",
+    includeUncontrolled: true
+  });
+
+  for (const client of clients) {
+    client.postMessage({ type: "UPDATE_READY", version: BUILD_HASH });
+  }
+}
+
+async function logCacheUsage(): Promise<void> {
+  const cacheNames = await caches.keys();
+
+  for (const cacheName of cacheNames) {
+    const cache = await caches.open(cacheName);
+    const keys = await cache.keys();
+    console.info(`[Service Worker] Cache ${cacheName}: ${keys.length} entries`);
   }
 }
