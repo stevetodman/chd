@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Choice } from "../lib/constants";
 import { classNames } from "../lib/utils";
@@ -13,6 +13,10 @@ type Props = {
 
 export default function ChoiceList({ choices, disabled, onSelect, selectedId }: Props) {
   const [struck, setStruck] = useState<Record<string, boolean>>({});
+
+  const toggleStrike = useCallback((id: string) => {
+    setStruck((prev) => ({ ...prev, [id]: !prev[id] }));
+  }, []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -33,19 +37,20 @@ export default function ChoiceList({ choices, disabled, onSelect, selectedId }: 
         return;
       }
 
-      const index = Number.parseInt(key, 10) - 1;
-      if (index >= 0 && index < choices.length) {
-        onSelect(choices[index]);
+      const matchedChoice = choices.find((choice, index) => {
+        const label = choice.label.toLowerCase();
+        const indexKey = String(index + 1);
+        return key === label || key === indexKey;
+      });
+
+      if (matchedChoice) {
+        e.preventDefault();
+        onSelect(matchedChoice);
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [choices, disabled]);
-
-  const toggleStrike = (id: string) => {
-    setStruck((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
+  }, [choices, disabled, onSelect, toggleStrike]);
 
   return (
     <div className="space-y-3">
