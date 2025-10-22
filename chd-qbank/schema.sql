@@ -83,7 +83,7 @@ create table if not exists responses (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references app_users(id) on delete cascade,
   question_id uuid not null references questions(id) on delete cascade,
-  choice_id uuid not null references choices(id) on delete restrict,
+  choice_id uuid references choices(id) on delete restrict,
   is_correct boolean not null,
   ms_to_answer int,
   flagged boolean not null default false,

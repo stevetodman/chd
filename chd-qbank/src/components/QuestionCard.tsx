@@ -14,9 +14,10 @@ type Props = {
   question: Question;
   onAnswer: (choice: Choice, durationMs: number, flagged: boolean) => Promise<void> | void;
   onFlagChange?: (flagged: boolean) => Promise<void> | void;
+  initialFlagged?: boolean;
 };
 
-export default function QuestionCard({ question, onAnswer, onFlagChange }: Props) {
+export default function QuestionCard({ question, onAnswer, onFlagChange, initialFlagged = false }: Props) {
   const [selected, setSelected] = useState<Choice | null>(null);
   const [flagged, setFlagged] = useState(false);
   const [start, setStart] = useState<number>(() => performance.now());
@@ -25,9 +26,9 @@ export default function QuestionCard({ question, onAnswer, onFlagChange }: Props
   useEffect(() => {
     setStart(performance.now());
     setSelected(null);
-    setFlagged(false);
+    setFlagged(initialFlagged);
     setShowExplanation(false);
-  }, [question.id]);
+  }, [initialFlagged, question.id]);
 
   const handleSelect = async (choice: Choice) => {
     if (selected) return;
