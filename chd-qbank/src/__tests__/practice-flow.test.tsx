@@ -59,7 +59,9 @@ const insertPayloads: ResponseRecord[] = [];
 const updatePayloads: ResponseRecord[] = [];
 let responseCounter = 0;
 
-const rpcMock = vi.fn(async () => ({ data: null, error: null }));
+const { rpcMock } = vi.hoisted(() => ({
+  rpcMock: vi.fn(async () => ({ data: null, error: null }))
+}));
 
 const mapRecord = (record: ResponseRecord) => ({
   id: record.id,
@@ -81,6 +83,9 @@ const nextId = () => {
 
 vi.mock("../lib/supabaseClient", () => ({
   supabase: {
+    auth: {
+      onAuthStateChange: vi.fn()
+    },
     rpc: rpcMock,
     from: vi.fn((table: string) => {
       if (table === "questions") {

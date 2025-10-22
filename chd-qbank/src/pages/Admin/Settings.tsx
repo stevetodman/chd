@@ -39,6 +39,15 @@ export default function Settings() {
   };
 
   const resetLeaderboard = async () => {
+    if (typeof window !== "undefined") {
+      const confirmed = window.confirm(
+        "This will clear all all-time leaderboard scores. Are you sure you want to continue?"
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+
     setMessage(null);
     try {
       const { error } = await supabase.from("leaderboard").delete().neq("user_id", "");

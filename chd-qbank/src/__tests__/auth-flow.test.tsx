@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-const navigateMock = vi.fn();
-const signInMock = vi.fn();
+const { navigateMock, signInMock } = vi.hoisted(() => ({
+  navigateMock: vi.fn(),
+  signInMock: vi.fn()
+}));
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");

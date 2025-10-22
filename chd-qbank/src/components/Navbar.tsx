@@ -18,8 +18,11 @@ export default function Navbar() {
         </Link>
         {session ? (
           <nav className="flex items-center gap-4 text-sm">
-            <NavLink to="/practice" className={({ isActive }) => (isActive ? "font-semibold" : "")}>
+            <NavLink to="/practice" className={({ isActive }) => (isActive ? "font-semibold" : "")}> 
               Practice
+            </NavLink>
+            <NavLink to="/review" className={({ isActive }) => (isActive ? "font-semibold" : "")}>
+              Review
             </NavLink>
             <NavLink to="/games/murmurs" className={({ isActive }) => (isActive ? "font-semibold" : "")}>
               Murmurs
