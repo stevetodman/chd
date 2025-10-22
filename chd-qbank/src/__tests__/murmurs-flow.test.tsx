@@ -19,14 +19,23 @@ const items = [
 ];
 
 const attemptId = "attempt-7";
-const selectMock = vi.fn(() => ({
-  single: async () => ({ data: { id: attemptId }, error: null })
-}));
-const insertMock = vi.fn(() => ({ select: selectMock }));
-const rpcMock = vi.fn(async () => ({ data: null, error: null }));
+const { selectMock, insertMock, rpcMock } = vi.hoisted(() => {
+  const selectMock = vi.fn(() => ({
+    single: async () => ({ data: { id: attemptId }, error: null })
+  }));
+
+  return {
+    selectMock,
+    insertMock: vi.fn(() => ({ select: selectMock })),
+    rpcMock: vi.fn(async () => ({ data: null, error: null }))
+  };
+});
 
 vi.mock("../lib/supabaseClient", () => ({
   supabase: {
+    auth: {
+      onAuthStateChange: vi.fn()
+    },
     rpc: rpcMock,
     from: vi.fn((table: string) => {
       if (table === "murmur_items") {
