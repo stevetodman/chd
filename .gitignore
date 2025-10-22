@@ -1,0 +1,6 @@
+node_modules/
+chd-qbank/node_modules/
+chd-qbank/scripts/dist/
+*.log
+.env.local
+chd-qbank/.vite/
