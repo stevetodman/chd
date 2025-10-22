@@ -33,6 +33,8 @@ export default function Practice() {
   const questionsRef = useRef<QuestionRow[]>([]);
   const loadingRef = useRef(false);
   const loadedPages = useRef(new Set<number>());
+  const responseIds = useRef(new Map<string, string>());
+  const pendingFlags = useRef(new Map<string, boolean>());
   const { session } = useSessionStore();
 
   useEffect(() => {
@@ -131,18 +133,64 @@ export default function Practice() {
   const handleAnswer = async (choice: Choice, ms: number, flagged: boolean) => {
     const current = questions[index];
     if (!current || !session) return;
-    await supabase.from("responses").insert({
-      user_id: session.user.id,
-      question_id: current.id,
-      choice_id: choice.id,
-      is_correct: choice.is_correct,
-      ms_to_answer: ms,
-      flagged
-    });
+    const { data, error: insertError } = await supabase
+      .from("responses")
+      .insert({
+        user_id: session.user.id,
+        question_id: current.id,
+        choice_id: choice.id,
+        is_correct: choice.is_correct,
+        ms_to_answer: ms,
+        flagged
+      })
+      .select("id")
+      .single();
+
+    if (insertError) {
+      setError(insertError.message);
+      return;
+    }
+
+    const responseId = data?.id ?? null;
+    if (responseId) {
+      responseIds.current.set(current.id, responseId);
+      const pending = pendingFlags.current.get(current.id);
+      if (typeof pending === "boolean") {
+        pendingFlags.current.delete(current.id);
+        if (pending !== flagged) {
+          const { error: updateError } = await supabase
+            .from("responses")
+            .update({ flagged: pending })
+            .eq("id", responseId);
+          if (updateError) {
+            setError(updateError.message);
+          }
+        }
+      }
+    }
+
     if (choice.is_correct) {
       await supabase.rpc("increment_points", { delta: 1 });
     }
   };
+
+  const handleFlagChange = useCallback(
+    async (questionId: string, flagged: boolean) => {
+      pendingFlags.current.set(questionId, flagged);
+      const responseId = responseIds.current.get(questionId);
+      if (!responseId) return;
+
+      pendingFlags.current.delete(questionId);
+      const { error: updateError } = await supabase
+        .from("responses")
+        .update({ flagged })
+        .eq("id", responseId);
+      if (updateError) {
+        setError(updateError.message);
+      }
+    },
+    []
+  );
 
   const next = () => {
     const nextIndex = index + 1;
@@ -178,7 +226,11 @@ export default function Practice() {
 
   return (
     <div className="space-y-6">
-      <QuestionCard question={current} onAnswer={handleAnswer} />
+      <QuestionCard
+        question={current}
+        onAnswer={handleAnswer}
+        onFlagChange={(flagged) => handleFlagChange(current.id, flagged)}
+      />
       <div className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-600">
         <div>
           Q {index + 1} of {questions.length}
