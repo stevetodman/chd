@@ -526,17 +526,28 @@ begin
 end;
 $$;
 
+create or replace function leaderboard_weekly_entries()
+returns table(user_id uuid, points bigint)
+language sql
+security definer
+set search_path = public
+as $$
+  select user_id, sum(points) as points
+  from (
+    select user_id, 1 as points, created_at from responses where is_correct
+    union all
+    select user_id, 1 as points, created_at from murmur_attempts where is_correct
+    union all
+    select user_id, 1 as points, created_at from cxr_attempts where is_correct
+  ) e
+  where created_at >= date_trunc('week', timezone('utc', now()))
+  group by user_id
+  order by points desc, user_id
+  limit 100;
+$$;
+
 create or replace view leaderboard_weekly as
-select user_id, sum(points) as points
-from (
-  select user_id, 1 as points, created_at from responses where is_correct
-  union all
-  select user_id, 1 as points, created_at from murmur_attempts where is_correct
-  union all
-  select user_id, 1 as points, created_at from cxr_attempts where is_correct
-) e
-where created_at >= date_trunc('week', now())
-group by user_id;
+select * from leaderboard_weekly_entries();
 
 create or replace view item_stats_public as
 select question_id,
