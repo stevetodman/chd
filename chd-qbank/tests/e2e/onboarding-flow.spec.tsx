@@ -6,6 +6,8 @@ const supabaseMock = vi.hoisted(() => ({
   }
 }));
 
+const randomUUIDMock = vi.fn();
+
 vi.mock("../../src/lib/supabaseClient", () => ({
   supabase: supabaseMock
 }));
@@ -28,6 +30,20 @@ describe("onboarding signup flow", () => {
   beforeEach(() => {
     supabaseMock.functions.invoke.mockReset();
     navigateMock.mockReset();
+    randomUUIDMock.mockReset();
+    randomUUIDMock.mockReturnValueOnce("idempotency-key-1");
+    randomUUIDMock.mockReturnValue("idempotency-key-2");
+    if (!globalThis.crypto) {
+      Object.defineProperty(globalThis, "crypto", {
+        value: { randomUUID: randomUUIDMock } as Crypto,
+        configurable: true
+      });
+    } else {
+      Object.defineProperty(globalThis.crypto, "randomUUID", {
+        value: randomUUIDMock,
+        configurable: true
+      });
+    }
   });
 
   it("requests access with an invite code and navigates to login on success", async () => {
@@ -58,7 +74,8 @@ describe("onboarding signup flow", () => {
         password: "supersafe",
         invite_code: "ABC123",
         desired_alias: "Swift-Swan-99"
-      }
+      },
+      headers: { "Idempotency-Key": "idempotency-key-1" }
     });
 
     await waitFor(() => {

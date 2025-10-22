@@ -17,6 +17,42 @@ create table if not exists app_users (
   unique (alias)
 );
 
+create table if not exists idempotency_keys (
+  key text primary key,
+  response jsonb,
+  status_code int,
+  created_at timestamptz not null default now()
+);
+
+create or replace function claim_user_alias(p_user_id uuid, p_alias text, p_alias_locked boolean default false)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_alias text := left(p_alias, 40);
+  v_result text;
+begin
+  perform 1 from app_users where id = p_user_id for update;
+
+  update app_users
+     set alias = v_alias,
+         alias_locked = p_alias_locked
+   where id = p_user_id
+   returning alias into v_result;
+
+  if not found then
+    raise exception using message = 'user_not_found';
+  end if;
+
+  return v_result;
+exception
+  when unique_violation then
+    raise exception using message = 'alias_conflict', errcode = 'P0001';
+end;
+$$;
+
 -- SETTINGS (invite code) -- read only by admin; Edge Function (service role) reads it server-side
 create table if not exists app_settings (
   key text primary key,
