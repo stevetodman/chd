@@ -35,15 +35,23 @@ export default function QuestionCard({ question, onAnswer, onFlagChange, initial
     const elapsed = clampMs(performance.now() - start);
     setSelected(choice);
     setShowExplanation(true);
-    await onAnswer(choice, elapsed, flagged);
+    try {
+      await onAnswer(choice, elapsed, flagged);
+    } catch {
+      setSelected(null);
+      setShowExplanation(false);
+    }
   };
 
-  const toggleFlag = () => {
-    setFlagged((prev) => {
-      const next = !prev;
-      void onFlagChange?.(next);
-      return next;
-    });
+  const toggleFlag = async () => {
+    const previous = flagged;
+    const next = !flagged;
+    setFlagged(next);
+    try {
+      await onFlagChange?.(next);
+    } catch {
+      setFlagged(previous);
+    }
   };
 
   return (
