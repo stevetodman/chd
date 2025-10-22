@@ -8,9 +8,9 @@ type LeaderRow = {
 };
 
 type Filter = "weekly" | "all";
-type LeaderboardAllTimeRow = {
+type LeaderboardRowWithId = {
   points: number | null;
-  public_aliases: { alias: string | null } | null;
+  user_id: string;
 };
 
 export default function LeaderboardTable() {
@@ -19,42 +19,30 @@ export default function LeaderboardTable() {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (filter === "weekly") {
-        const { data, error } = await supabase
-          .from("leaderboard_weekly")
-          .select("points, user_id")
-          .order("points", { ascending: false })
-          .limit(100);
-        if (error) throw error;
-        const ids = data?.map((d) => d.user_id) ?? [];
-        const aliasMap = new Map<string, string>();
-        if (ids.length > 0) {
-          const { data: aliases } = await supabase
-            .from("public_aliases")
-            .select("user_id, alias")
-            .in("user_id", ids);
-          (aliases ?? []).forEach((entry) => aliasMap.set(entry.user_id, entry.alias));
-        }
-        setRows(
-          (data ?? []).map((row) => ({
-            alias: aliasMap.get(row.user_id) ?? "Anon",
-            points: row.points ?? 0
-          }))
-        );
-      } else {
-        const { data, error } = await supabase
-          .from("leaderboard")
-          .select("points, public_aliases(alias)")
-          .order("points", { ascending: false })
-          .limit(100);
-        if (error) throw error;
-        setRows(
-          ((data ?? []) as LeaderboardAllTimeRow[]).map((row) => ({
-            alias: row.public_aliases?.alias ?? "Anon",
-            points: row.points ?? 0
-          }))
-        );
+      const source = filter === "weekly" ? "leaderboard_weekly" : "leaderboard";
+      const { data, error } = await supabase
+        .from(source)
+        .select("points, user_id")
+        .order("points", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      const rowsWithIds = (data ?? []) as LeaderboardRowWithId[];
+      const ids = Array.from(new Set(rowsWithIds.map((row) => row.user_id)));
+      const aliasMap = new Map<string, string>();
+      if (ids.length > 0) {
+        const { data: aliases, error: aliasError } = await supabase
+          .from("public_aliases")
+          .select("user_id, alias")
+          .in("user_id", ids);
+        if (aliasError) throw aliasError;
+        (aliases ?? []).forEach((entry) => aliasMap.set(entry.user_id, entry.alias));
       }
+      setRows(
+        rowsWithIds.map((row) => ({
+          alias: aliasMap.get(row.user_id) ?? "Anon",
+          points: row.points ?? 0
+        }))
+      );
     };
     fetchData().catch((err) => console.error(err));
   }, [filter]);
