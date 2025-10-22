@@ -6,6 +6,7 @@ import rehypeHighlight from "rehype-highlight";
 import { Button } from "../../components/ui/Button";
 import { supabase } from "../../lib/supabaseClient";
 import { useSessionStore } from "../../lib/auth";
+import { clampMs } from "../../lib/utils";
 
 type MurmurOption = {
   id: string;
@@ -58,6 +59,7 @@ export default function Murmurs() {
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<MurmurOption | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [start, setStart] = useState<number>(() => performance.now());
 
   useEffect(() => {
     supabase
@@ -81,7 +83,14 @@ export default function Murmurs() {
 
   const current = items[index];
 
+  useEffect(() => {
+    if (!current) return;
+    setStart(performance.now());
+  }, [current]);
+
   const choose = async (option: MurmurOption) => {
+    if (selected) return;
+    const elapsed = clampMs(performance.now() - start);
     setSelected(option);
     setFeedback(option.is_correct ? "Correct!" : "Try again");
     if (session) {
@@ -89,7 +98,8 @@ export default function Murmurs() {
         user_id: session.user.id,
         item_id: current.id,
         option_id: option.id,
-        is_correct: option.is_correct
+        is_correct: option.is_correct,
+        ms_to_answer: elapsed
       });
       if (option.is_correct) {
         await supabase.rpc("increment_points", { delta: 1 });
@@ -100,6 +110,7 @@ export default function Murmurs() {
   const next = () => {
     setSelected(null);
     setFeedback(null);
+    setStart(performance.now());
     setIndex((prev) => (prev + 1) % items.length);
   };
 

@@ -6,6 +6,7 @@ import rehypeHighlight from "rehype-highlight";
 import { Button } from "../../components/ui/Button";
 import { supabase } from "../../lib/supabaseClient";
 import { useSessionStore } from "../../lib/auth";
+import { clampMs } from "../../lib/utils";
 
 interface Label {
   id: string;
@@ -45,6 +46,7 @@ export default function CxrMatch() {
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [start, setStart] = useState<number>(() => performance.now());
 
   useEffect(() => {
     setLoading(true);
@@ -79,7 +81,14 @@ export default function CxrMatch() {
   const current = items[index];
   const correctLabel = useMemo(() => current?.labels.find((label) => label.is_correct) ?? null, [current]);
 
+  useEffect(() => {
+    if (!current) return;
+    setStart(performance.now());
+  }, [current]);
+
   const submit = async (label: Label) => {
+    if (selected) return;
+    const elapsed = clampMs(performance.now() - start);
     const correct = label.is_correct;
     setSelected(label.id);
     if (correct) {
@@ -94,7 +103,8 @@ export default function CxrMatch() {
         user_id: session.user.id,
         item_id: current.id,
         is_correct: correct,
-        detail: { selected: label.label }
+        detail: { selected: label.label },
+        ms_to_answer: elapsed
       });
       if (correct) {
         await supabase.rpc("increment_points", { delta: 1 });
@@ -106,6 +116,7 @@ export default function CxrMatch() {
     setIndex((prev) => (prev + 1) % items.length);
     setSelected(null);
     setMessage(null);
+    setStart(performance.now());
   };
 
   if (!current) {
