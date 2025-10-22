@@ -114,6 +114,13 @@ create table if not exists leaderboard (
   rank int
 );
 
+create table if not exists leaderboard_point_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references app_users(id) on delete cascade,
+  points int not null,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public_aliases (
   user_id uuid primary key references app_users(id) on delete cascade,
   alias text not null
@@ -197,6 +204,7 @@ alter table responses enable row level security;
 alter table item_stats enable row level security;
 alter table distractor_stats enable row level security;
 alter table leaderboard enable row level security;
+alter table leaderboard_point_events enable row level security;
 alter table public_aliases enable row level security;
 alter table murmur_items enable row level security;
 alter table murmur_options enable row level security;
@@ -270,6 +278,9 @@ create policy "leader read" on leaderboard
 for select using (true);
 create policy "leader upsert own" on leaderboard
 for all using (auth.uid() = user_id or is_admin()) with check (auth.uid() = user_id or is_admin());
+
+create policy "leaderboard events read" on leaderboard_point_events
+for select using (true);
 
 create policy "aliases read all" on public_aliases for select using (true);
 create policy "aliases write admin" on public_aliases
@@ -527,14 +538,8 @@ end;
 $$;
 
 create or replace view leaderboard_weekly as
-select user_id, sum(points) as points
-from (
-  select user_id, 1 as points, created_at from responses where is_correct
-  union all
-  select user_id, 1 as points, created_at from murmur_attempts where is_correct
-  union all
-  select user_id, 1 as points, created_at from cxr_attempts where is_correct
-) e
+select user_id, coalesce(sum(points), 0) as points
+from leaderboard_point_events
 where created_at >= date_trunc('week', now())
 group by user_id;
 
@@ -568,6 +573,10 @@ begin
   insert into leaderboard(user_id, points)
   values (auth.uid(), delta)
   on conflict (user_id) do update set points = leaderboard.points + delta;
+  if delta <> 0 then
+    insert into leaderboard_point_events(user_id, points)
+    values (auth.uid(), delta);
+  end if;
 end;
 $$;
 
