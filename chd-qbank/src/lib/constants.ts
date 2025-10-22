@@ -68,7 +68,7 @@ export type Question = {
 export type Response = {
   id: string;
   question_id: string;
-  choice_id: string;
+  choice_id: string | null;
   is_correct: boolean;
   ms_to_answer?: number | null;
   flagged: boolean;

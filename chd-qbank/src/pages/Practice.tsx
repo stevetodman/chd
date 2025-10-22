@@ -15,6 +15,28 @@ import {
   shouldLoadNextPage
 } from "../lib/practice";
 
+type PracticeResponse = {
+  id: string;
+  flagged: boolean;
+  choice_id: string | null;
+  is_correct: boolean;
+  ms_to_answer: number | null;
+};
+
+const mapResponse = (data: {
+  id: string;
+  flagged: boolean;
+  choice_id: string | null;
+  is_correct: boolean;
+  ms_to_answer: number | null;
+}): PracticeResponse => ({
+  id: data.id,
+  flagged: data.flagged,
+  choice_id: data.choice_id,
+  is_correct: data.is_correct,
+  ms_to_answer: data.ms_to_answer
+});
+
 export default function Practice() {
   const [questions, setQuestions] = useState<QuestionRow[]>([]);
   const [index, setIndex] = useState(0);
@@ -25,11 +47,17 @@ export default function Practice() {
   const questionsRef = useRef<QuestionRow[]>([]);
   const loadingRef = useRef(false);
   const loadedPages = useRef(new Set<number>());
+  const [responses, setResponses] = useState<Record<string, PracticeResponse | null>>({});
+  const responsesRef = useRef<Record<string, PracticeResponse | null>>({});
   const { session } = useSessionStore();
 
   useEffect(() => {
     questionsRef.current = questions;
   }, [questions]);
+
+  useEffect(() => {
+    responsesRef.current = responses;
+  }, [responses]);
 
   const loadPage = useCallback(
     async (pageToLoad: number, replace = false) => {
@@ -100,14 +128,62 @@ export default function Practice() {
   const handleAnswer = async (choice: Choice, ms: number, flagged: boolean) => {
     const current = questions[index];
     if (!current || !session) return;
-    await supabase.from("responses").insert({
-      user_id: session.user.id,
-      question_id: current.id,
-      choice_id: choice.id,
-      is_correct: choice.is_correct,
-      ms_to_answer: ms,
-      flagged
-    });
+    let existing = responses[current.id];
+    if (!existing) {
+      const { data, error } = await supabase
+        .from("responses")
+        .select("id, flagged, choice_id, is_correct, ms_to_answer")
+        .eq("user_id", session.user.id)
+        .eq("question_id", current.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!error && data) {
+        existing = mapResponse(data);
+        setResponses((prev) => ({
+          ...prev,
+          [current.id]: existing
+        }));
+      }
+    }
+    if (existing) {
+      const { data, error } = await supabase
+        .from("responses")
+        .update({
+          choice_id: choice.id,
+          is_correct: choice.is_correct,
+          ms_to_answer: ms,
+          flagged
+        })
+        .eq("id", existing.id)
+        .select("id, flagged, choice_id, is_correct, ms_to_answer")
+        .maybeSingle();
+      if (!error && data) {
+        setResponses((prev) => ({
+          ...prev,
+          [current.id]: mapResponse(data)
+        }));
+      }
+    } else {
+      const { data, error } = await supabase
+        .from("responses")
+        .insert({
+          user_id: session.user.id,
+          question_id: current.id,
+          choice_id: choice.id,
+          is_correct: choice.is_correct,
+          ms_to_answer: ms,
+          flagged
+        })
+        .select("id, flagged, choice_id, is_correct, ms_to_answer")
+        .single();
+      if (!error && data) {
+        setResponses((prev) => ({
+          ...prev,
+          [current.id]: mapResponse(data)
+        }));
+      }
+    }
     if (choice.is_correct) {
       await supabase.rpc("increment_points", { delta: 1 });
     }
@@ -117,14 +193,65 @@ export default function Practice() {
     async (flagged: boolean) => {
       const current = questionsRef.current[index];
       if (!current || !session) return;
-      await supabase
-        .from("responses")
-        .update({ flagged })
-        .eq("user_id", session.user.id)
-        .eq("question_id", current.id);
+      const existing = responsesRef.current[current.id];
+      if (existing) {
+        const { data, error } = await supabase
+          .from("responses")
+          .update({ flagged })
+          .eq("id", existing.id)
+          .select("id, flagged, choice_id, is_correct, ms_to_answer")
+          .maybeSingle();
+        if (!error && data) {
+          setResponses((prev) => ({
+            ...prev,
+            [current.id]: mapResponse(data)
+          }));
+        }
+      } else {
+        const { data, error } = await supabase
+          .from("responses")
+          .insert({
+            user_id: session.user.id,
+            question_id: current.id,
+            flagged,
+            choice_id: null,
+            is_correct: false,
+            ms_to_answer: null
+          })
+          .select("id, flagged, choice_id, is_correct, ms_to_answer")
+          .single();
+        if (!error && data) {
+          setResponses((prev) => ({
+            ...prev,
+            [current.id]: mapResponse(data)
+          }));
+        }
+      }
     },
     [index, session]
   );
+
+  useEffect(() => {
+    const currentQuestion = questions[index];
+    if (!currentQuestion || !session) return;
+    if (currentQuestion.id in responsesRef.current) return;
+
+    void supabase
+      .from("responses")
+      .select("id, flagged, choice_id, is_correct, ms_to_answer")
+      .eq("user_id", session.user.id)
+      .eq("question_id", currentQuestion.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) return;
+        setResponses((prev) => ({
+          ...prev,
+          [currentQuestion.id]: data ? mapResponse(data) : null
+        }));
+      });
+  }, [index, questions, session]);
 
   const next = () => {
     const nextIndex = index + 1;
@@ -160,7 +287,12 @@ export default function Practice() {
 
   return (
     <div className="space-y-6">
-      <QuestionCard question={current} onAnswer={handleAnswer} onFlagChange={handleFlagChange} />
+      <QuestionCard
+        question={current}
+        onAnswer={handleAnswer}
+        onFlagChange={handleFlagChange}
+        initialFlagged={responses[current.id]?.flagged ?? false}
+      />
       <div className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-600">
         <div>
           Q {index + 1} of {questions.length}
