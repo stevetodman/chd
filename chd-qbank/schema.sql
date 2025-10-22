@@ -213,6 +213,16 @@ language sql stable as $$
   );
 $$;
 
+create or replace function leaderboard_is_enabled() returns boolean
+language sql stable as $$
+  select exists (
+    select 1
+    from app_settings
+    where key = 'leaderboard_enabled'
+      and lower(value) = 'true'
+  );
+$$;
+
 create policy "users read self or admin" on app_users
 for select using (auth.uid() = id or is_admin());
 
@@ -267,11 +277,20 @@ create policy "distractor_stats write admin" on distractor_stats
 for all using (is_admin()) with check (is_admin());
 
 create policy "leader read" on leaderboard
-for select using (true);
+for select using (
+  is_admin()
+  or auth.uid() = user_id
+  or leaderboard_is_enabled()
+);
 create policy "leader upsert own" on leaderboard
 for all using (auth.uid() = user_id or is_admin()) with check (auth.uid() = user_id or is_admin());
 
-create policy "aliases read all" on public_aliases for select using (true);
+create policy "aliases read" on public_aliases
+for select using (
+  is_admin()
+  or auth.uid() = user_id
+  or leaderboard_is_enabled()
+);
 create policy "aliases write admin" on public_aliases
 for all using (is_admin()) with check (is_admin());
 
