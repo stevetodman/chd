@@ -91,4 +91,4 @@ Contributions are welcome! Please open an issue before submitting major features
 
 ## License
 
-No explicit license is currently provided. Add an appropriate `LICENSE` file before distributing derivatives of this work.
+This project is licensed under the terms of the [MIT License](./LICENSE).
