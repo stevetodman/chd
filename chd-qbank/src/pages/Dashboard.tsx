@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../components/ui/Card";
+import { Button } from "../components/ui/Button";
 import { supabase } from "../lib/supabaseClient";
 import { useSessionStore } from "../lib/auth";
+import type { DashboardMetrics } from "../lib/constants";
+import { EMPTY_DASHBOARD_METRICS, fetchDashboardMetrics } from "../lib/dashboard";
 
 interface FeaturedQuestion {
   id: string;
@@ -15,6 +18,11 @@ export default function Dashboard() {
   const [featured, setFeatured] = useState<FeaturedQuestion[]>([]);
   const [loadingFeatured, setLoadingFeatured] = useState(false);
   const [featuredError, setFeaturedError] = useState<string | null>(null);
+  const [metrics, setMetrics] = useState<DashboardMetrics>({ ...EMPTY_DASHBOARD_METRICS });
+  const [metricsLoading, setMetricsLoading] = useState(false);
+  const [metricsLoaded, setMetricsLoaded] = useState(false);
+  const [metricsError, setMetricsError] = useState<string | null>(null);
+  const [metricsReloadKey, setMetricsReloadKey] = useState(0);
 
   useEffect(() => {
     if (!session) return;
@@ -37,6 +45,35 @@ export default function Dashboard() {
   }, [session]);
 
   useEffect(() => {
+    if (!session) return;
+    let active = true;
+    setMetricsLoading(true);
+    setMetricsError(null);
+
+    fetchDashboardMetrics()
+      .then((data) => {
+        if (!active) return;
+        setMetrics(data);
+        setMetricsLoaded(true);
+      })
+      .catch((error) => {
+        if (!active) return;
+        const message = error instanceof Error ? error.message : "Unable to load progress.";
+        setMetrics({ ...EMPTY_DASHBOARD_METRICS });
+        setMetricsLoaded(true);
+        setMetricsError(message);
+      })
+      .finally(() => {
+        if (!active) return;
+        setMetricsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [session, metricsReloadKey]);
+
+  useEffect(() => {
     setLoadingFeatured(true);
     setFeaturedError(null);
     supabase
@@ -57,6 +94,12 @@ export default function Dashboard() {
         setLoadingFeatured(false);
       });
   }, []);
+
+  const refreshMetrics = () => {
+    setMetricsReloadKey((key) => key + 1);
+  };
+
+  const accuracy = metrics.total_attempts > 0 ? Math.round((metrics.correct_attempts / metrics.total_attempts) * 100) : 0;
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
@@ -81,6 +124,61 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       ) : null}
+      <Card className="md:col-span-2">
+        <CardHeader>
+          <CardTitle>Your progress</CardTitle>
+          <p className="text-sm text-neutral-600">Real-time metrics from tutor mode and learning games.</p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {metricsError ? (
+            <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
+              {metricsError}
+            </div>
+          ) : null}
+          {!metricsLoaded && metricsLoading ? (
+            <p className="text-sm text-neutral-500">Loading progress…</p>
+          ) : (
+            <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-lg border border-neutral-200 bg-white p-4">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Practice attempts</dt>
+                <dd className="mt-2 text-2xl font-semibold text-neutral-900">{metrics.total_attempts}</dd>
+                <p className="mt-1 text-xs text-neutral-500">{metrics.correct_attempts} correct</p>
+              </div>
+              <div className="rounded-lg border border-neutral-200 bg-white p-4">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Accuracy</dt>
+                <dd className="mt-2 text-2xl font-semibold text-neutral-900">{accuracy}%</dd>
+                <p className="mt-1 text-xs text-neutral-500">
+                  Based on your lifetime practice and game attempts.
+                </p>
+              </div>
+              <div className="rounded-lg border border-neutral-200 bg-white p-4">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Flagged for review</dt>
+                <dd className="mt-2 text-2xl font-semibold text-neutral-900">{metrics.flagged_count}</dd>
+                <p className="mt-1 text-xs text-neutral-500">
+                  <Link to="/review" className="underline">
+                    Review flagged questions
+                  </Link>
+                </p>
+              </div>
+              <div className="rounded-lg border border-neutral-200 bg-white p-4">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Weekly points</dt>
+                <dd className="mt-2 text-2xl font-semibold text-neutral-900">{metrics.weekly_points}</dd>
+                <p className="mt-1 text-xs text-neutral-500">All-time total: {metrics.all_time_points}</p>
+              </div>
+            </dl>
+          )}
+        </CardContent>
+        <CardFooter className="flex flex-col gap-3 border-t border-neutral-100 bg-neutral-50 p-4 text-xs text-neutral-500 sm:flex-row sm:items-center sm:justify-between">
+          <span>
+            {metricsError
+              ? "Unable to refresh automatically. Try again after checking your connection."
+              : "Stats refresh automatically after you answer questions or play games."}
+          </span>
+          <Button type="button" variant="secondary" onClick={refreshMetrics} disabled={metricsLoading}>
+            {metricsLoading ? "Refreshing…" : "Refresh stats"}
+          </Button>
+        </CardFooter>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle>Next up</CardTitle>

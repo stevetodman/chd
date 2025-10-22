@@ -634,6 +634,43 @@ begin
 end;
 $$;
 
+create or replace function dashboard_metrics()
+returns table(
+  total_attempts bigint,
+  correct_attempts bigint,
+  flagged_count bigint,
+  weekly_points bigint,
+  all_time_points bigint
+)
+language plpgsql
+security definer
+set search_path = public as $$
+declare
+  v_user uuid := auth.uid();
+  v_week_start timestamptz := date_trunc('week', timezone('utc', now()));
+begin
+  if v_user is null then
+    raise exception 'auth required';
+  end if;
+
+  return query
+  select
+    (select count(*) from responses where user_id = v_user)::bigint,
+    (select count(*) from responses where user_id = v_user and is_correct)::bigint,
+    (select count(*) from responses where user_id = v_user and flagged)::bigint,
+    (
+      (select count(*) from responses where user_id = v_user and is_correct and created_at >= v_week_start) +
+      (select count(*) from murmur_attempts where user_id = v_user and is_correct and created_at >= v_week_start) +
+      (select count(*) from cxr_attempts where user_id = v_user and is_correct and created_at >= v_week_start)
+    )::bigint,
+    (
+      (select count(*) from responses where user_id = v_user and is_correct) +
+      (select count(*) from murmur_attempts where user_id = v_user and is_correct) +
+      (select count(*) from cxr_attempts where user_id = v_user and is_correct)
+    )::bigint;
+end;
+$$;
+
 create index if not exists idx_questions_status_topic on questions(status, topic, lesion);
 create index if not exists idx_responses_user_time on responses(user_id, created_at desc);
 create index if not exists idx_responses_question on responses(question_id);

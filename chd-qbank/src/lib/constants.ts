@@ -98,3 +98,11 @@ export type HeatRow = {
   correct_rate: number;
 };
 
+export type DashboardMetrics = {
+  total_attempts: number;
+  correct_attempts: number;
+  flagged_count: number;
+  weekly_points: number;
+  all_time_points: number;
+};
+
