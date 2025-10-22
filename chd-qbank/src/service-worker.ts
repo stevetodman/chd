@@ -8,7 +8,7 @@ declare const self: ServiceWorkerGlobalScope;
 const CACHE_VERSION = "v1";
 const APP_SHELL_CACHE = `app-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `runtime-${CACHE_VERSION}`;
-const APP_SHELL_ASSETS = ["/", "/index.html", "/manifest.json"];
+const APP_SHELL_ASSETS = ["/", "/index.html", "/manifest.json", "/icon.svg", "/icon-maskable.svg"];
 const STATIC_ASSET_PATTERN = /\.(?:css|js|woff2?|png|jpg|jpeg|svg|gif|webp|ico)$/i;
 
 self.addEventListener("install", (event) => {
@@ -69,9 +69,23 @@ async function cacheFirst(request: Request): Promise<Response> {
     return cachedResponse;
   }
 
-  const networkResponse = await fetch(request);
-  void cache.put(request, networkResponse.clone());
-  return networkResponse;
+  try {
+    const networkResponse = await fetch(request);
+    void cache.put(request, networkResponse.clone());
+    return networkResponse;
+  } catch (error) {
+    console.warn("Service worker cacheFirst fallback triggered", error);
+    const cachedShell = await caches.match("/index.html");
+    if (cachedShell && request.destination === "document") {
+      return cachedShell;
+    }
+
+    return new Response("Offline", {
+      status: 503,
+      statusText: "Service Unavailable",
+      headers: { "Content-Type": "text/plain" }
+    });
+  }
 }
 
 async function handleNavigationRequest(request: Request): Promise<Response> {
@@ -81,11 +95,23 @@ async function handleNavigationRequest(request: Request): Promise<Response> {
     void cache.put("/index.html", networkResponse.clone());
     return networkResponse;
   } catch (error) {
+    console.warn("Service worker navigation fallback triggered", error);
     const cache = await caches.open(APP_SHELL_CACHE);
-    const cachedResponse = await cache.match("/index.html");
-
+    const cachedResponse = await cache.match(request);
     if (cachedResponse) {
       return cachedResponse;
+    }
+
+    const runtimeCache = await caches.open(RUNTIME_CACHE);
+    const runtimeMatch = await runtimeCache.match(request);
+    if (runtimeMatch) {
+      return runtimeMatch;
+    }
+
+    const appShell = await cache.match("/index.html");
+
+    if (appShell) {
+      return appShell;
     }
 
     return new Response("Offline", {

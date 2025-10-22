@@ -37,6 +37,23 @@ const mapResponse = (data: {
   ms_to_answer: data.ms_to_answer
 });
 
+const abortable = async <T,>(promise: Promise<T>, controller: AbortController): Promise<T> => {
+  if (controller.signal.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+
+  return Promise.race<T>([
+    promise,
+    new Promise<never>((_, reject) => {
+      controller.signal.addEventListener(
+        "abort",
+        () => reject(new DOMException("Aborted", "AbortError")),
+        { once: true }
+      );
+    })
+  ]);
+};
+
 export default function Practice() {
   const [questions, setQuestions] = useState<QuestionRow[]>([]);
   const [index, setIndex] = useState(0);
@@ -47,6 +64,7 @@ export default function Practice() {
   const questionsRef = useRef<QuestionRow[]>([]);
   const loadingRef = useRef(false);
   const loadedPages = useRef(new Set<number>());
+  const abortControllers = useRef(new Set<AbortController>());
   const [responses, setResponses] = useState<Record<string, PracticeResponse | null>>({});
   const responsesRef = useRef<Record<string, PracticeResponse | null>>({});
   const { session } = useSessionStore();
@@ -61,6 +79,14 @@ export default function Practice() {
     responsesRef.current = responses;
   }, [responses]);
 
+  useEffect(() => {
+    const controllers = abortControllers.current;
+    return () => {
+      controllers.forEach((controller) => controller.abort());
+      controllers.clear();
+    };
+  }, []);
+
   const loadPage = useCallback(
     async (pageToLoad: number, replace = false) => {
       if (loadingRef.current && !replace) return 0;
@@ -72,50 +98,62 @@ export default function Practice() {
 
       const from = pageToLoad * PRACTICE_PAGE_SIZE;
       const to = from + PRACTICE_PAGE_SIZE - 1;
-      const { data, error: fetchError, count } = await supabase
-        .from("questions")
-        .select(
-          "id, slug, stem_md, lead_in, explanation_brief_md, explanation_deep_md, topic, subtopic, lesion, context_panels, media_bundle:media_bundles(id, murmur_url, cxr_url, ekg_url, diagram_url, alt_text), choices(id,label,text_md,is_correct)",
-          { count: "exact" }
-        )
-        .eq("status", "published")
-        .order("id", { ascending: true })
-        .range(from, to);
+      const controller = new AbortController();
+      abortControllers.current.add(controller);
 
-      if (fetchError) {
-        setError(fetchError.message);
+      try {
+        const { data, error: fetchError, count } = await abortable(
+          supabase
+            .from("questions")
+            .select(
+              "id, slug, stem_md, lead_in, explanation_brief_md, explanation_deep_md, topic, subtopic, lesion, context_panels, media_bundle:media_bundles(id, murmur_url, cxr_url, ekg_url, diagram_url, alt_text), choices(id,label,text_md,is_correct)",
+              { count: "exact" }
+            )
+            .eq("status", "published")
+            .order("id", { ascending: true })
+            .range(from, to),
+          controller
+        );
+
+        if (fetchError) {
+          setError("We couldn't load practice questions. Please try again.");
+          return 0;
+        }
+
+        // Normalize raw Supabase rows into the shape our UI expects, then randomize within the page.
+        const normalized = normalizeQuestionRows((data ?? []) as QuestionQueryRow[]);
+
+        const randomized = shuffleQuestions(normalized);
+
+        const base = replace ? [] : questionsRef.current;
+        const merged = mergeQuestionPages(base, randomized);
+        setQuestions(merged);
+        questionsRef.current = merged;
+
+        if (replace) {
+          loadedPages.current = new Set([pageToLoad]);
+          setIndex(0);
+        } else {
+          loadedPages.current.add(pageToLoad);
+        }
+
+        setPage(pageToLoad);
+        const nextHasMore = determineHasMore(count, merged.length, normalized.length);
+        setHasMore(nextHasMore);
+
+        return randomized.length;
+      } catch (error) {
+        const isAbort = error instanceof DOMException && error.name === "AbortError";
+        if (!isAbort) {
+          console.error(error);
+          setError("We couldn't load practice questions. Please try again.");
+        }
+        return 0;
+      } finally {
+        abortControllers.current.delete(controller);
         setLoading(false);
         loadingRef.current = false;
-        return 0;
       }
-
-      // Normalize raw Supabase rows into the shape our UI expects, then randomize within the page.
-      const normalized = normalizeQuestionRows((data ?? []) as QuestionQueryRow[]);
-
-      const randomized = shuffleQuestions(normalized);
-
-      let nextQuestions: QuestionRow[] = [];
-      setQuestions((prev) => {
-        const base = replace ? [] : prev;
-        nextQuestions = mergeQuestionPages(base, randomized);
-        return nextQuestions;
-      });
-
-      questionsRef.current = nextQuestions;
-
-      if (replace) {
-        loadedPages.current = new Set([pageToLoad]);
-        setIndex(0);
-      } else {
-        loadedPages.current.add(pageToLoad);
-      }
-
-      setPage(pageToLoad);
-      setHasMore(determineHasMore(count, nextQuestions.length, normalized.length));
-
-      setLoading(false);
-      loadingRef.current = false;
-      return randomized.length;
     },
     []
   );
@@ -295,21 +333,36 @@ export default function Practice() {
     if (!currentQuestion || !session) return;
     if (currentQuestion.id in responsesRef.current) return;
 
-    void supabase
-      .from("responses")
-      .select("id, flagged, choice_id, is_correct, ms_to_answer")
-      .eq("user_id", session.user.id)
-      .eq("question_id", currentQuestion.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    const controllers = abortControllers.current;
+    const controller = new AbortController();
+    controllers.add(controller);
+
+    void abortable(
+      supabase
+        .from("responses")
+        .select("id, flagged, choice_id, is_correct, ms_to_answer")
+        .eq("user_id", session.user.id)
+        .eq("question_id", currentQuestion.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      controller
+    )
       .then(({ data, error }) => {
         if (error) return;
         setResponses((prev) => ({
           ...prev,
           [currentQuestion.id]: data ? mapResponse(data) : null
         }));
+      })
+      .finally(() => {
+        controllers.delete(controller);
       });
+
+    return () => {
+      controller.abort();
+      controllers.delete(controller);
+    };
   }, [index, questions, session]);
 
   const next = () => {

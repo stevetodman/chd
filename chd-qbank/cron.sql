@@ -43,4 +43,13 @@ begin
 end;
 $$;
 
+do $$
+begin
+  perform cron.unschedule('refresh_stats_nightly');
+exception
+  when undefined_object then
+    null;
+end;
+$$;
+
 select cron.schedule('refresh_stats_nightly', '30 2 * * *', $$select refresh_item_stats();$$);

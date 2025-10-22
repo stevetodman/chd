@@ -22,12 +22,7 @@ create table if not exists app_settings (
   key text primary key,
   value text not null
 );
-insert into app_settings(key, value)
-  values ('invite_code','CHD2025FALL')
-on conflict (key) do nothing;
-insert into app_settings(key, value)
-  values ('invite_expires','2025-11-30')
-on conflict (key) do nothing;
+-- Operational secrets (invite code, etc.) are seeded via scripts/seed-invite.mjs in each environment.
 insert into app_settings(key, value)
   values ('leaderboard_enabled','true')
 on conflict (key) do nothing;
@@ -170,6 +165,17 @@ create table if not exists leaderboard (
   points int not null default 0,
   rank int
 );
+
+create or replace view leaderboard_with_alias as
+select l.user_id,
+       coalesce(pa.alias, 'Anon') as alias,
+       l.points,
+       l.rank
+from leaderboard l
+left join public_aliases pa using (user_id);
+
+grant select on leaderboard_with_alias to authenticated;
+grant select on leaderboard_with_alias to service_role;
 
 create table if not exists public_aliases (
   user_id uuid primary key references app_users(id) on delete cascade,
@@ -681,6 +687,16 @@ $$;
 
 create or replace view leaderboard_weekly as
 select * from leaderboard_weekly_entries();
+
+create or replace view leaderboard_weekly_with_alias as
+select l.user_id,
+       coalesce(pa.alias, 'Anon') as alias,
+       l.points
+from leaderboard_weekly l
+left join public_aliases pa using (user_id);
+
+grant select on leaderboard_weekly_with_alias to authenticated;
+grant select on leaderboard_weekly_with_alias to service_role;
 
 create or replace view item_stats_public as
 select question_id,

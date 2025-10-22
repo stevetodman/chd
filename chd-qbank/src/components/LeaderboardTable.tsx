@@ -2,15 +2,11 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { Button } from "./ui/Button";
 
+type Filter = "weekly" | "all";
+
 type LeaderRow = {
   alias: string;
   points: number;
-};
-
-type Filter = "weekly" | "all";
-type LeaderboardRowWithId = {
-  points: number | null;
-  user_id: string;
 };
 
 export default function LeaderboardTable() {
@@ -28,34 +24,19 @@ export default function LeaderboardTable() {
       setError(null);
 
       try {
-        const source = filter === "weekly" ? "leaderboard_weekly" : "leaderboard";
+        const source =
+          filter === "weekly" ? "leaderboard_weekly_with_alias" : "leaderboard_with_alias";
         const { data, error } = await supabase
           .from(source)
-          .select("points, user_id")
+          .select("alias, points")
           .order("points", { ascending: false })
           .limit(100);
         if (error) throw error;
         if (!active) return;
 
-        const rowsWithIds = (data ?? []) as LeaderboardRowWithId[];
-        const ids = Array.from(new Set(rowsWithIds.map((row) => row.user_id)));
-        const aliasMap = new Map<string, string>();
-
-        if (ids.length > 0) {
-          const { data: aliases, error: aliasError } = await supabase
-            .from("public_aliases")
-            .select("user_id, alias")
-            .in("user_id", ids);
-          if (aliasError) throw aliasError;
-          if (!active) return;
-          (aliases ?? []).forEach((entry) => aliasMap.set(entry.user_id, entry.alias));
-        }
-
-        if (!active) return;
-
         setRows(
-          rowsWithIds.map((row) => ({
-            alias: aliasMap.get(row.user_id) ?? "Anon",
+          (data ?? []).map((row) => ({
+            alias: row.alias ?? "Anon",
             points: row.points ?? 0
           }))
         );
