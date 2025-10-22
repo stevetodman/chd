@@ -65,10 +65,32 @@ export const isPointInRect = (rect: Rect, point: Point): boolean => {
   return point.x >= rect.x && point.x <= rect.x + rect.width && point.y >= rect.y && point.y <= rect.y + rect.height;
 };
 
-export const displayPointToNaturalPoint = (point: Point, naturalSize: Size, displaySize: Size): Point => ({
-  x: (point.x / displaySize.width) * naturalSize.width,
-  y: (point.y / displaySize.height) * naturalSize.height
-});
+const clamp = (value: number, min: number, max: number): number => {
+  if (value < min) return min;
+  if (value > max) return max;
+  return value;
+};
+
+const safeDivisor = (value: number): number => {
+  return value === 0 ? Number.EPSILON : value;
+};
+
+export const displayPointToNaturalPoint = (
+  point: Point,
+  naturalSize: Size,
+  displaySize: Size,
+  devicePixelRatio: number = 1
+): Point => {
+  const ratio = devicePixelRatio > 0 ? devicePixelRatio : 1;
+  const cssWidth = safeDivisor(displaySize.width) * ratio;
+  const cssHeight = safeDivisor(displaySize.height) * ratio;
+  const naturalX = (point.x / cssWidth) * naturalSize.width;
+  const naturalY = (point.y / cssHeight) * naturalSize.height;
+  return {
+    x: clamp(naturalX, 0, naturalSize.width),
+    y: clamp(naturalY, 0, naturalSize.height)
+  };
+};
 
 export const hitTolerance = (naturalSize: Size): number => {
   return Math.min(naturalSize.width, naturalSize.height) * 0.05;
@@ -90,8 +112,9 @@ export const hitTestDisplayPoint = (
   bbox: BoundingBox,
   naturalSize: Size,
   displaySize: Size,
-  tolerance: number = hitTolerance(naturalSize)
+  tolerance: number = hitTolerance(naturalSize),
+  devicePixelRatio: number = 1
 ): boolean => {
-  const naturalPoint = displayPointToNaturalPoint(displayPoint, naturalSize, displaySize);
+  const naturalPoint = displayPointToNaturalPoint(displayPoint, naturalSize, displaySize, devicePixelRatio);
   return hitTestBoundingBox(naturalPoint, bbox, naturalSize, tolerance);
 };
