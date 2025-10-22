@@ -5,8 +5,8 @@ The `analytics_heatmap_agg` materialized view stores row-level aggregates that p
 ## Objects
 
 - `analytics_heatmap_agg` – materialized view with counts, correctness, and timing metrics grouped by `(question_id, lesion, topic, week_start)`.
-- `analytics_heatmap_admin()` – SECURITY DEFINER function that enforces admin/service-role access and returns the aggregate rows ordered by week.
-- `analytics_refresh_heatmap()` – SECURITY DEFINER function that runs `REFRESH MATERIALIZED VIEW CONCURRENTLY`.
+- `analytics_heatmap_admin()` – SECURITY DEFINER function that verifies admin/service-role access and returns JSON with the ordered aggregate rows.
+- `analytics_refresh_heatmap()` – SECURITY DEFINER function that runs `REFRESH MATERIALIZED VIEW CONCURRENTLY` and reports the duration as JSON.
 - `analytics_heatmap_agg_idx` – composite index on `(week_start, question_id)` to keep refreshes and lookups fast.
 
 Non-admin roles do **not** have direct `SELECT` access to the materialized view; they must go through the checked functions.
@@ -26,11 +26,13 @@ Non-admin roles do **not** have direct `SELECT` access to the materialized view;
 
 ## Refreshing
 
-Run the security-definer function:
+Run the security-definer function and inspect the JSON response:
 
 ```sql
 select analytics_refresh_heatmap();
 ```
+
+On success the payload includes `{"status": 200, "duration_ms": ...}`. If the materialized view cannot obtain a concurrent refresh lock within five seconds, the function responds with HTTP `409` and a JSON body of `{ "status": 409, "error": "Refresh in progress", ... }` instead of blocking reads.
 
 For Supabase cron jobs, call the same function with the service-role key.
 
