@@ -223,6 +223,10 @@ for update using (auth.uid() = id) with check (auth.uid() = id);
 
 create policy "settings read admin" on app_settings
 for select using (is_admin());
+create policy "settings read leaderboard" on app_settings
+for select using (
+  key = 'leaderboard_enabled' and auth.role() = 'authenticated'
+);
 create policy "settings update admin" on app_settings
 for update using (is_admin());
 

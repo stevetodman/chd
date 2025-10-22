@@ -25,7 +25,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
     if (error) {
       console.error("Failed to load app settings", error);
-      set({ leaderboardEnabled: true, loading: false, loaded: true });
+      set({ leaderboardEnabled: false, loading: false, loaded: true });
       return;
     }
 
