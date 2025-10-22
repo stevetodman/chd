@@ -4,10 +4,20 @@ import { supabase } from "../lib/supabaseClient";
 import { useSessionStore } from "../lib/auth";
 import { markdownRemarkPlugins, markdownRehypePlugins } from "../lib/markdown";
 
-type FlaggedResponse = {
+export type FlaggedResponse = {
   id: string;
   questions: { stem_md: string; lead_in: string | null } | null;
 };
+
+export async function loadFlaggedResponses(client: typeof supabase, userId: string) {
+  const { data } = await client
+    .from("responses")
+    .select("*, questions(stem_md, lead_in)")
+    .eq("user_id", userId)
+    .eq("flagged", true)
+    .order("created_at", { ascending: false });
+  return (data ?? []) as FlaggedResponse[];
+}
 
 export default function Review() {
   const { session } = useSessionStore();
@@ -15,15 +25,9 @@ export default function Review() {
 
   useEffect(() => {
     if (!session) return;
-    supabase
-      .from("responses")
-      .select("*, questions(stem_md, lead_in)")
-      .eq("user_id", session.user.id)
-      .eq("flagged", true)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        setFlags((data ?? []) as FlaggedResponse[]);
-      });
+    loadFlaggedResponses(supabase, session.user.id).then((results) => {
+      setFlags(results);
+    });
   }, [session]);
 
   return (

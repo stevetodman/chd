@@ -4,9 +4,40 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card"
 import { supabase } from "../lib/supabaseClient";
 import { useSessionStore } from "../lib/auth";
 
-interface FeaturedQuestion {
+export interface FeaturedQuestion {
   id: string;
   lead_in: string | null;
+}
+
+export async function fetchAliasRequirement(client: typeof supabase, userId: string) {
+  const { data, error } = await client
+    .from("app_users")
+    .select("alias, alias_locked")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) {
+    return false;
+  }
+  if (!data?.alias || data.alias.trim().length === 0) {
+    return true;
+  }
+  return false;
+}
+
+export async function loadFeaturedQuestions(client: typeof supabase) {
+  const { data, error } = await client
+    .from("questions")
+    .select("id, lead_in")
+    .eq("status", "published")
+    .limit(5);
+  if (error) {
+    return { items: [] as FeaturedQuestion[], error: error.message };
+  }
+  const randomized = (data ?? []).sort(() => Math.random() - 0.5);
+  return {
+    items: randomized.map((row) => ({ id: row.id, lead_in: row.lead_in ?? null })),
+    error: null as string | null
+  };
 }
 
 export default function Dashboard() {
@@ -18,40 +49,22 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!session) return;
-    supabase
-      .from("app_users")
-      .select("alias, alias_locked")
-      .eq("id", session.user.id)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (error) {
-          setAliasNeeded(false);
-          return;
-        }
-        if (data && (!data.alias || data.alias.trim().length === 0)) {
-          setAliasNeeded(true);
-        } else {
-          setAliasNeeded(false);
-        }
-      });
+    fetchAliasRequirement(supabase, session.user.id).then((required) => {
+      setAliasNeeded(required);
+    });
   }, [session]);
 
   useEffect(() => {
     setLoadingFeatured(true);
     setFeaturedError(null);
-    supabase
-      .from("questions")
-      .select("id, lead_in")
-      .eq("status", "published")
-      .limit(5)
-      .then(({ data, error }) => {
+    loadFeaturedQuestions(supabase)
+      .then(({ items, error }) => {
         if (error) {
-          setFeaturedError(error.message);
+          setFeaturedError(error);
           setFeatured([]);
-          return;
+        } else {
+          setFeatured(items);
         }
-        const randomized = (data ?? []).sort(() => Math.random() - 0.5);
-        setFeatured(randomized.map((row) => ({ id: row.id, lead_in: row.lead_in })));
       })
       .finally(() => {
         setLoadingFeatured(false);

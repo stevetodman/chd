@@ -3,6 +3,24 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { Button } from "../components/ui/Button";
 
+export type SignupForm = {
+  email: string;
+  password: string;
+  invite_code: string;
+  desired_alias: string;
+};
+
+export async function signupWithInvite(client: typeof supabase, form: SignupForm) {
+  const { data, error } = await client.functions.invoke("signup-with-code", { body: form });
+  if (error) {
+    throw error;
+  }
+  if (!data?.ok) {
+    throw new Error(data?.error ?? "Failed to create account");
+  }
+  return data;
+}
+
 export default function Signup() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: "", password: "", invite_code: "", desired_alias: "" });
@@ -15,11 +33,7 @@ export default function Signup() {
     setSuccess(null);
     try {
       // Supabase Edge Function validates invite code and seeds alias server-side.
-      const { data, error: fnError } = await supabase.functions.invoke("signup-with-code", {
-        body: form
-      });
-      if (fnError) throw fnError;
-      if (!data?.ok) throw new Error(data?.error ?? "Failed to create account");
+      await signupWithInvite(supabase, form);
       setSuccess("Account created. Please sign in.");
       setTimeout(() => navigate("/login"), 800);
     } catch (err) {

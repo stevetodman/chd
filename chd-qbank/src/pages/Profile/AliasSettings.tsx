@@ -4,6 +4,38 @@ import { Button } from "../../components/ui/Button";
 import { supabase } from "../../lib/supabaseClient";
 import { useSessionStore } from "../../lib/auth";
 
+export async function fetchAliasStatus(client: typeof supabase, userId: string) {
+  const { data, error } = await client
+    .from("app_users")
+    .select("alias, alias_locked")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) {
+    return { alias: "", locked: false, error: error.message ?? "Unable to load alias." };
+  }
+  return {
+    alias: data?.alias ?? "",
+    locked: Boolean(data?.alias_locked),
+    error: null as string | null
+  };
+}
+
+export async function saveAliasSelection(client: typeof supabase, userId: string, alias: string) {
+  const { data, error } = await client
+    .from("app_users")
+    .update({ alias })
+    .eq("id", userId)
+    .select("alias, alias_locked")
+    .maybeSingle();
+  if (error) {
+    throw error;
+  }
+  return {
+    alias: data?.alias ?? alias,
+    locked: Boolean(data?.alias_locked)
+  };
+}
+
 export default function AliasSettings() {
   const { session } = useSessionStore();
   const [alias, setAlias] = useState("");
@@ -16,19 +48,15 @@ export default function AliasSettings() {
   useEffect(() => {
     if (!session) return;
     setLoading(true);
-    supabase
-      .from("app_users")
-      .select("alias, alias_locked")
-      .eq("id", session.user.id)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (error) {
-          setError(error.message);
+    fetchAliasStatus(supabase, session.user.id)
+      .then(({ alias: nextAlias, locked: nextLocked, error: nextError }) => {
+        if (nextError) {
+          setError(nextError);
           setAlias("");
           setLocked(false);
-        } else if (data) {
-          setAlias(data.alias ?? "");
-          setLocked(Boolean(data.alias_locked));
+        } else {
+          setAlias(nextAlias);
+          setLocked(nextLocked);
         }
       })
       .finally(() => setLoading(false));
@@ -52,19 +80,14 @@ export default function AliasSettings() {
     setMessage(null);
     setError(null);
 
-    const { data, error: updateError } = await supabase
-      .from("app_users")
-      .update({ alias: trimmed })
-      .eq("id", session.user.id)
-      .select("alias, alias_locked")
-      .maybeSingle();
-
-    if (updateError) {
-      setError(updateError.message);
-    } else if (data) {
-      setAlias(data.alias ?? trimmed);
-      setLocked(Boolean(data.alias_locked));
+    try {
+      const result = await saveAliasSelection(supabase, session.user.id, trimmed);
+      setAlias(result.alias);
+      setLocked(result.locked);
       setMessage("Alias saved! This name is now locked for leaderboard play.");
+    } catch (updateError) {
+      const message = updateError instanceof Error ? updateError.message : "Unable to save alias.";
+      setError(message);
     }
 
     setSaving(false);
