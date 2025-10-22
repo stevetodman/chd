@@ -4,15 +4,19 @@ import { create } from "zustand";
 interface SessionState {
   session: Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"] | null;
   loading: boolean;
+  initialized: boolean;
   setSession: (session: SessionState["session"]) => void;
   setLoading: (loading: boolean) => void;
+  setInitialized: (initialized: boolean) => void;
 }
 
 export const useSessionStore = create<SessionState>((set) => ({
   session: null,
   loading: true,
+  initialized: false,
   setSession: (session) => set({ session }),
-  setLoading: (loading) => set({ loading })
+  setLoading: (loading) => set({ loading }),
+  setInitialized: (initialized) => set({ initialized })
 }));
 
 export async function signIn(email: string, password: string) {
@@ -29,15 +33,19 @@ export async function signOut() {
 }
 
 export async function getSession() {
+  const sessionStore = useSessionStore.getState();
+  sessionStore.setLoading(true);
+  let succeeded = false;
   try {
     const { data } = await supabase.auth.getSession();
-    useSessionStore.getState().setSession(data.session);
+    sessionStore.setSession(data.session);
+    succeeded = true;
     return data.session;
-  } catch (error) {
-    useSessionStore.getState().setSession(null);
-    throw error;
   } finally {
-    useSessionStore.getState().setLoading(false);
+    sessionStore.setLoading(false);
+    if (succeeded) {
+      sessionStore.setInitialized(true);
+    }
   }
 }
 
@@ -61,6 +69,9 @@ export async function requireAdmin(): Promise<boolean> {
 }
 
 supabase.auth.onAuthStateChange((_event, session) => {
-  useSessionStore.getState().setSession(session);
-  useSessionStore.getState().setLoading(false);
+  const sessionStore = useSessionStore.getState();
+  sessionStore.setSession(session);
+  if (sessionStore.initialized) {
+    sessionStore.setLoading(false);
+  }
 });

@@ -35,14 +35,14 @@ function LeaderboardGuard() {
 }
 
 function RequireAuth({ children }: { children: JSX.Element }) {
-  const { session, loading } = useSessionStore();
-  if (loading) return <div className="p-6 text-center">Loading…</div>;
+  const { session, loading, initialized } = useSessionStore();
+  if (loading || !initialized) return <div className="p-6 text-center">Loading…</div>;
   if (!session) return <Navigate to="/login" replace />;
   return children;
 }
 
 function RequireAdmin({ children }: { children: JSX.Element }) {
-  const { session, loading } = useSessionStore();
+  const { session, loading, initialized } = useSessionStore();
   const [allowed, setAllowed] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -53,7 +53,7 @@ function RequireAdmin({ children }: { children: JSX.Element }) {
       .catch(() => setAllowed(false));
   }, [session]);
 
-  if (loading) return <div className="p-6 text-center">Loading…</div>;
+  if (loading || !initialized) return <div className="p-6 text-center">Loading…</div>;
   if (!session) return <Navigate to="/login" replace />;
   if (allowed === null) return <div className="p-6 text-center">Checking permissions…</div>;
   if (!allowed) return <Navigate to="/dashboard" replace />;
