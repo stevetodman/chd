@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeRaw from "rehype-raw";
-import rehypeHighlight from "rehype-highlight";
 import type { Choice } from "../lib/constants";
 import { classNames } from "../lib/utils";
+import { markdownRemarkPlugins, markdownRehypePlugins } from "../lib/markdown";
 
 type Props = {
   choices: Choice[];
@@ -74,8 +72,8 @@ export default function ChoiceList({ choices, disabled, onSelect, selectedId }: 
           >
             <span className="mr-2 font-semibold">{choice.label}.</span>
             <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeRaw, rehypeHighlight]}
+              remarkPlugins={markdownRemarkPlugins}
+              rehypePlugins={markdownRehypePlugins}
               className="inline prose prose-sm max-w-none"
             >
               {choice.text_md}

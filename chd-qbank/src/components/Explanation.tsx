@@ -1,8 +1,6 @@
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeRaw from "rehype-raw";
-import rehypeHighlight from "rehype-highlight";
+import { markdownRemarkPlugins, markdownRehypePlugins } from "../lib/markdown";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/Card";
 import { Button } from "./ui/Button";
 
@@ -24,14 +22,18 @@ export default function Explanation({ brief, deep }: Props) {
         ) : null}
       </CardHeader>
       <CardContent className="space-y-3 text-sm text-neutral-700">
-        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeHighlight]} className="prose prose-sm max-w-none">
+        <ReactMarkdown
+          remarkPlugins={markdownRemarkPlugins}
+          rehypePlugins={markdownRehypePlugins}
+          className="prose prose-sm max-w-none"
+        >
           {brief}
         </ReactMarkdown>
         {deep && open ? (
           <div className="rounded-md bg-neutral-50 p-3">
             <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeRaw, rehypeHighlight]}
+              remarkPlugins={markdownRemarkPlugins}
+              rehypePlugins={markdownRehypePlugins}
               className="prose prose-sm max-w-none"
             >
               {deep}
