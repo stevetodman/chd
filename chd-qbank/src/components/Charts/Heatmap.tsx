@@ -11,7 +11,8 @@ type Cell = {
 const palette = ["#f7fbff", "#deebf7", "#c6dbef", "#9ecae1", "#6baed6", "#4292c6", "#2171b5", "#084594"];
 
 function colorFor(rate: number) {
-  const index = Math.min(palette.length - 1, Math.floor(rate * palette.length));
+  const clampedRate = Math.max(0, Math.min(1, rate));
+  const index = Math.min(palette.length - 1, Math.floor(clampedRate * palette.length));
   return palette[index];
 }
 
