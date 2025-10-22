@@ -8,23 +8,27 @@ export default function Signup() {
   const [form, setForm] = useState({ email: "", password: "", invite_code: "", desired_alias: "" });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [createdAlias, setCreatedAlias] = useState<string | null>(null);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
     setSuccess(null);
+    setCreatedAlias(null);
     try {
       // Supabase Edge Function validates invite code and seeds alias server-side.
       const { data, error: fnError } = await supabase.functions.invoke("signup-with-code", {
         body: form
       });
-      if (fnError) throw fnError;
+      if (fnError) throw new Error(fnError.message ?? "Failed to create account");
       if (!data?.ok) throw new Error(data?.error ?? "Failed to create account");
+      setCreatedAlias(typeof data.alias === "string" ? data.alias : null);
       setSuccess("Account created. Please sign in.");
       setTimeout(() => navigate("/login"), 800);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unable to sign up";
       setError(message);
+      setCreatedAlias(null);
     }
   };
 
@@ -75,6 +79,11 @@ export default function Signup() {
         </label>
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
         {success ? <p className="text-sm text-emerald-600">{success}</p> : null}
+        {createdAlias ? (
+          <p className="text-sm text-neutral-700" aria-live="polite">
+            Alias reserved: <span data-testid="signup-created-alias" className="font-semibold">{createdAlias}</span>
+          </p>
+        ) : null}
         <Button type="submit" className="w-full">
           Request access
         </Button>
