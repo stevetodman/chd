@@ -607,10 +607,26 @@ create index if not exists idx_responses_question on responses(question_id);
 create index if not exists idx_item_stats_attempts on item_stats(n_attempts);
 
 create or replace function grant_admin_by_email(p_email text)
-returns void language plpgsql security definer as $$
-declare v_id uuid;
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_id uuid;
 begin
+  if not is_admin() then
+    raise exception 'admin required';
+  end if;
+
   select id into v_id from auth.users where email = p_email;
-  if v_id is null then raise exception 'No user %', p_email; end if;
-  update app_users set role='admin' where id=v_id;
-end; $$;
+  if v_id is null then
+    raise exception 'No user %', p_email;
+  end if;
+
+  update app_users set role = 'admin' where id = v_id;
+  if not found then
+    raise exception 'No profile for %', p_email;
+  end if;
+end;
+$$;
