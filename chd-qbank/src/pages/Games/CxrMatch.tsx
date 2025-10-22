@@ -91,14 +91,31 @@ export default function CxrMatch() {
       setMessage("Not quite. Try another lesion.");
     }
     if (session) {
-      await supabase.from("cxr_attempts").insert({
-        user_id: session.user.id,
-        item_id: current.id,
-        is_correct: correct,
-        detail: { selected: label.label }
-      });
-      if (correct) {
-        await supabase.rpc("increment_points", { delta: 1 });
+      const { data: attempt, error: attemptError } = await supabase
+        .from("cxr_attempts")
+        .insert({
+          user_id: session.user.id,
+          item_id: current.id,
+          is_correct: correct,
+          detail: { selected: label.label }
+        })
+        .select("id")
+        .single();
+
+      if (attemptError) {
+        setError("We couldn't record your attempt. Please try again.");
+        return;
+      }
+
+      if (correct && attempt) {
+        const { error: rpcError } = await supabase.rpc("increment_points", {
+          source: "cxr_attempt",
+          source_id: attempt.id
+        });
+
+        if (rpcError) {
+          setError("Your answer was saved, but we couldn't update your points. Please try again later.");
+        }
       }
     }
   };

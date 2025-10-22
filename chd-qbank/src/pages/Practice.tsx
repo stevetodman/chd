@@ -212,7 +212,10 @@ export default function Practice() {
     }));
 
     if (saved?.is_correct && !wasCorrect) {
-      const { error: rpcError } = await supabase.rpc("increment_points", { delta: 1 });
+      const { error: rpcError } = await supabase.rpc("increment_points", {
+        source: "practice_response",
+        source_id: saved.id
+      });
       if (rpcError) {
         setError("Your answer was saved, but we couldn't update your points. Please try again later.");
         return;

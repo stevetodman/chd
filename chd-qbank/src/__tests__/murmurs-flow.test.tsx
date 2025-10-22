@@ -18,7 +18,11 @@ const items = [
   }
 ];
 
-const insertMock = vi.fn(async () => ({ data: null, error: null }));
+const attemptId = "attempt-7";
+const selectMock = vi.fn(() => ({
+  single: async () => ({ data: { id: attemptId }, error: null })
+}));
+const insertMock = vi.fn(() => ({ select: selectMock }));
 const rpcMock = vi.fn(async () => ({ data: null, error: null }));
 
 vi.mock("../lib/supabaseClient", () => ({
@@ -51,6 +55,7 @@ vi.mock("../lib/supabaseClient", () => ({
 describe("murmur game flow", () => {
   beforeEach(() => {
     insertMock.mockClear();
+    selectMock.mockClear();
     rpcMock.mockClear();
     useSessionStore.setState({ session: createMockSession("user-42"), loading: false, initialized: true });
   });
@@ -70,7 +75,11 @@ describe("murmur game flow", () => {
       option_id: "opt-2",
       is_correct: true
     });
-    expect(rpcMock).toHaveBeenCalledWith("increment_points", { delta: 1 });
+    expect(selectMock).toHaveBeenCalledWith("id");
+    expect(rpcMock).toHaveBeenCalledWith("increment_points", {
+      source: "murmur_attempt",
+      source_id: attemptId
+    });
     expect(await screen.findByText("Correct!")).toBeInTheDocument();
   });
 });
