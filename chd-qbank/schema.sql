@@ -241,7 +241,18 @@ create policy "settings update admin" on app_settings
 for update using (is_admin());
 
 create policy "media read" on media_bundles
-for select using (auth.role() = 'authenticated');
+for select using (
+  is_admin()
+  or (
+    auth.role() = 'authenticated'
+    and exists (
+      select 1
+      from questions q
+      where q.media_bundle_id = media_bundles.id
+        and q.status = 'published'
+    )
+  )
+);
 create policy "media write admin" on media_bundles
 for all using (is_admin()) with check (is_admin());
 
@@ -299,7 +310,18 @@ for select using ( ((status='published' and auth.role()='authenticated') or is_a
 create policy "murmur items write admin" on murmur_items
 for all using (is_admin()) with check (is_admin());
 create policy "murmur options read" on murmur_options
-for select using (auth.role()='authenticated');
+for select using (
+  is_admin()
+  or (
+    auth.role()='authenticated'
+    and exists (
+      select 1
+      from murmur_items mi
+      where mi.id = murmur_options.item_id
+        and mi.status = 'published'
+    )
+  )
+);
 create policy "murmur options write admin" on murmur_options
 for all using (is_admin()) with check (is_admin());
 create policy "murmur attempts insert self" on murmur_attempts
@@ -312,7 +334,18 @@ for select using ( ((status='published' and auth.role()='authenticated') or is_a
 create policy "cxr items write admin" on cxr_items
 for all using (is_admin()) with check (is_admin());
 create policy "cxr labels read" on cxr_labels
-for select using (auth.role()='authenticated');
+for select using (
+  is_admin()
+  or (
+    auth.role()='authenticated'
+    and exists (
+      select 1
+      from cxr_items ci
+      where ci.id = cxr_labels.item_id
+        and ci.status = 'published'
+    )
+  )
+);
 create policy "cxr labels write admin" on cxr_labels
 for all using (is_admin()) with check (is_admin());
 create policy "cxr attempts insert self" on cxr_attempts
