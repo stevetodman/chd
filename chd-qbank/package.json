@@ -10,6 +10,7 @@
     "test": "vitest",
     "lint": "eslint --ext .ts,.tsx src",
     "build:scripts": "tsc -p tsconfig.scripts.json",
+    "check:migration-safety": "npm run build:scripts && node scripts/dist/check-migration-safety.js",
     "seed:invite": "node scripts/seed-invite.mjs",
     "seed:full": "npm run build:scripts && node scripts/dist/seed/full.js",
     "verify:seed": "npm run build:scripts && node scripts/dist/verifySeed.js",
