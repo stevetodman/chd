@@ -83,6 +83,12 @@ Additional secrets (such as service role keys) should be stored securely and pro
 
 Contributions are welcome! Please open an issue before submitting major features or architecture changes. Bugfix pull requests should include reproduction steps, screenshots (for UI changes), and tests when applicable.
 
+## Future Work
+
+- Expand automated testing coverage beyond the placeholder Vitest suite to ensure the question bank and game flows behave reliably.
+- Prototype richer game interactions that deepen clinical reasoning practice while reusing the shared content library.
+- Harden offline capabilities so the learning experience remains functional with intermittent connectivity.
+
 ## License
 
 No explicit license is currently provided. Add an appropriate `LICENSE` file before distributing derivatives of this work.
