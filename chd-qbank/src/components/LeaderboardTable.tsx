@@ -16,55 +16,67 @@ type LeaderboardRowWithId = {
 export default function LeaderboardTable() {
   const [rows, setRows] = useState<LeaderRow[]>([]);
   const [filter, setFilter] = useState<Filter>("weekly");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let active = true;
 
     const fetchData = async () => {
-      const source = filter === "weekly" ? "leaderboard_weekly" : "leaderboard";
-      const { data, error } = await supabase
-        .from(source)
-        .select("points, user_id")
-        .order("points", { ascending: false })
-        .limit(100);
-      if (error) throw error;
-      if (!active) return;
+      setLoading(true);
+      setError(null);
 
-      const rowsWithIds = (data ?? []) as LeaderboardRowWithId[];
-      const ids = Array.from(new Set(rowsWithIds.map((row) => row.user_id)));
-      const aliasMap = new Map<string, string>();
-
-      if (ids.length > 0) {
-        const { data: aliases, error: aliasError } = await supabase
-          .from("public_aliases")
-          .select("user_id, alias")
-          .in("user_id", ids);
-        if (aliasError) throw aliasError;
+      try {
+        const source = filter === "weekly" ? "leaderboard_weekly" : "leaderboard";
+        const { data, error } = await supabase
+          .from(source)
+          .select("points, user_id")
+          .order("points", { ascending: false })
+          .limit(100);
+        if (error) throw error;
         if (!active) return;
-        (aliases ?? []).forEach((entry) => aliasMap.set(entry.user_id, entry.alias));
-      }
 
-      if (!active) return;
+        const rowsWithIds = (data ?? []) as LeaderboardRowWithId[];
+        const ids = Array.from(new Set(rowsWithIds.map((row) => row.user_id)));
+        const aliasMap = new Map<string, string>();
 
-      setRows(
-        rowsWithIds.map((row) => ({
-          alias: aliasMap.get(row.user_id) ?? "Anon",
-          points: row.points ?? 0
-        }))
-      );
-    };
+        if (ids.length > 0) {
+          const { data: aliases, error: aliasError } = await supabase
+            .from("public_aliases")
+            .select("user_id, alias")
+            .in("user_id", ids);
+          if (aliasError) throw aliasError;
+          if (!active) return;
+          (aliases ?? []).forEach((entry) => aliasMap.set(entry.user_id, entry.alias));
+        }
 
-    fetchData().catch((err) => {
-      if (active) {
+        if (!active) return;
+
+        setRows(
+          rowsWithIds.map((row) => ({
+            alias: aliasMap.get(row.user_id) ?? "Anon",
+            points: row.points ?? 0
+          }))
+        );
+      } catch (err) {
+        if (!active) return;
         console.error(err);
         setRows([]);
+        setError("We couldn't load the leaderboard. Please try again.");
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
       }
-    });
+    };
+
+    void fetchData();
 
     return () => {
       active = false;
     };
-  }, [filter]);
+  }, [filter, reloadKey]);
 
   return (
     <div className="space-y-4">
@@ -76,6 +88,21 @@ export default function LeaderboardTable() {
           All-time
         </Button>
       </div>
+      {error ? (
+        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
+          <div className="flex items-start justify-between gap-4">
+            <p>{error}</p>
+            <Button variant="secondary" onClick={() => setReloadKey((key) => key + 1)} disabled={loading}>
+              Try again
+            </Button>
+          </div>
+        </div>
+      ) : null}
+      {loading && rows.length === 0 ? (
+        <div className="rounded-md border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-600">
+          Loading leaderboard…
+        </div>
+      ) : null}
       <table className="min-w-full divide-y divide-neutral-200 overflow-hidden rounded-lg bg-white shadow-sm">
         <thead className="bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">
           <tr>
