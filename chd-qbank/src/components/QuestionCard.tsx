@@ -54,8 +54,24 @@ export default function QuestionCard({ question, onAnswer }: Props) {
         </CardFooter>
       </Card>
       <div className="space-y-4">
-        <LabPanel />
-        <FormulaPanel />
+        {(question.context_panels ?? []).map((panel) => {
+          if (!panel) return null;
+          switch (panel.kind) {
+            case "labs":
+              return <LabPanel key={panel.id} labs={panel.labs} title={panel.title} />;
+            case "formula":
+              return (
+                <FormulaPanel
+                  key={panel.id}
+                  title={panel.title}
+                  formulas={panel.formulas}
+                  bodyMd={panel.body_md}
+                />
+              );
+            default:
+              return null;
+          }
+        })}
         {showExplanation ? (
           <Explanation brief={question.explanation_brief_md} deep={question.explanation_deep_md} />
         ) : null}

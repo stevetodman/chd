@@ -22,6 +22,34 @@ export type Choice = {
   is_correct: boolean;
 };
 
+export type LabValue = {
+  label: string;
+  value: string;
+  unit?: string | null;
+};
+
+export type FormulaReference = {
+  name: string;
+  expression: string;
+};
+
+export type ContextLabsPanel = {
+  id: string;
+  kind: "labs";
+  title?: string | null;
+  labs: LabValue[];
+};
+
+export type ContextFormulaPanel = {
+  id: string;
+  kind: "formula";
+  title?: string | null;
+  formulas?: FormulaReference[] | null;
+  body_md?: string | null;
+};
+
+export type ContextPanel = ContextLabsPanel | ContextFormulaPanel;
+
 export type Question = {
   id: string;
   slug: string;
@@ -34,6 +62,7 @@ export type Question = {
   lesion?: string | null;
   media_bundle?: MediaBundle | null;
   choices: Choice[];
+  context_panels?: ContextPanel[] | null;
 };
 
 export type Response = {
