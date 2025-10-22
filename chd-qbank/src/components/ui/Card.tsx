@@ -11,6 +11,8 @@ type CardContentProps = React.HTMLAttributes<HTMLDivElement>;
 
 type CardFooterProps = React.HTMLAttributes<HTMLDivElement>;
 
+type CardDescriptionProps = React.HTMLAttributes<HTMLParagraphElement>;
+
 export const Card = forwardRef<HTMLDivElement, CardProps>(({ className, ...props }, ref) => (
   <div ref={ref} className={classNames("rounded-lg border border-neutral-200 bg-white shadow-sm", className)} {...props} />
 ));
@@ -35,3 +37,8 @@ export const CardFooter = forwardRef<HTMLDivElement, CardFooterProps>(({ classNa
   <div ref={ref} className={classNames("border-t border-neutral-200 p-4", className)} {...props} />
 ));
 CardFooter.displayName = "CardFooter";
+
+export const CardDescription = forwardRef<HTMLParagraphElement, CardDescriptionProps>(({ className, ...props }, ref) => (
+  <p ref={ref} className={classNames("text-sm text-neutral-500", className)} {...props} />
+));
+CardDescription.displayName = "CardDescription";

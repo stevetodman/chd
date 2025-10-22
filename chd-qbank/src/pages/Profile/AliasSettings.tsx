@@ -12,6 +12,9 @@ export default function AliasSettings() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [resetSending, setResetSending] = useState(false);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session) return;
@@ -70,6 +73,27 @@ export default function AliasSettings() {
     setSaving(false);
   };
 
+  const sendPasswordReset = async () => {
+    if (!session?.user?.email) {
+      setResetError("We couldn't find your account email. Try signing out and back in.");
+      return;
+    }
+
+    setResetSending(true);
+    setResetMessage(null);
+    setResetError(null);
+
+    const { error: resetErr } = await supabase.auth.resetPasswordForEmail(session.user.email);
+
+    if (resetErr) {
+      setResetError(resetErr.message);
+    } else {
+      setResetMessage(`Password reset email sent to ${session.user.email}. Check your inbox to continue.`);
+    }
+
+    setResetSending(false);
+  };
+
   if (loading) {
     return <div className="p-6 text-sm text-neutral-600">Loading profile…</div>;
   }
@@ -113,6 +137,25 @@ export default function AliasSettings() {
             </Button>
           </CardFooter>
         </form>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Account security</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm text-neutral-700">
+          <p>Need a new password? Send yourself a secure reset link at any time.</p>
+          <p className="text-xs text-neutral-500">
+            We&apos;ll email instructions to {session?.user.email ?? "the address on file"}. Links expire after a short time for
+            your security.
+          </p>
+          {resetError ? <p className="text-xs text-red-600">{resetError}</p> : null}
+          {resetMessage ? <p className="text-xs text-emerald-600">{resetMessage}</p> : null}
+        </CardContent>
+        <CardFooter>
+          <Button type="button" variant="secondary" onClick={sendPasswordReset} disabled={resetSending}>
+            {resetSending ? "Sending…" : "Email me a reset link"}
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   );
