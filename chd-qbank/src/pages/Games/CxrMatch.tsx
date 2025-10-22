@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
@@ -10,6 +10,7 @@ import { useSessionStore } from "../../lib/auth";
 interface Label {
   id: string;
   label: string;
+  is_correct: boolean;
 }
 
 interface CxrItem {
@@ -19,52 +20,75 @@ interface CxrItem {
   labels: Label[];
 }
 
-const SEED_ITEMS: CxrItem[] = [
-  {
-    id: "seed-cxr-1",
-    image_url: "cxr/egg_tga.webp",
-    caption_md: "Identify the classic congenital heart lesion.",
-    labels: [
-      { id: "seed-cxr-l1", label: "Egg-on-a-string" },
-      { id: "seed-cxr-l2", label: "Snowman" },
-      { id: "seed-cxr-l3", label: "Boot" },
-      { id: "seed-cxr-l4", label: "Rib notching" }
-    ]
+const shuffle = <T,>(input: T[]): T[] => {
+  const copy = [...input];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
   }
-];
+  return copy;
+};
+
+type CxrLabelRow = { id: string; label: string; is_correct: boolean | null };
+type CxrItemRow = {
+  id: string;
+  image_url: string;
+  caption_md: string | null;
+  cxr_labels: CxrLabelRow[] | null;
+};
 
 export default function CxrMatch() {
   const { session } = useSessionStore();
-  const [items, setItems] = useState<CxrItem[]>(SEED_ITEMS);
+  const [items, setItems] = useState<CxrItem[]>([]);
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setLoading(true);
+    setError(null);
     supabase
       .from("cxr_items")
-      .select("id, image_url, caption_md, cxr_labels(id,label)")
-      .limit(10)
-      .then(({ data }) => {
-        if (data && data.length) {
-          setItems(
-            data.map((item: any) => ({
-              id: item.id,
-              image_url: item.image_url,
-              caption_md: item.caption_md,
-              labels: item.cxr_labels ?? []
-            }))
-          );
+      .select("id, image_url, caption_md, cxr_labels(id,label,is_correct)")
+      .eq("status", "published")
+      .limit(20)
+      .then(({ data, error: fetchError }) => {
+        if (fetchError) {
+          setError(fetchError.message);
+          setItems([]);
+          return;
         }
-      });
+        const normalized: CxrItem[] = ((data ?? []) as CxrItemRow[]).map((item) => ({
+          id: item.id,
+          image_url: item.image_url,
+          caption_md: item.caption_md,
+          labels: shuffle((item.cxr_labels ?? []).map((label) => ({
+            id: label.id,
+            label: label.label,
+            is_correct: Boolean(label.is_correct)
+          })))
+        }));
+        setItems(shuffle(normalized));
+        setIndex(0);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const current = items[index];
+  const correctLabel = useMemo(() => current?.labels.find((label) => label.is_correct) ?? null, [current]);
 
   const submit = async (label: Label) => {
-    const correct = label.label.toLowerCase().includes("egg");
+    const correct = label.is_correct;
     setSelected(label.id);
-    setMessage(correct ? "Correct!" : "Not quite. Try another lesion.");
+    if (correct) {
+      setMessage("Correct!");
+    } else if (correctLabel) {
+      setMessage(`Not quite. The correct answer is ${correctLabel.label}.`);
+    } else {
+      setMessage("Not quite. Try another lesion.");
+    }
     if (session) {
       await supabase.from("cxr_attempts").insert({
         user_id: session.user.id,
@@ -84,11 +108,17 @@ export default function CxrMatch() {
     setMessage(null);
   };
 
-  if (!current) return <div>No CXR match items configured.</div>;
+  if (!current) {
+    if (loading) return <div>Loading radiographs…</div>;
+    if (error) return <div className="text-red-600">{error}</div>;
+    return <div>No CXR match items configured.</div>;
+  }
 
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">CXR Sign Match</h1>
+      {loading ? <p className="text-sm text-neutral-500">Loading radiographs…</p> : null}
+      {error ? <p className="text-sm text-red-600">{error}</p> : null}
       <div className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row">
           <img src={current.image_url} alt="CXR" className="w-full max-w-md rounded" />
@@ -114,7 +144,7 @@ export default function CxrMatch() {
           </div>
         </div>
         {message ? <p className="mt-4 text-sm font-semibold">{message}</p> : null}
-        <Button type="button" className="mt-4" onClick={next}>
+        <Button type="button" className="mt-4" onClick={next} disabled={items.length === 0}>
           Next image
         </Button>
       </div>

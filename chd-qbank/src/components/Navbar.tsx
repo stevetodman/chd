@@ -25,6 +25,9 @@ export default function Navbar() {
             <NavLink to="/leaderboard" className={({ isActive }) => (isActive ? "font-semibold" : "")}>
               Leaderboard
             </NavLink>
+            <NavLink to="/profile/alias" className={({ isActive }) => (isActive ? "font-semibold" : "")}>
+              Profile
+            </NavLink>
             <button
               type="button"
               onClick={() => {

@@ -173,6 +173,7 @@ create table if not exists cxr_labels (
   y double precision not null check (y between 0 and 1),
   w double precision not null check (w between 0 and 1),
   h double precision not null check (h between 0 and 1),
+  is_correct boolean not null default false,
   unique (item_id, label)
 );
 
@@ -360,6 +361,162 @@ end; $$;
 drop trigger if exists trg_lock_alias_once on app_users;
 create trigger trg_lock_alias_once before update on app_users
 for each row execute function lock_alias_once();
+
+create or replace function upsert_question_from_csv(row_data jsonb)
+returns uuid
+language plpgsql
+security definer
+set search_path = public as $$
+declare
+  v_slug text := trim(coalesce(row_data->>'slug', ''));
+  v_question_id uuid;
+  v_existing_media uuid;
+  v_media_id uuid;
+  v_has_media boolean :=
+    coalesce(nullif(row_data->>'media_murmur', ''), '') <> '' or
+    coalesce(nullif(row_data->>'media_cxr', ''), '') <> '' or
+    coalesce(nullif(row_data->>'media_ekg', ''), '') <> '' or
+    coalesce(nullif(row_data->>'media_diagram', ''), '') <> '' or
+    coalesce(nullif(row_data->>'alt_text', ''), '') <> '';
+  v_status item_status := coalesce(nullif(lower(row_data->>'status'), ''), 'draft')::item_status;
+  v_choice_labels text[] := array['A','B','C','D','E'];
+  v_label text;
+  v_choice_text text;
+  v_correct_label text := upper(coalesce(nullif(row_data->>'correct_label', ''), ''));
+  v_difficulty int := case when coalesce(row_data->>'difficulty', '') ~ '^[0-9]+$' then (row_data->>'difficulty')::int else null end;
+begin
+  if v_slug = '' then
+    raise exception 'slug required';
+  end if;
+
+  select id, media_bundle_id into v_question_id, v_existing_media
+  from questions
+  where slug = v_slug
+  limit 1;
+
+  if v_has_media then
+    if v_existing_media is not null then
+      update media_bundles
+        set murmur_url = nullif(row_data->>'media_murmur', ''),
+            cxr_url = nullif(row_data->>'media_cxr', ''),
+            ekg_url = nullif(row_data->>'media_ekg', ''),
+            diagram_url = nullif(row_data->>'media_diagram', ''),
+            alt_text = nullif(row_data->>'alt_text', '')
+      where id = v_existing_media
+      returning id into v_media_id;
+    else
+      insert into media_bundles(murmur_url, cxr_url, ekg_url, diagram_url, alt_text)
+      values (
+        nullif(row_data->>'media_murmur', ''),
+        nullif(row_data->>'media_cxr', ''),
+        nullif(row_data->>'media_ekg', ''),
+        nullif(row_data->>'media_diagram', ''),
+        nullif(row_data->>'alt_text', '')
+      )
+      returning id into v_media_id;
+    end if;
+  else
+    v_media_id := v_existing_media;
+  end if;
+
+  if v_question_id is null then
+    insert into questions (
+      slug,
+      stem_md,
+      lead_in,
+      explanation_brief_md,
+      explanation_deep_md,
+      topic,
+      subtopic,
+      lesion,
+      difficulty_target,
+      bloom,
+      lecture_link,
+      status,
+      media_bundle_id
+    )
+    values (
+      v_slug,
+      row_data->>'stem_md',
+      nullif(row_data->>'lead_in', ''),
+      row_data->>'explanation_brief_md',
+      nullif(row_data->>'explanation_deep_md', ''),
+      nullif(row_data->>'topic', ''),
+      nullif(row_data->>'subtopic', ''),
+      nullif(row_data->>'lesion', ''),
+      v_difficulty,
+      nullif(row_data->>'bloom', ''),
+      nullif(row_data->>'lecture_link', ''),
+      v_status,
+      v_media_id
+    )
+    returning id into v_question_id;
+  else
+    update questions
+    set stem_md = row_data->>'stem_md',
+        lead_in = nullif(row_data->>'lead_in', ''),
+        explanation_brief_md = row_data->>'explanation_brief_md',
+        explanation_deep_md = nullif(row_data->>'explanation_deep_md', ''),
+        topic = nullif(row_data->>'topic', ''),
+        subtopic = nullif(row_data->>'subtopic', ''),
+        lesion = nullif(row_data->>'lesion', ''),
+        difficulty_target = v_difficulty,
+        bloom = nullif(row_data->>'bloom', ''),
+        lecture_link = nullif(row_data->>'lecture_link', ''),
+        status = v_status,
+        media_bundle_id = v_media_id
+    where id = v_question_id
+    returning id into v_question_id;
+  end if;
+
+  foreach v_label in array v_choice_labels
+  loop
+    v_choice_text := nullif(row_data->>concat('choice', v_label), '');
+    if v_choice_text is null then
+      continue;
+    end if;
+    insert into choices(question_id, label, text_md, is_correct)
+    values (v_question_id, v_label, v_choice_text, v_label = v_correct_label)
+    on conflict (question_id, label) do update
+      set text_md = excluded.text_md,
+          is_correct = excluded.is_correct;
+  end loop;
+
+  return v_question_id;
+end;
+$$;
+
+create or replace function import_question_rows(rows jsonb)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public as $$
+declare
+  item jsonb;
+  processed int := 0;
+  errors jsonb := '[]'::jsonb;
+begin
+  if not is_admin() then
+    raise exception 'Admin privileges required';
+  end if;
+
+  if rows is null or jsonb_typeof(rows) <> 'array' then
+    raise exception 'rows must be an array';
+  end if;
+
+  for item in select value from jsonb_array_elements(rows) as t(value)
+  loop
+    begin
+      perform upsert_question_from_csv(item);
+      processed := processed + 1;
+    exception when others then
+      errors := errors || jsonb_build_array(jsonb_build_object('slug', item->>'slug', 'error', SQLERRM));
+    end;
+  end loop;
+
+  return jsonb_build_object('processed', processed, 'errors', errors);
+end;
+$$;
 
 create or replace view leaderboard_weekly as
 select user_id, sum(points) as points

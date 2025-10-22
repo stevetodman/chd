@@ -22,8 +22,9 @@ export default function Signup() {
       if (!data?.ok) throw new Error(data?.error ?? "Failed to create account");
       setSuccess("Account created. Please sign in.");
       setTimeout(() => navigate("/login"), 800);
-    } catch (err: any) {
-      setError(err.message ?? "Unable to sign up");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to sign up";
+      setError(message);
     }
   };
 
