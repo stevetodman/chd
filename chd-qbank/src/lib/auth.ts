@@ -35,17 +35,15 @@ export async function signOut() {
 export async function getSession() {
   const sessionStore = useSessionStore.getState();
   sessionStore.setLoading(true);
-  let succeeded = false;
   try {
     const { data } = await supabase.auth.getSession();
     sessionStore.setSession(data.session);
-    succeeded = true;
     return data.session;
+  } catch {
+    return null;
   } finally {
     sessionStore.setLoading(false);
-    if (succeeded) {
-      sessionStore.setInitialized(true);
-    }
+    sessionStore.setInitialized(true);
   }
 }
 
