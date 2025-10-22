@@ -88,7 +88,8 @@ create table if not exists responses (
   ms_to_answer int,
   flagged boolean not null default false,
   created_at timestamptz not null default now(),
-  constraint ms_nonneg check (ms_to_answer is null or ms_to_answer between 0 and 600000)
+  constraint ms_nonneg check (ms_to_answer is null or ms_to_answer between 0 and 600000),
+  constraint responses_unique_user_question unique (user_id, question_id)
 );
 
 create table if not exists item_stats (
