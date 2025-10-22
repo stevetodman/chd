@@ -1,3 +1,5 @@
+const path = require("node:path");
+
 module.exports = {
   root: true,
   env: {
@@ -8,7 +10,9 @@ module.exports = {
   parser: "@typescript-eslint/parser",
   parserOptions: {
     ecmaVersion: "latest",
-    sourceType: "module"
+    sourceType: "module",
+    project: path.resolve(__dirname, "./tsconfig.eslint.json"),
+    tsconfigRootDir: __dirname
   },
   plugins: ["react", "react-hooks", "@typescript-eslint"],
   extends: [
