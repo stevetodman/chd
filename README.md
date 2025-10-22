@@ -1,6 +1,15 @@
 # CHD – Congenital Heart Disease Tutor Platform
 
-This repository hosts the code and infrastructure assets for the **CHD QBank**—a congenital heart disease learning platform that combines a Step 1–style question bank with teaching games for cardiology trainees. It is structured as a Vite + React single page application backed by Supabase for authentication, data storage, and scheduled jobs.
+This repository hosts the code and infrastructure assets for the **CHD QBank**—a congenital heart disease learning platform that combines a Step 1–style question bank with teaching games for cardiology trainees. The project is structured as a Vite + React single page application backed by Supabase for authentication, data storage, analytics, and scheduled jobs. Everything needed to stand up the product (schema, automation scripts, prompt scaffolds, and documentation) lives in this monorepo so new contributors can get productive quickly.
+
+## Quick Links
+
+- [Getting Started](#quick-start)
+- [Architecture Overview](#architecture)
+- [Database Schema](#data-model)
+- [Supabase Configuration](#supabase-setup)
+- [Development Workflow](#development-workflow)
+- [Security & Compliance](#security--compliance)
 
 ## Repository Layout
 
@@ -9,13 +18,16 @@ This repository hosts the code and infrastructure assets for the **CHD QBank**�
 | `chd-qbank/` | The primary web application, including frontend source code, configuration, and Supabase assets. |
 | `schema.sql`, `storage-policies.sql`, `cron.sql` | Supabase SQL migrations for database schema, storage rules, and scheduled tasks. |
 | `import_template.csv` | CSV scaffold for bulk question imports. |
+| `docs/` | Deep dives on analytics, security, and operational procedures. |
+| `prompts/` | Reusable product prompts that guide instructional design work. |
 
 ## Features
 
 - Invite-only Supabase authentication powered by an Edge Function.
 - Modular question bank with analytics and item-management tooling.
-- Learning games that reuse the shared content library.
+- Learning games that reuse the shared content library and question metadata.
 - Fully RLS-protected Postgres schema with storage buckets for media (murmurs, CXR, EKG, diagrams).
+- Analytics views and scripts that help calibrate difficulty and distractor quality.
 - Static-first deployment strategy suitable for Vercel hosting.
 
 ## Prerequisites
@@ -26,13 +38,25 @@ This repository hosts the code and infrastructure assets for the **CHD QBank**�
 
 ## Quick Start
 
-```bash
-cd chd-qbank
-npm install
-npm run dev
-```
+1. Clone the repository and install dependencies:
 
-Copy `.env.example` to `.env` and provide the Supabase project URL and anon key before starting the development server.
+   ```bash
+   git clone https://github.com/<your-org>/chd.git
+   cd chd/chd-qbank
+   npm install
+   ```
+
+2. Copy `.env.example` to `.env` and provide the Supabase project URL and anon key before starting the development server.
+
+3. Start the development server:
+
+   ```bash
+   npm run dev
+   ```
+
+4. Visit [http://localhost:5173](http://localhost:5173) and sign in with an account invited through Supabase.
+
+If you need a database snapshot for local prototyping, run the SQL migrations in Supabase and seed a few questions using `import_template.csv` or the admin UI.
 
 ## Architecture
 
@@ -40,7 +64,7 @@ Copy `.env.example` to `.env` and provide the Supabase project URL and anon key 
 - **State & data layer:** Supabase JS client handles auth and CRUD operations against Postgres. Client state for the current session and feature-specific stores live in [Zustand](./chd-qbank/src/lib/auth.ts) slices, while derived utilities (pagination, shuffling, normalization) are colocated under `src/lib`.
 - **Routing & layout:** React Router defines top-level routes inside `src/pages`. Each page composes leaf components from `src/components` (presentation/UI) and `src/components/ui` (primitive controls) to keep view logic modular.
 - **Supabase assets:** SQL migrations (`schema.sql`, `storage-policies.sql`, `cron.sql`) and Edge Functions in `supabase/functions` configure the backend schema, RLS rules, and invitation workflow.
-- **Automation:** Lightweight Node scripts in `chd-qbank/scripts` seed settings like invite codes, while `npm run lint/test` ensure quality gates. GitHub workflows are currently managed manually.
+- **Automation:** Lightweight Node scripts in `chd-qbank/scripts` seed settings like invite codes, verify analytics, and refresh RLS policies. GitHub workflows are currently managed manually but can be adapted to your CI provider.
 
 ## Data Model
 
@@ -77,6 +101,7 @@ All commands are executed from the `chd-qbank` directory.
 3. Deploy the `signup-with-code` Edge Function contained in `supabase/functions/signup-with-code` and configure `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` environment variables for the function.
 4. Create storage buckets named `murmurs`, `cxr`, `ekg`, and `diagrams`.
 5. Configure SMTP (e.g., Resend) inside Supabase; no client key is required.
+6. Review `docs/analytics/heatmap.md` for materialized views and refresh routines that require elevated service-role access.
 
 ## Environment Variables
 
@@ -105,18 +130,24 @@ Run the script from `chd-qbank/` after provisioning the database to keep invite 
 1. Branch from `main` and ensure dependencies are installed.
 2. Make changes within `chd-qbank/src` and associated Supabase SQL files.
 3. Run `npm run lint` and `npm run test` before committing feature or bugfix changes.
-4. Format documentation updates manually (no automated formatter is provided).
+4. Format documentation updates manually (no automated formatter is provided). When editing Markdown, prefer semantic headings and keep line lengths under ~120 characters for readability.
 5. Open a pull request describing the change and include screenshots for UI adjustments when possible.
+6. Respond to reviewer feedback promptly and keep PRs focused—use draft pull requests for in-progress work.
 
 ## Deployment
 
 1. Deploy the static assets to Vercel (Hobby tier is sufficient for previews).
 2. Configure preview deployments to point to the development Supabase project.
 3. Promote builds to production once Supabase Pro features (such as `pg_cron`) are available.
+4. Rotate invite codes and service keys whenever you change environments; automation scripts in `chd-qbank/scripts` help keep settings in sync.
 
 ## Contributing
 
-Contributions are welcome! Please open an issue before submitting major features or architecture changes. Bugfix pull requests should include reproduction steps, screenshots (for UI changes), and tests when applicable.
+Contributions are welcome! Please open an issue before submitting major features or architecture changes. Bugfix pull requests should include reproduction steps, screenshots (for UI changes), and tests when applicable. See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for detailed expectations and the review checklist.
+
+## Security & Compliance
+
+Security-sensitive changes (authentication, RLS, analytics functions) require an additional reviewer and may necessitate a Supabase service-role key rotation. Refer to [`SECURITY.md`](./SECURITY.md) for disclosure guidelines and contact information.
 
 ## Future Work
 
