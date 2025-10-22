@@ -51,10 +51,12 @@ export default function Practice() {
   const responsesRef = useRef<Record<string, PracticeResponse | null>>({});
   const { session } = useSessionStore();
 
+  // Keep a stable ref so async callbacks always read the latest question list.
   useEffect(() => {
     questionsRef.current = questions;
   }, [questions]);
 
+  // Mirror the responses map for non-reactive async workflows (flag toggles, etc.).
   useEffect(() => {
     responsesRef.current = responses;
   }, [responses]);
@@ -87,6 +89,7 @@ export default function Practice() {
         return 0;
       }
 
+      // Normalize raw Supabase rows into the shape our UI expects, then randomize within the page.
       const normalized = normalizeQuestionRows((data ?? []) as QuestionQueryRow[]);
 
       const randomized = shuffleQuestions(normalized);
@@ -140,6 +143,7 @@ export default function Practice() {
       throw new Error(message);
     };
 
+    // Pull any locally cached response before we hit Supabase for the latest record.
     let existing = responses[current.id];
     if (!existing) {
       const { data, error } = await supabase
@@ -168,6 +172,7 @@ export default function Practice() {
     const wasCorrect = existing?.is_correct ?? false;
 
     if (existing) {
+      // Update the existing response row if the learner already answered this item.
       const { data, error } = await supabase
         .from("responses")
         .update({
@@ -186,6 +191,7 @@ export default function Practice() {
 
       saved = mapResponse(data);
     } else {
+      // Otherwise create a brand new response row tied to the current user and question.
       const { data, error } = await supabase
         .from("responses")
         .insert({
@@ -212,6 +218,7 @@ export default function Practice() {
     }));
 
     if (saved?.is_correct && !wasCorrect) {
+      // Award points only when the learner transitions from incorrect/blank to correct.
       const { error: rpcError } = await supabase.rpc("increment_points", {
         source: "practice_response",
         source_id: saved.id
@@ -236,6 +243,7 @@ export default function Practice() {
       };
 
       if (existing) {
+        // Fast-path: update the existing response's flag state.
         const { data, error } = await supabase
           .from("responses")
           .update({ flagged })
@@ -252,6 +260,7 @@ export default function Practice() {
           [current.id]: mapResponse(data)
         }));
       } else {
+        // Create a placeholder response so flags persist even without an answer.
         const { data, error } = await supabase
           .from("responses")
           .insert({
@@ -281,6 +290,7 @@ export default function Practice() {
   );
 
   useEffect(() => {
+    // Preload a response whenever the user navigates to a new question.
     const currentQuestion = questions[index];
     if (!currentQuestion || !session) return;
     if (currentQuestion.id in responsesRef.current) return;
@@ -303,6 +313,7 @@ export default function Practice() {
   }, [index, questions, session]);
 
   const next = () => {
+    // Move the cursor forward and trigger pagination when near the end of the queue.
     const nextIndex = index + 1;
     if (nextIndex < questions.length) {
       setIndex(nextIndex);

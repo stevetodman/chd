@@ -35,6 +35,7 @@ export default function Importer() {
   const [errors, setErrors] = useState<{ slug: string | null; error: string }[]>([]);
   const [publishing, setPublishing] = useState(false);
 
+  // Parse the uploaded CSV into normalized row objects using Papa.
   const handleFile = (file: File) => {
     Papa.parse<CsvRow>(file, {
       header: true,
@@ -50,6 +51,7 @@ export default function Importer() {
     setErrors([]);
     setPublishing(true);
 
+    // Translate CSV columns into the payload expected by the Supabase RPC function.
     const payload = rows.map((row) => ({
       slug: row.slug?.trim(),
       stem_md: row.stem_md,
@@ -79,11 +81,13 @@ export default function Importer() {
     const { data, error } = await supabase.rpc("import_question_rows", { rows: payload });
 
     if (error) {
+      // Surface RPC failures at the top-level to the administrator.
       setMessage("Import failed");
       setErrors([{ slug: null, error: error.message }]);
     } else if (data) {
       setMessage(`Processed ${data.processed} rows`);
       if (Array.isArray(data.errors)) {
+        // Display per-row validation errors from the RPC response.
         setErrors(data.errors as { slug: string | null; error: string }[]);
       }
     }

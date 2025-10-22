@@ -34,6 +34,29 @@ npm run dev
 
 Copy `.env.example` to `.env` and provide the Supabase project URL and anon key before starting the development server.
 
+## Architecture
+
+- **Frontend framework:** Vite-powered React with TypeScript. Shared styling comes from Tailwind CSS with Radix UI primitives for dialogs, dropdowns, and toasts.
+- **State & data layer:** Supabase JS client handles auth and CRUD operations against Postgres. Client state for the current session and feature-specific stores live in [Zustand](./chd-qbank/src/lib/auth.ts) slices, while derived utilities (pagination, shuffling, normalization) are colocated under `src/lib`.
+- **Routing & layout:** React Router defines top-level routes inside `src/pages`. Each page composes leaf components from `src/components` (presentation/UI) and `src/components/ui` (primitive controls) to keep view logic modular.
+- **Supabase assets:** SQL migrations (`schema.sql`, `storage-policies.sql`, `cron.sql`) and Edge Functions in `supabase/functions` configure the backend schema, RLS rules, and invitation workflow.
+- **Automation:** Lightweight Node scripts in `chd-qbank/scripts` seed settings like invite codes, while `npm run lint/test` ensure quality gates. GitHub workflows are currently managed manually.
+
+## Data Model
+
+The Supabase Postgres schema models both the question bank and the auxiliary teaching games:
+
+- **app_users / auth.users:** Mirrors Supabase auth profiles and stores roles (`student`, `admin`), display aliases, and moderation flags.
+- **app_settings:** Key/value configuration store consumed by Edge Functions (e.g., `invite_code`, `leaderboard_enabled`).
+- **media_bundles:** Optional media assets (murmur audio, chest X-ray, EKG, diagrams) linked to questions.
+- **questions & choices:** Versioned question stems with Markdown explanations and multiple-choice distractors. `choices` enforce a single correct answer and cascade deletes with their parent question.
+- **responses:** Learner submissions, including timing, correctness, and flag state. Unique per user/question with RLS protections.
+- **item_stats / distractor_stats:** Aggregate analytics supporting difficulty calibration and distractor performance monitoring.
+- **leaderboard & public_aliases:** Track points earned by correctly answering practice questions and optionally expose anonymized aliases.
+- **Murmur & CXR tables:** Separate item banks (`murmur_items`, `murmur_options`, `cxr_items`, `cxr_labels`) plus attempt tables capture gameplay for auscultation and imaging drills.
+
+See [`chd-qbank/schema.sql`](./chd-qbank/schema.sql) for column-level details and constraints.
+
 ## Available Scripts
 
 All commands are executed from the `chd-qbank` directory.
@@ -45,6 +68,7 @@ All commands are executed from the `chd-qbank` directory.
 | `npm run preview` | Preview the production build locally. |
 | `npm run lint` | Run ESLint on the TypeScript/React source files. |
 | `npm run test` | Execute the Vitest unit test suite (placeholder coverage). |
+| `npm run seed:invite` | Seed or update invite-code settings in Supabase (`app_settings` table). |
 
 ## Supabase Setup
 
@@ -64,6 +88,17 @@ VITE_SUPABASE_ANON_KEY=<your-anon-key>
 ```
 
 Additional secrets (such as service role keys) should be stored securely and provided only to server-side contexts like Edge Functions.
+
+The `npm run seed:invite` script reads extra environment variables (via `.env`) to update Supabase settings:
+
+```bash
+SUPABASE_URL=<your-supabase-url>
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
+INVITE_CODE=<invite-code-to-issue>
+INVITE_EXPIRES=<yyyy-mm-dd>
+```
+
+Run the script from `chd-qbank/` after provisioning the database to keep invite codes in sync across environments.
 
 ## Development Workflow
 
