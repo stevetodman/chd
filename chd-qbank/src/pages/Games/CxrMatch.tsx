@@ -1,15 +1,25 @@
-import { useEffect, useMemo, useState } from "react";
-import type { DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { DragEvent, SyntheticEvent } from "react";
 import ReactMarkdown from "react-markdown";
+import { useLocation } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { supabase } from "../../lib/supabaseClient";
 import { useSessionStore } from "../../lib/auth";
 import { markdownRemarkPlugins, markdownRehypePlugins } from "../../lib/markdown";
+import type { BoundingBox, Point, Size } from "../../games/cxr/geom";
+import { BoundingBoxOverlay } from "../../games/cxr/BoundingBoxOverlay";
+import {
+  displayPointToNaturalPoint,
+  hasPositiveArea,
+  hitTestBoundingBox,
+  hitTolerance
+} from "../../games/cxr/geom";
 
 interface Label {
   id: string;
   label: string;
   is_correct: boolean;
+  bbox: BoundingBox | null;
 }
 
 interface CxrItem {
@@ -28,7 +38,16 @@ const shuffle = <T,>(input: T[]): T[] => {
   return copy;
 };
 
-type CxrLabelRow = { id: string; label: string; is_correct: boolean | null };
+type CxrLabelRow = {
+  id: string;
+  label: string;
+  is_correct: boolean | null;
+  x: number | null;
+  y: number | null;
+  w: number | null;
+  h: number | null;
+};
+
 type CxrItemRow = {
   id: string;
   image_url: string;
@@ -38,6 +57,7 @@ type CxrItemRow = {
 
 export default function CxrMatch() {
   const { session } = useSessionStore();
+  const location = useLocation();
   const [items, setItems] = useState<CxrItem[]>([]);
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
@@ -45,13 +65,16 @@ export default function CxrMatch() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDropActive, setIsDropActive] = useState(false);
+  const imageContainerRef = useRef<HTMLDivElement | null>(null);
+  const [naturalSize, setNaturalSize] = useState<Size | null>(null);
+  const [displaySize, setDisplaySize] = useState<Size | null>(null);
 
   useEffect(() => {
     setLoading(true);
     setError(null);
     supabase
       .from("cxr_items")
-      .select("id, image_url, caption_md, cxr_labels(id,label,is_correct)")
+      .select("id, image_url, caption_md, cxr_labels(id,label,is_correct,x,y,w,h)")
       .eq("status", "published")
       .limit(20)
       .then(({ data, error: fetchError }) => {
@@ -67,7 +90,8 @@ export default function CxrMatch() {
           labels: shuffle((item.cxr_labels ?? []).map((label) => ({
             id: label.id,
             label: label.label,
-            is_correct: Boolean(label.is_correct)
+            is_correct: Boolean(label.is_correct),
+            bbox: mapBoundingBox(label)
           })))
         }));
         setItems(shuffle(normalized));
@@ -149,13 +173,35 @@ export default function CxrMatch() {
     event.preventDefault();
     setIsDropActive(false);
     if (selected || !current) return;
+    const container = imageContainerRef.current;
     try {
       const payload = event.dataTransfer.getData("application/json");
       if (!payload) return;
       const { id } = JSON.parse(payload) as { id: string };
       const match = current.labels.find((label) => label.id === id);
-      if (match) {
+      if (!match) {
+        return;
+      }
+      if (!container || !hasPositiveArea(naturalSize) || !match.bbox) {
         void submit(match);
+        return;
+      }
+      const rect = container.getBoundingClientRect();
+      const displayPoint: Point = {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+      };
+      const currentDisplaySize: Size = {
+        width: rect.width,
+        height: rect.height
+      };
+      setDisplaySize(currentDisplaySize);
+      const naturalPoint = displayPointToNaturalPoint(displayPoint, naturalSize, currentDisplaySize);
+      const tolerance = hitTolerance(naturalSize);
+      if (hitTestBoundingBox(naturalPoint, match.bbox, naturalSize, tolerance)) {
+        void submit(match);
+      } else {
+        setMessage("Drop inside the target lesion to submit your answer.");
       }
     } catch {
       // Ignore malformed payloads.
@@ -175,7 +221,8 @@ export default function CxrMatch() {
   };
 
   const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
-    if (event.currentTarget.contains(event.relatedTarget as Node)) {
+    const related = event.relatedTarget as Node | null;
+    if (related && event.currentTarget.contains(related)) {
       return;
     }
     setIsDropActive(false);
@@ -184,6 +231,55 @@ export default function CxrMatch() {
   const handleDragEnd = () => {
     setIsDropActive(false);
   };
+
+  useEffect(() => {
+    if (!imageContainerRef.current || typeof ResizeObserver === "undefined") {
+      return;
+    }
+    const element = imageContainerRef.current;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) {
+        const { width, height } = entry.contentRect;
+        setDisplaySize({ width, height });
+      }
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    setNaturalSize(null);
+  }, [current?.image_url]);
+
+  const showBoundingBoxes = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const debugValues = params.getAll("debug").flatMap((value) => value.split(","));
+    return debugValues.some((value) => value.trim().toLowerCase() === "bbox");
+  }, [location.search]);
+
+  const handleImageLoad = (event: SyntheticEvent<HTMLImageElement>) => {
+    const img = event.currentTarget;
+    if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+      setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+    }
+    if (imageContainerRef.current) {
+      const rect = imageContainerRef.current.getBoundingClientRect();
+      setDisplaySize({ width: rect.width, height: rect.height });
+    }
+  };
+
+  const overlayLabels = useMemo(
+    () =>
+      current
+        ? current.labels.map((label) => ({
+            id: label.id,
+            label: label.label,
+            bbox: label.bbox
+          }))
+        : [],
+    [current]
+  );
 
   if (!current) {
     if (loading) return <div>Loading radiographs…</div>;
@@ -198,7 +294,34 @@ export default function CxrMatch() {
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       <div className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row">
-          <img src={current.image_url} alt="CXR" className="w-full max-w-md rounded" />
+          <div
+            ref={imageContainerRef}
+            className={`relative w-full max-w-xl overflow-hidden rounded border ${
+              isDropActive ? "border-brand-500 ring-4 ring-brand-200" : "border-neutral-200"
+            }`}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+            role="button"
+            tabIndex={0}
+            aria-label="Drop a lesion label on the matching region"
+          >
+            <img src={current.image_url} alt="CXR" className="block h-auto w-full" onLoad={handleImageLoad} />
+            {!selectedLabel ? (
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
+                <span className="rounded bg-neutral-900/80 px-3 py-1 text-sm font-medium text-white">
+                  Drag a label onto the lesion.
+                </span>
+              </div>
+            ) : null}
+            <BoundingBoxOverlay
+              labels={overlayLabels}
+              naturalSize={naturalSize}
+              displaySize={displaySize}
+              visible={showBoundingBoxes}
+            />
+          </div>
           <div className="flex-1 space-y-2 text-sm text-neutral-700">
             <ReactMarkdown
               remarkPlugins={markdownRemarkPlugins}
@@ -207,27 +330,10 @@ export default function CxrMatch() {
             >
               {current.caption_md ?? "Match the imaging sign with the lesion."}
             </ReactMarkdown>
-            <div
-              className={`flex min-h-[6rem] items-center justify-center rounded-md border-2 border-dashed text-center text-sm transition-colors ${
-                isDropActive ? "border-brand-500 bg-brand-50 text-brand-700" : "border-neutral-300 text-neutral-500"
-              }`}
-              onDrop={handleDrop}
-              onDragOver={handleDragOver}
-              onDragEnter={handleDragEnter}
-              onDragLeave={handleDragLeave}
-              role="button"
-              tabIndex={0}
-              aria-label="Drop a lesion label here"
-            >
-              {selectedLabel ? (
-                <span className="font-semibold text-neutral-900">{selectedLabel.label}</span>
-              ) : (
-                <span>
-                  Drag a label here to submit, or activate a button below.
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-neutral-500">Labels remain keyboard accessible—use space or enter to select.</p>
+            <p className="text-xs text-neutral-500">
+              Drop the label onto the lesion (or click a label) to submit. Labels remain keyboard accessible—use space
+              or enter to select.
+            </p>
             <div className="grid gap-2">
               {current.labels.map((label) => (
                 <Button
@@ -253,3 +359,20 @@ export default function CxrMatch() {
     </div>
   );
 }
+
+const mapBoundingBox = (label: CxrLabelRow): BoundingBox | null => {
+  if (
+    typeof label.x === "number" &&
+    typeof label.y === "number" &&
+    typeof label.w === "number" &&
+    typeof label.h === "number"
+  ) {
+    return {
+      x: label.x,
+      y: label.y,
+      w: label.w,
+      h: label.h
+    };
+  }
+  return null;
+};
