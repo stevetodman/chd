@@ -32,6 +32,192 @@ function loadEnvFile() {
 
 const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
 
+const args = new Set(process.argv.slice(2));
+const isDryRun = args.has("--dry-run");
+
+const MAX_RETRY_ATTEMPTS = 5;
+const BASE_RETRY_DELAY_MS = Number(process.env.HEATMAP_VERIFY_RETRY_BASE_MS ?? 250);
+const BATCH_CONCURRENCY = Math.max(1, Number(process.env.HEATMAP_VERIFY_CONCURRENCY ?? 1));
+
+function isLocalHost(hostname) {
+  if (!hostname) return false;
+  const normalized = hostname.toLowerCase();
+  return (
+    normalized === "localhost" ||
+    normalized === "::1" ||
+    normalized.startsWith("127.") ||
+    normalized.endsWith(".local")
+  );
+}
+
+function parseHostList(value) {
+  return value
+    ?.split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function matchesHostPattern(hostname, patterns) {
+  if (!hostname || !patterns?.length) return false;
+  const normalized = hostname.toLowerCase();
+  return patterns.some((pattern) => {
+    if (!pattern) return false;
+    if (pattern.startsWith("/") && pattern.endsWith("/") && pattern.length > 2) {
+      try {
+        const regex = new RegExp(pattern.slice(1, -1));
+        return regex.test(normalized);
+      } catch {
+        return false;
+      }
+    }
+    return normalized === pattern || normalized.endsWith(pattern);
+  });
+}
+
+function looksLikeProductionSupabase(url) {
+  try {
+    const { hostname } = new URL(url);
+    if (isLocalHost(hostname)) {
+      return false;
+    }
+    const safeHosts = parseHostList(process.env.HEATMAP_VERIFY_NON_PROD_HOSTS);
+    if (matchesHostPattern(hostname, safeHosts)) {
+      return false;
+    }
+    const prodHosts = parseHostList(process.env.HEATMAP_VERIFY_PROD_HOSTS);
+    if (prodHosts?.length) {
+      return matchesHostPattern(hostname, prodHosts);
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function getErrorStatus(error) {
+  if (!error || typeof error !== "object") return undefined;
+  if (typeof error.status === "number") return error.status;
+  if (typeof error.status === "string") {
+    const parsed = Number(error.status);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  if (typeof error.code === "number") return error.code;
+  if (typeof error.code === "string") {
+    const parsed = Number(error.code);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  if (error?.response?.status) return error.response.status;
+  if (error?.cause?.status) return error.cause.status;
+  return undefined;
+}
+
+function parseRetryAfterMs(error) {
+  const headerSource =
+    error?.response?.headers ??
+    error?.headers ??
+    error?.cause?.response?.headers ??
+    error?.cause?.headers;
+  let header;
+  if (headerSource?.get instanceof Function) {
+    header = headerSource.get("retry-after") ?? headerSource.get("Retry-After");
+  } else if (headerSource) {
+    header = headerSource["retry-after"] ?? headerSource["Retry-After"];
+  }
+
+  if (header) {
+    const numeric = Number(header);
+    if (!Number.isNaN(numeric) && numeric >= 0) {
+      return numeric * 1000;
+    }
+    const parsedDate = Date.parse(header);
+    if (!Number.isNaN(parsedDate)) {
+      return Math.max(0, parsedDate - Date.now());
+    }
+  }
+
+  const message =
+    (typeof error?.message === "string" && error.message.toLowerCase()) || undefined;
+  if (message?.includes("retry")) {
+    const match = message.match(/retry(?:-?after)?\s*(\d+(?:\.\d+)?)/);
+    if (match) {
+      const seconds = Number(match[1]);
+      if (!Number.isNaN(seconds)) {
+        return seconds * 1000;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function defaultShouldRetry(error) {
+  const status = getErrorStatus(error);
+  if (status === 429) return true;
+  if (status === 408 || status === 425) return true;
+  if (status === 0) return true;
+  if (typeof error?.name === "string" && error.name.toLowerCase().includes("retry")) {
+    return true;
+  }
+  if (status === undefined) return true;
+  return status >= 500;
+}
+
+async function withRetry(operation, description, options = {}) {
+  const maxAttempts = options.maxAttempts ?? MAX_RETRY_ATTEMPTS;
+  const baseDelayMs = options.baseDelayMs ?? BASE_RETRY_DELAY_MS;
+  const shouldRetry = options.shouldRetry ?? defaultShouldRetry;
+
+  let lastError;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await operation(attempt);
+    } catch (error) {
+      lastError = error;
+      const retryable = shouldRetry(error);
+      if (!retryable || attempt === maxAttempts) {
+        break;
+      }
+      const retryAfterMs = parseRetryAfterMs(error);
+      const delayMs = retryAfterMs ?? baseDelayMs * 2 ** (attempt - 1);
+      const status = getErrorStatus(error);
+      const message = error instanceof Error ? error.message : String(error);
+      const statusText = status ? ` (status ${status})` : "";
+      console.warn(
+        `Attempt ${attempt} for ${description} failed${statusText}: ${message}. Retrying in ${Math.round(
+          delayMs
+        )} ms…`
+      );
+      await sleep(delayMs);
+    }
+  }
+
+  throw lastError ?? new Error(`Operation ${description} failed.`);
+}
+
+async function runWithConcurrencyLimit(tasks, limit) {
+  if (limit <= 1) {
+    for (const task of tasks) {
+      // eslint-disable-next-line no-await-in-loop
+      await task();
+    }
+    return;
+  }
+
+  const executing = new Set();
+  for (const task of tasks) {
+    const promise = Promise.resolve().then(task);
+    executing.add(promise);
+    promise.finally(() => {
+      executing.delete(promise);
+    });
+    if (executing.size >= limit) {
+      // eslint-disable-next-line no-await-in-loop
+      await Promise.race(executing);
+    }
+  }
+  await Promise.all(executing);
+}
+
 loadEnvFile();
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -55,15 +241,50 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false }
 });
 
+const isProductionSupabase = looksLikeProductionSupabase(SUPABASE_URL);
+
+if (!isDryRun && isProductionSupabase && process.env.HEATMAP_VERIFY_ALLOW_PROD !== "true") {
+  console.error(
+    `Refusing to run heatmap verification against ${SUPABASE_URL} without HEATMAP_VERIFY_ALLOW_PROD=true. ` +
+      "This safeguard prevents accidental execution on production."
+  );
+  process.exit(1);
+}
+
+if (isDryRun) {
+  const responseCount = QUESTION_COUNT * USER_COUNT;
+  console.log(
+    JSON.stringify(
+      {
+        mode: "dry-run",
+        users: USER_COUNT,
+        questions: QUESTION_COUNT,
+        responses: responseCount,
+        batch_size: BATCH_SIZE,
+        batch_concurrency: BATCH_CONCURRENCY
+      },
+      null,
+      2
+    )
+  );
+  process.exit(0);
+}
+
 async function ensureAppUsers(userIds) {
   const maxAttempts = 15;
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const { data, error } = await supabase
-      .from("app_users")
-      .select("id")
-      .in("id", userIds);
-    if (error) throw error;
-    if ((data ?? []).length === userIds.length) return;
+    const data = await withRetry(
+      async () => {
+        const { data: rows, error } = await supabase
+          .from("app_users")
+          .select("id")
+          .in("id", userIds);
+        if (error) throw error;
+        return rows ?? [];
+      },
+      "select synthetic app_users"
+    );
+    if (data.length === userIds.length) return;
     await sleep(200);
   }
   throw new Error("Timed out waiting for app_users rows to sync");
@@ -73,14 +294,18 @@ async function createSyntheticUsers(count, tag) {
   const created = [];
   for (let i = 0; i < count; i += 1) {
     const email = `heatmap-${tag}-${i}@example.com`;
-    const { data, error } = await supabase.auth.admin.createUser({
-      email,
-      email_confirm: true,
-      user_metadata: { synthetic: true, purpose: "heatmap-verification" }
-    });
-    if (error) {
-      throw new Error(`Failed to create synthetic user ${email}: ${error.message}`);
-    }
+    const data = await withRetry(
+      async () => {
+        const { data: createdUser, error } = await supabase.auth.admin.createUser({
+          email,
+          email_confirm: true,
+          user_metadata: { synthetic: true, purpose: "heatmap-verification" }
+        });
+        if (error) throw error;
+        return createdUser;
+      },
+      `create synthetic user ${email}`
+    );
     created.push(data.user.id);
   }
   await ensureAppUsers(created);
@@ -125,20 +350,213 @@ function buildResponsePayload(questions, users) {
 }
 
 async function insertInBatches(table, rows, batchSize) {
+  const tasks = [];
   for (let offset = 0; offset < rows.length; offset += batchSize) {
     const batch = rows.slice(offset, offset + batchSize);
-    const { error } = await supabase.from(table).insert(batch, { returning: "minimal" });
-    if (error) {
-      throw new Error(`Failed to insert into ${table}: ${error.message}`);
-    }
+    tasks.push(async () => {
+      await withRetry(
+        async () => {
+          const { error } = await supabase
+            .from(table)
+            .insert(batch, { returning: "minimal" });
+          if (error) throw error;
+        },
+        `insert ${table} batch starting at offset ${offset}`
+      );
+    });
   }
+  await runWithConcurrencyLimit(tasks, BATCH_CONCURRENCY);
 }
 
 async function deleteByIds(table, column, ids) {
   if (ids.length === 0) return;
-  const { error } = await supabase.from(table).delete({ returning: "minimal" }).in(column, ids);
-  if (error) {
-    throw new Error(`Failed to delete from ${table}: ${error.message}`);
+  await withRetry(
+    async () => {
+      const { error } = await supabase
+        .from(table)
+        .delete({ returning: "minimal" })
+        .in(column, ids);
+      if (error) throw error;
+    },
+    `delete rows from ${table}`
+  );
+}
+
+async function callRpcWithRetry(functionName, args = {}, description = functionName) {
+  return withRetry(
+    async () => {
+      const { data, error } = await supabase.rpc(functionName, args);
+      if (error) throw error;
+      return data;
+    },
+    `call ${description}`
+  );
+}
+
+async function collectSyntheticAuthUsers(emailPrefix) {
+  const matches = [];
+  const perPage = 200;
+  for (let page = 1; page < 1000; page += 1) {
+    const data = await withRetry(
+      async () => {
+        const { data: result, error } = await supabase.auth.admin.listUsers({ page, perPage });
+        if (error) throw error;
+        return result;
+      },
+      `list auth users page ${page}`
+    );
+    const users = data?.users ?? [];
+    matches.push(
+      ...users.filter((user) => {
+        if (!user?.email) return false;
+        if (!user.email.toLowerCase().startsWith(emailPrefix.toLowerCase())) return false;
+        const metadata = user.user_metadata ?? {};
+        return metadata.synthetic === true && metadata.purpose === "heatmap-verification";
+      })
+    );
+    if (!users.length || users.length < perPage) {
+      break;
+    }
+  }
+  return matches;
+}
+
+async function deleteAuthUsers(userIds) {
+  for (const userId of userIds) {
+    await withRetry(
+      async () => {
+        const { error } = await supabase.auth.admin.deleteUser(userId);
+        if (error) throw error;
+      },
+      `delete synthetic auth user ${userId}`
+    );
+  }
+}
+
+async function auditSyntheticArtifacts(tag) {
+  const slugPrefix = `heatmap-verification-${tag}`;
+  const emailPrefix = `heatmap-${tag}-`;
+
+  let outstandingQuestions = [];
+  const questionIdSet = new Set();
+  try {
+    outstandingQuestions =
+      (await withRetry(async () => {
+        const { data, error } = await supabase
+          .from("questions")
+          .select("id,slug")
+          .like("slug", `${slugPrefix}%`);
+        if (error) throw error;
+        return data ?? [];
+      }, "audit synthetic questions")) ?? [];
+    for (const question of outstandingQuestions) {
+      questionIdSet.add(question.id);
+    }
+  } catch (error) {
+    console.error(`Audit failed to query synthetic questions: ${error.message ?? error}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  if (outstandingQuestions.length) {
+    console.warn(
+      `Audit found ${outstandingQuestions.length} synthetic questions lingering. Attempting cleanup…`
+    );
+    try {
+      await deleteByIds("questions", "id", outstandingQuestions.map((q) => q.id));
+    } catch (error) {
+      console.error(`Audit failed to delete lingering questions: ${error.message ?? error}`);
+    }
+    outstandingQuestions =
+      (await withRetry(async () => {
+        const { data, error } = await supabase
+          .from("questions")
+          .select("id,slug")
+          .like("slug", `${slugPrefix}%`);
+        if (error) throw error;
+        return data ?? [];
+      }, "confirm synthetic questions cleanup")) ?? [];
+    for (const question of outstandingQuestions) {
+      questionIdSet.add(question.id);
+    }
+  }
+
+  let outstandingResponses = [];
+  try {
+    const questionIds = [...questionIdSet];
+    outstandingResponses =
+      questionIds.length === 0
+        ? []
+        : (await withRetry(async () => {
+            const { data, error } = await supabase
+              .from("responses")
+              .select("id")
+              .in("question_id", questionIds);
+            if (error) throw error;
+            return data ?? [];
+          }, "audit synthetic responses")) ?? [];
+  } catch (error) {
+    console.error(`Audit failed to query synthetic responses: ${error.message ?? error}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  if (outstandingResponses.length) {
+    console.warn(
+      `Audit found ${outstandingResponses.length} synthetic responses lingering. Attempting cleanup…`
+    );
+    try {
+      await deleteByIds("responses", "id", outstandingResponses.map((response) => response.id));
+    } catch (error) {
+      console.error(`Audit failed to delete lingering responses: ${error.message ?? error}`);
+    }
+    const questionIds = [...questionIdSet];
+    outstandingResponses =
+      questionIds.length === 0
+        ? []
+        : (await withRetry(async () => {
+            const { data, error } = await supabase
+              .from("responses")
+              .select("id")
+              .in("question_id", questionIds);
+            if (error) throw error;
+            return data ?? [];
+          }, "confirm synthetic responses cleanup")) ?? [];
+  }
+
+  let lingeringUsers = [];
+  try {
+    lingeringUsers = await collectSyntheticAuthUsers(emailPrefix);
+  } catch (error) {
+    console.error(`Audit failed to enumerate synthetic users: ${error.message ?? error}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  if (lingeringUsers.length) {
+    console.warn(
+      `Audit found ${lingeringUsers.length} synthetic auth users lingering. Attempting cleanup…`
+    );
+    try {
+      await deleteAuthUsers(lingeringUsers.map((user) => user.id));
+    } catch (error) {
+      console.error(`Audit failed to delete lingering auth users: ${error.message ?? error}`);
+    }
+    lingeringUsers = await collectSyntheticAuthUsers(emailPrefix);
+  }
+
+  const hasLeftovers =
+    outstandingQuestions.length > 0 ||
+    outstandingResponses.length > 0 ||
+    lingeringUsers.length > 0;
+
+  if (hasLeftovers) {
+    console.error(
+      `Audit detected synthetic leftovers after cleanup: ${outstandingQuestions.length} questions, ${outstandingResponses.length} responses, ${lingeringUsers.length} users.`
+    );
+    process.exitCode = 1;
+  } else {
+    console.log("[audit] Synthetic cleanup verified.");
   }
 }
 
@@ -146,6 +564,7 @@ async function run() {
   const tag = `${Date.now()}`;
   const createdUsers = [];
   const createdQuestions = [];
+  let refreshDurationMs = null;
   try {
     console.log(`Creating ${USER_COUNT} synthetic users…`);
     const userIds = await createSyntheticUsers(USER_COUNT, tag);
@@ -163,12 +582,9 @@ async function run() {
 
     console.log("Refreshing analytics_heatmap_agg via analytics_refresh_heatmap()…");
     const start = performance.now();
-    const { error: refreshError } = await supabase.rpc("analytics_refresh_heatmap");
-    if (refreshError) {
-      throw new Error(`Failed to refresh heatmap aggregate: ${refreshError.message}`);
-    }
-    const durationMs = performance.now() - start;
-    console.log(`Refresh completed in ${durationMs.toFixed(2)} ms.`);
+    await callRpcWithRetry("analytics_refresh_heatmap", {}, "analytics_refresh_heatmap");
+    refreshDurationMs = performance.now() - start;
+    console.log(`Refresh completed in ${refreshDurationMs.toFixed(2)} ms.`);
 
     console.log("Cleaning up synthetic responses…");
     await deleteByIds("responses", "question_id", createdQuestions);
@@ -177,17 +593,17 @@ async function run() {
     await deleteByIds("questions", "id", createdQuestions);
 
     console.log("Triggering final refresh to clear materialized view…");
-    const { error: finalRefreshError } = await supabase.rpc("analytics_refresh_heatmap");
-    if (finalRefreshError) {
-      throw new Error(`Final refresh failed: ${finalRefreshError.message}`);
-    }
+    await callRpcWithRetry("analytics_refresh_heatmap", {}, "final analytics_refresh_heatmap");
 
     console.log("Deleting synthetic users…");
     for (const userId of createdUsers) {
-      const { error } = await supabase.auth.admin.deleteUser(userId);
-      if (error) {
-        throw new Error(`Failed to delete synthetic user ${userId}: ${error.message}`);
-      }
+      await withRetry(
+        async () => {
+          const { error } = await supabase.auth.admin.deleteUser(userId);
+          if (error) throw error;
+        },
+        `delete synthetic user ${userId}`
+      );
     }
 
     console.log("Verification complete.");
@@ -197,7 +613,7 @@ async function run() {
           user_count: USER_COUNT,
           question_count: QUESTION_COUNT,
           response_rows: QUESTION_COUNT * USER_COUNT,
-          refresh_ms: durationMs
+          refresh_ms: refreshDurationMs
         },
         null,
         2
@@ -211,27 +627,48 @@ async function run() {
       try {
         await deleteByIds("responses", "question_id", createdQuestions);
       } catch (cleanupError) {
-        console.error(`Cleanup (responses) failed: ${cleanupError.message}`);
+        const message =
+          cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
+        console.error(`Cleanup (responses) failed: ${message}`);
       }
       try {
         await deleteByIds("questions", "id", createdQuestions);
       } catch (cleanupError) {
-        console.error(`Cleanup (questions) failed: ${cleanupError.message}`);
+        const message =
+          cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
+        console.error(`Cleanup (questions) failed: ${message}`);
       }
     }
     if (createdUsers.length > 0) {
       for (const userId of createdUsers) {
         try {
-          await supabase.auth.admin.deleteUser(userId);
+          await withRetry(
+            async () => {
+              const { error } = await supabase.auth.admin.deleteUser(userId);
+              if (error) throw error;
+            },
+            `cleanup delete synthetic user ${userId}`
+          );
         } catch (cleanupError) {
-          console.error(`Cleanup (user ${userId}) failed: ${cleanupError.message}`);
+          const message =
+            cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
+          console.error(`Cleanup (user ${userId}) failed: ${message}`);
         }
       }
     }
     try {
-      await supabase.rpc("analytics_refresh_heatmap");
-    } catch {
-      // ignore
+      await callRpcWithRetry("analytics_refresh_heatmap", {}, "cleanup analytics_refresh_heatmap");
+    } catch (cleanupError) {
+      const message = cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
+      console.error(`Cleanup (final refresh) failed: ${message}`);
+    }
+
+    try {
+      await auditSyntheticArtifacts(tag);
+    } catch (auditError) {
+      const message = auditError instanceof Error ? auditError.message : String(auditError);
+      console.error(`Final audit failed: ${message}`);
+      process.exitCode = 1;
     }
   }
 }
