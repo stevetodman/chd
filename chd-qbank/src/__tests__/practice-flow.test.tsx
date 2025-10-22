@@ -5,6 +5,7 @@ import Practice from "../pages/Practice";
 import { useSessionStore } from "../lib/auth";
 import type { QuestionQueryRow } from "../lib/practice";
 import { createMockSession } from "./test-helpers";
+import { syntheticPracticeQuestions } from "./fixtures/syntheticData";
 
 interface ResponseRecord {
   id: string;
@@ -16,42 +17,7 @@ interface ResponseRecord {
   flagged: boolean;
 }
 
-const questions: QuestionQueryRow[] = [
-  {
-    id: "q1",
-    slug: "q1",
-    stem_md: "**First** question stem",
-    lead_in: "First question",
-    explanation_brief_md: "Brief 1",
-    explanation_deep_md: null,
-    topic: null,
-    subtopic: null,
-    lesion: null,
-    media_bundle: null,
-    context_panels: null,
-    choices: [
-      { id: "c1", label: "A", text_md: "Answer one", is_correct: true },
-      { id: "c2", label: "B", text_md: "Answer two", is_correct: false }
-    ]
-  },
-  {
-    id: "q2",
-    slug: "q2",
-    stem_md: "**Second** question stem",
-    lead_in: "Second question",
-    explanation_brief_md: "Brief 2",
-    explanation_deep_md: null,
-    topic: null,
-    subtopic: null,
-    lesion: null,
-    media_bundle: null,
-    context_panels: null,
-    choices: [
-      { id: "c3", label: "A", text_md: "Third answer", is_correct: false },
-      { id: "c4", label: "B", text_md: "Fourth answer", is_correct: true }
-    ]
-  }
-];
+const questions: QuestionQueryRow[] = syntheticPracticeQuestions.slice(0, 2);
 
 const responsesById = new Map<string, ResponseRecord>();
 const responsesByUserQuestion = new Map<string, ResponseRecord>();
@@ -191,22 +157,33 @@ describe("practice flow", () => {
 
     render(<Practice />);
 
-    expect(await screen.findByText("First question")).toBeInTheDocument();
+    await screen.findByText("What is the next best step in management?");
 
-    await user.click(screen.getByRole("button", { name: /flag question/i }));
+    await user.click(screen.getByRole("button", { name: /flag/i }));
     await waitFor(() => expect(insertPayloads).toHaveLength(1));
-    expect(insertPayloads[0]).toMatchObject({ flagged: true, question_id: "q1", choice_id: null });
+    expect(insertPayloads[0]).toMatchObject({
+      flagged: true,
+      question_id: "practice-q1",
+      choice_id: null
+    });
 
-    await user.click(screen.getByRole("button", { name: /answer one/i }));
+    await user.click(
+      screen.getByRole("button", { name: /schedule pulmonary valve replacement/i })
+    );
     await waitFor(() => expect(updatePayloads).toHaveLength(1));
-    expect(updatePayloads[0]).toMatchObject({ question_id: "q1", choice_id: "c1", flagged: true, is_correct: true });
+    expect(updatePayloads[0]).toMatchObject({
+      question_id: "practice-q1",
+      choice_id: "choice-b",
+      flagged: true,
+      is_correct: true
+    });
     expect(rpcMock).toHaveBeenCalledWith("increment_points", {
       source: "practice_response",
       source_id: "response-1"
     });
 
     await user.click(screen.getByRole("button", { name: /next question/i }));
-    expect(await screen.findByText("Second question")).toBeInTheDocument();
+    await screen.findByText("Which intervention improves systemic oxygenation immediately?");
 
     randomSpy.mockRestore();
   });

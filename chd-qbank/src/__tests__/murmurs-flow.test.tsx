@@ -4,19 +4,12 @@ import userEvent from "@testing-library/user-event";
 import Murmurs from "../pages/Games/Murmurs";
 import { useSessionStore } from "../lib/auth";
 import { createMockSession } from "./test-helpers";
+import { syntheticMurmurItems } from "./fixtures/syntheticData";
 
-const items = [
-  {
-    id: "item-1",
-    prompt_md: "Listen to this systolic murmur.",
-    rationale_md: "It is caused by a stenotic aortic valve.",
-    media_url: "https://example.com/murmur.mp3",
-    murmur_options: [
-      { id: "opt-1", label: "A", text_md: "Mitral regurgitation", is_correct: false },
-      { id: "opt-2", label: "B", text_md: "Aortic stenosis", is_correct: true }
-    ]
-  }
-];
+const items = syntheticMurmurItems.map((item) => ({
+  ...item,
+  murmur_options: item.murmur_options.map((option) => ({ ...option }))
+}));
 
 const attemptId = "attempt-7";
 const { selectMock, insertMock, rpcMock } = vi.hoisted(() => {
@@ -72,13 +65,15 @@ describe("murmur game flow", () => {
     render(<Murmurs />);
 
     expect(await screen.findByText(/guess the murmur/i)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /b\./i }));
+    await user.click(
+      screen.getByRole("button", { name: /tricuspid regurgitation/i })
+    );
 
     await waitFor(() => expect(insertMock).toHaveBeenCalled());
     expect(insertMock).toHaveBeenCalledWith({
       user_id: "user-42",
-      item_id: "item-1",
-      option_id: "opt-2",
+      item_id: "murmur-item-1",
+      option_id: "murmur-opt-2",
       is_correct: true
     });
     expect(selectMock).toHaveBeenCalledWith("id");
