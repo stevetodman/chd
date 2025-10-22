@@ -1,25 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import QuestionCard from "../components/QuestionCard";
-import type { Choice, ContextPanel, Question } from "../lib/constants";
+import type { Choice } from "../lib/constants";
 import { supabase } from "../lib/supabaseClient";
 import { Button } from "../components/ui/Button";
 import { useSessionStore } from "../lib/auth";
-
-type QuestionRow = Question & { choices: Choice[] };
-type QuestionQueryRow = {
-  id: string;
-  slug: string;
-  stem_md: string;
-  lead_in: string | null;
-  explanation_brief_md: string;
-  explanation_deep_md: string | null;
-  topic: string | null;
-  subtopic: string | null;
-  lesion: string | null;
-  media_bundle: Question["media_bundle"];
-  context_panels: ContextPanel[] | null;
-  choices: Choice[] | null;
-};
+import {
+  fetchPracticeQuestions,
+  submitPracticeAnswer,
+  type QuestionRow
+} from "../lib/practiceFlow";
 
 const PAGE_SIZE = 10;
 
@@ -48,46 +37,25 @@ export default function Practice() {
       setLoading(true);
       setError(null);
 
-      const from = pageToLoad * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
-      const { data, error: fetchError, count } = await supabase
-        .from("questions")
-        .select(
-          "id, slug, stem_md, lead_in, explanation_brief_md, explanation_deep_md, topic, subtopic, lesion, context_panels, media_bundle:media_bundles(id, murmur_url, cxr_url, ekg_url, diagram_url, alt_text), choices(id,label,text_md,is_correct)",
-          { count: "exact" }
-        )
-        .eq("status", "published")
-        .range(from, to);
-
-      if (fetchError) {
-        setError(fetchError.message);
+      let fetched: QuestionRow[] = [];
+      let totalCount: number | undefined;
+      try {
+        const result = await fetchPracticeQuestions(supabase, pageToLoad, PAGE_SIZE);
+        fetched = result.questions;
+        totalCount = result.count;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setError(message);
         setLoading(false);
         loadingRef.current = false;
         return 0;
       }
 
-      const normalized: QuestionRow[] = ((data ?? []) as QuestionQueryRow[]).map((item) => ({
-        id: item.id,
-        slug: item.slug,
-        stem_md: item.stem_md,
-        lead_in: item.lead_in,
-        explanation_brief_md: item.explanation_brief_md,
-        explanation_deep_md: item.explanation_deep_md,
-        topic: item.topic,
-        subtopic: item.subtopic,
-        lesion: item.lesion,
-        media_bundle: item.media_bundle ?? null,
-        context_panels: item.context_panels ?? null,
-        choices: (item.choices ?? []).slice().sort((a, b) => a.label.localeCompare(b.label))
-      }));
-
-      const randomized = normalized.sort(() => Math.random() - 0.5);
-
       let nextQuestions: QuestionRow[] = [];
       setQuestions((prev) => {
         const base = replace ? [] : prev;
         const map = new Map(base.map((question) => [question.id, question]));
-        randomized.forEach((question) => {
+        fetched.forEach((question) => {
           map.set(question.id, question);
         });
         nextQuestions = Array.from(map.values());
@@ -104,15 +72,15 @@ export default function Practice() {
       }
 
       setPage(pageToLoad);
-      if (typeof count === "number") {
-        setHasMore(nextQuestions.length < count);
+      if (typeof totalCount === "number") {
+        setHasMore(nextQuestions.length < totalCount);
       } else {
-        setHasMore(normalized.length === PAGE_SIZE);
+        setHasMore(fetched.length === PAGE_SIZE);
       }
 
       setLoading(false);
       loadingRef.current = false;
-      return randomized.length;
+      return fetched.length;
     },
     []
   );
@@ -131,17 +99,16 @@ export default function Practice() {
   const handleAnswer = async (choice: Choice, ms: number, flagged: boolean) => {
     const current = questions[index];
     if (!current || !session) return;
-    await supabase.from("responses").insert({
-      user_id: session.user.id,
-      question_id: current.id,
-      choice_id: choice.id,
-      is_correct: choice.is_correct,
-      ms_to_answer: ms,
+    await submitPracticeAnswer({
+      client: supabase,
+      userId: session.user.id,
+      questionId: current.id,
+      choice,
+      durationMs: ms,
       flagged
+    }).catch(() => {
+      // Errors are logged in submitPracticeAnswer. We keep the UI responsive.
     });
-    if (choice.is_correct) {
-      await supabase.rpc("increment_points", { delta: 1 });
-    }
   };
 
   const next = () => {

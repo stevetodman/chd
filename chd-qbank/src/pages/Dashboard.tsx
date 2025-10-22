@@ -3,11 +3,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card";
 import { supabase } from "../lib/supabaseClient";
 import { useSessionStore } from "../lib/auth";
-
-interface FeaturedQuestion {
-  id: string;
-  lead_in: string | null;
-}
+import { fetchAliasStatus, fetchFeaturedQuestions, type FeaturedQuestion } from "../lib/dashboardFlow";
 
 export default function Dashboard() {
   const { session } = useSessionStore();
@@ -18,44 +14,39 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!session) return;
-    supabase
-      .from("app_users")
-      .select("alias, alias_locked")
-      .eq("id", session.user.id)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (error) {
-          setAliasNeeded(false);
-          return;
-        }
-        if (data && (!data.alias || data.alias.trim().length === 0)) {
-          setAliasNeeded(true);
-        } else {
-          setAliasNeeded(false);
-        }
-      });
+    let active = true;
+    void fetchAliasStatus(supabase, session.user.id).then((status) => {
+      if (!active) return;
+      setAliasNeeded(status.aliasNeeded);
+    });
+    return () => {
+      active = false;
+    };
   }, [session]);
 
   useEffect(() => {
     setLoadingFeatured(true);
     setFeaturedError(null);
-    supabase
-      .from("questions")
-      .select("id, lead_in")
-      .eq("status", "published")
-      .limit(5)
-      .then(({ data, error }) => {
-        if (error) {
-          setFeaturedError(error.message);
-          setFeatured([]);
-          return;
-        }
-        const randomized = (data ?? []).sort(() => Math.random() - 0.5);
-        setFeatured(randomized.map((row) => ({ id: row.id, lead_in: row.lead_in })));
+    let active = true;
+    void fetchFeaturedQuestions(supabase)
+      .then((questions) => {
+        if (!active) return;
+        setFeatured(questions);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        const message = error instanceof Error ? error.message : String(error);
+        setFeaturedError(message);
+        setFeatured([]);
       })
       .finally(() => {
-        setLoadingFeatured(false);
+        if (active) {
+          setLoadingFeatured(false);
+        }
       });
+    return () => {
+      active = false;
+    };
   }, []);
 
   return (

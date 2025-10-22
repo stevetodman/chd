@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient";
 import { create } from "zustand";
+import { logError } from "./telemetry";
 
 interface SessionState {
   session: Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"] | null;
@@ -18,7 +19,10 @@ export const useSessionStore = create<SessionState>((set) => ({
 export async function signIn(email: string, password: string) {
   // Supabase email/password auth (RLS enforced on data tables).
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) throw error;
+  if (error) {
+    logError(error, { scope: "auth.signIn", email });
+    throw error;
+  }
   useSessionStore.getState().setSession(data.session);
   return data.session;
 }
@@ -38,7 +42,9 @@ export async function getSession() {
 export async function requireAuth() {
   const session = await getSession();
   if (!session) {
-    throw new Error("AUTH_REQUIRED");
+    const error = new Error("AUTH_REQUIRED");
+    logError(error, { scope: "auth.requireAuth" });
+    throw error;
   }
   return session;
 }
@@ -50,7 +56,10 @@ export async function requireAdmin(): Promise<boolean> {
     .select("role")
     .eq("id", session.user.id)
     .maybeSingle();
-  if (error) throw error;
+  if (error) {
+    logError(error, { scope: "auth.requireAdmin", userId: session.user.id });
+    throw error;
+  }
   return data?.role === "admin";
 }
 

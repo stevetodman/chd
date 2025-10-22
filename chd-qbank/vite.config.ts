@@ -8,5 +8,10 @@ export default defineConfig({
   },
   build: {
     sourcemap: true
+  },
+  test: {
+    environment: "node",
+    setupFiles: "./src/__tests__/setup.ts",
+    clearMocks: true
   }
 });

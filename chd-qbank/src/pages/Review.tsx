@@ -5,11 +5,7 @@ import rehypeRaw from "rehype-raw";
 import rehypeHighlight from "rehype-highlight";
 import { supabase } from "../lib/supabaseClient";
 import { useSessionStore } from "../lib/auth";
-
-type FlaggedResponse = {
-  id: string;
-  questions: { stem_md: string; lead_in: string | null } | null;
-};
+import { fetchFlaggedResponses, type FlaggedResponse } from "../lib/reviewFlow";
 
 export default function Review() {
   const { session } = useSessionStore();
@@ -17,15 +13,19 @@ export default function Review() {
 
   useEffect(() => {
     if (!session) return;
-    supabase
-      .from("responses")
-      .select("*, questions(stem_md, lead_in)")
-      .eq("user_id", session.user.id)
-      .eq("flagged", true)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        setFlags((data ?? []) as FlaggedResponse[]);
+    let active = true;
+    void fetchFlaggedResponses(supabase, session.user.id)
+      .then((rows) => {
+        if (!active) return;
+        setFlags(rows);
+      })
+      .catch(() => {
+        if (!active) return;
+        setFlags([]);
       });
+    return () => {
+      active = false;
+    };
   }, [session]);
 
   return (
