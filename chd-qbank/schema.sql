@@ -4,6 +4,10 @@ create extension if not exists pgcrypto;
 create extension if not exists pg_stat_statements;
 create extension if not exists pg_cron;
 
+create schema if not exists app;
+grant usage on schema app to authenticated;
+grant usage on schema app to service_role;
+
 -- ROLES
 create type user_role as enum ('student','admin');
 
@@ -15,6 +19,11 @@ create table if not exists app_users (
   alias_locked boolean not null default false,
   created_at timestamptz not null default now(),
   unique (alias)
+);
+
+create table if not exists app.app_roles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  role text not null check (role in ('admin'))
 );
 
 -- SETTINGS (invite code) -- read only by admin; Edge Function (service role) reads it server-side
@@ -245,6 +254,7 @@ create table if not exists cxr_attempts (
   created_at timestamptz not null default now()
 );
 
+alter table app.app_roles enable row level security;
 alter table app_users enable row level security;
 alter table app_settings enable row level security;
 alter table media_bundles enable row level security;
@@ -262,13 +272,34 @@ alter table cxr_items enable row level security;
 alter table cxr_labels enable row level security;
 alter table cxr_attempts enable row level security;
 
-create or replace function is_admin() returns boolean
-language sql stable as $$
-  select exists (
-    select 1 from app_users au
-    where au.id = auth.uid() and au.role = 'admin'
+drop function if exists is_admin();
+
+create or replace function app.is_admin()
+returns boolean
+language plpgsql
+security definer
+set search_path = app, public
+stable
+as $$
+declare
+  v_uid uuid := auth.uid();
+begin
+  if v_uid is null then
+    return false;
+  end if;
+
+  return exists (
+    select 1
+    from app_roles ar
+    where ar.user_id = v_uid
+      and ar.role = 'admin'
   );
+end;
 $$;
+
+revoke execute on function app.is_admin() from public;
+grant execute on function app.is_admin() to authenticated;
+grant execute on function app.is_admin() to service_role;
 
 create or replace function leaderboard_is_enabled() returns boolean
 language sql stable as $$
@@ -280,135 +311,244 @@ language sql stable as $$
   );
 $$;
 
+create policy "app roles service manage" on app.app_roles
+for all
+to service_role
+using (true)
+with check (true);
+
 create policy "users read self or admin" on app_users
-for select using (auth.uid() = id or is_admin());
+for select
+to authenticated
+using (((select auth.uid()) = id) or (select app.is_admin()));
 
 create policy "admin update users" on app_users
-for update using (is_admin());
+for update
+to authenticated
+using ((select app.is_admin()))
+with check ((select app.is_admin()));
+
 create policy "user update own alias" on app_users
-for update using (auth.uid() = id) with check (auth.uid() = id);
+for update
+to authenticated
+using ((select auth.uid()) = id)
+with check ((select auth.uid()) = id);
 
 create policy "settings read admin" on app_settings
-for select using (is_admin());
+for select
+to authenticated
+using ((select app.is_admin()));
+
 create policy "settings read leaderboard" on app_settings
-for select using (
-  key = 'leaderboard_enabled' and auth.role() = 'authenticated'
-);
+for select
+to authenticated
+using (key = 'leaderboard_enabled');
+
 create policy "settings update admin" on app_settings
-for update using (is_admin());
+for update
+to authenticated
+using ((select app.is_admin()))
+with check ((select app.is_admin()));
 
 create policy "media read" on media_bundles
-for select using (
-  is_admin()
-  or (
-    auth.role() = 'authenticated'
-    and exists (
-      select 1
-      from questions q
-      where q.media_bundle_id = media_bundles.id
-        and q.status = 'published'
-    )
+for select
+to authenticated
+using (
+  (select app.is_admin())
+  or exists (
+    select 1
+    from questions q
+    where q.media_bundle_id = media_bundles.id
+      and q.status = 'published'
   )
 );
+
 create policy "media write admin" on media_bundles
-for all using (is_admin()) with check (is_admin());
+for all
+to authenticated
+using ((select app.is_admin()))
+with check ((select app.is_admin()));
 
 create policy "questions read published" on questions
-for select using ( ((status = 'published' and auth.role() = 'authenticated') or is_admin()) );
+for select
+to authenticated
+using ((status = 'published') or (select app.is_admin()));
+
 create policy "questions write admin" on questions
-for all using (is_admin()) with check (is_admin());
+for all
+to authenticated
+using ((select app.is_admin()))
+with check ((select app.is_admin()));
 
 create policy "choices read if q published" on choices
-for select using (
-  auth.role() = 'authenticated' and
-  exists(select 1 from questions q where q.id = question_id and (q.status='published' or is_admin()))
+for select
+to authenticated
+using (
+  exists (
+    select 1 from questions q
+    where q.id = question_id
+      and (q.status = 'published' or (select app.is_admin()))
+  )
 );
+
 create policy "choices write admin" on choices
-for all using (is_admin()) with check (is_admin());
+for all
+to authenticated
+using ((select app.is_admin()))
+with check ((select app.is_admin()));
 
 create policy "responses insert self" on responses
-for insert with check (auth.uid() = user_id);
+for insert
+to authenticated
+with check ((select auth.uid()) = user_id);
+
 create policy "responses read self" on responses
-for select using (auth.uid() = user_id or is_admin());
+for select
+to authenticated
+using (((select auth.uid()) = user_id) or (select app.is_admin()));
+
 create policy "responses update self" on responses
-for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+for update
+to authenticated
+using ((select auth.uid()) = user_id)
+with check ((select auth.uid()) = user_id);
+
 create policy "responses delete self" on responses
-for delete using (auth.uid() = user_id);
+for delete
+to authenticated
+using ((select auth.uid()) = user_id);
 
 create policy "item_stats read" on item_stats
-for select using (true);
+for select
+to authenticated
+using (true);
+
 create policy "item_stats write admin" on item_stats
-for all using (is_admin()) with check (is_admin());
+for all
+to authenticated
+using ((select app.is_admin()))
+with check ((select app.is_admin()));
+
 create policy "distractor_stats read" on distractor_stats
-for select using (true);
+for select
+to authenticated
+using (true);
+
 create policy "distractor_stats write admin" on distractor_stats
-for all using (is_admin()) with check (is_admin());
+for all
+to authenticated
+using ((select app.is_admin()))
+with check ((select app.is_admin()));
 
 create policy "leader read" on leaderboard
-for select using (
-  is_admin()
-  or auth.uid() = user_id
+for select
+to authenticated
+using (
+  (select app.is_admin())
+  or (select auth.uid()) = user_id
   or leaderboard_is_enabled()
 );
+
 create policy "leader manage admin" on leaderboard
-for all using (is_admin()) with check (is_admin());
+for all
+to authenticated
+using ((select app.is_admin()))
+with check ((select app.is_admin()));
 
 create policy "aliases read" on public_aliases
-for select using (
-  is_admin()
-  or auth.uid() = user_id
+for select
+to authenticated
+using (
+  (select app.is_admin())
+  or (select auth.uid()) = user_id
   or leaderboard_is_enabled()
 );
+
 create policy "aliases write admin" on public_aliases
-for all using (is_admin()) with check (is_admin());
+for all
+to authenticated
+using ((select app.is_admin()))
+with check ((select app.is_admin()));
 
 create policy "murmur items read published" on murmur_items
-for select using ( ((status='published' and auth.role()='authenticated') or is_admin()) );
+for select
+to authenticated
+using ((status = 'published') or (select app.is_admin()));
+
 create policy "murmur items write admin" on murmur_items
-for all using (is_admin()) with check (is_admin());
+for all
+to authenticated
+using ((select app.is_admin()))
+with check ((select app.is_admin()));
+
 create policy "murmur options read" on murmur_options
-for select using (
-  is_admin()
-  or (
-    auth.role()='authenticated'
-    and exists (
-      select 1
-      from murmur_items mi
-      where mi.id = murmur_options.item_id
-        and mi.status = 'published'
-    )
+for select
+to authenticated
+using (
+  (select app.is_admin())
+  or exists (
+    select 1
+    from murmur_items mi
+    where mi.id = murmur_options.item_id
+      and mi.status = 'published'
   )
 );
+
 create policy "murmur options write admin" on murmur_options
-for all using (is_admin()) with check (is_admin());
+for all
+to authenticated
+using ((select app.is_admin()))
+with check ((select app.is_admin()));
+
 create policy "murmur attempts insert self" on murmur_attempts
-for insert with check (auth.uid()=user_id);
+for insert
+to authenticated
+with check ((select auth.uid()) = user_id);
+
 create policy "murmur attempts read self" on murmur_attempts
-for select using (auth.uid()=user_id or is_admin());
+for select
+to authenticated
+using (((select auth.uid()) = user_id) or (select app.is_admin()));
 
 create policy "cxr items read published" on cxr_items
-for select using ( ((status='published' and auth.role()='authenticated') or is_admin()) );
+for select
+to authenticated
+using ((status = 'published') or (select app.is_admin()));
+
 create policy "cxr items write admin" on cxr_items
-for all using (is_admin()) with check (is_admin());
+for all
+to authenticated
+using ((select app.is_admin()))
+with check ((select app.is_admin()));
+
 create policy "cxr labels read" on cxr_labels
-for select using (
-  is_admin()
-  or (
-    auth.role()='authenticated'
-    and exists (
-      select 1
-      from cxr_items ci
-      where ci.id = cxr_labels.item_id
-        and ci.status = 'published'
-    )
+for select
+to authenticated
+using (
+  (select app.is_admin())
+  or exists (
+    select 1
+    from cxr_items ci
+    where ci.id = cxr_labels.item_id
+      and ci.status = 'published'
   )
 );
+
 create policy "cxr labels write admin" on cxr_labels
-for all using (is_admin()) with check (is_admin());
+for all
+to authenticated
+using ((select app.is_admin()))
+with check ((select app.is_admin()));
+
 create policy "cxr attempts insert self" on cxr_attempts
-for insert with check (auth.uid()=user_id);
+for insert
+to authenticated
+with check ((select auth.uid()) = user_id);
+
 create policy "cxr attempts read self" on cxr_attempts
-for select using (auth.uid()=user_id or is_admin());
+for select
+to authenticated
+using (((select auth.uid()) = user_id) or (select app.is_admin()));
 
 create or replace function handle_new_user()
 returns trigger language plpgsql security definer as $$
@@ -483,7 +623,7 @@ create or replace function upsert_question_from_csv(row_data jsonb)
 returns uuid
 language plpgsql
 security definer
-set search_path = public as $$
+set search_path = public, app as $$
 declare
   v_slug text := trim(coalesce(row_data->>'slug', ''));
   v_question_id uuid;
@@ -613,7 +753,7 @@ declare
   processed int := 0;
   errors jsonb := '[]'::jsonb;
 begin
-  if not is_admin() then
+  if not app.is_admin() then
     raise exception 'Admin privileges required';
   end if;
 
@@ -731,9 +871,9 @@ create or replace function analytics_refresh_heatmap()
 returns void
 language plpgsql
 security definer
-set search_path = public as $$
+set search_path = public, app as $$
 begin
-  if not is_admin() and auth.role() <> 'service_role' then
+  if not app.is_admin() and auth.role() <> 'service_role' then
     raise exception 'Admin privileges required';
   end if;
 
@@ -758,9 +898,9 @@ returns table (
 )
 language plpgsql
 security definer
-set search_path = public as $$
+set search_path = public, app as $$
 begin
-  if not is_admin() and auth.role() <> 'service_role' then
+  if not app.is_admin() and auth.role() <> 'service_role' then
     raise exception 'Admin privileges required';
   end if;
 
@@ -795,7 +935,10 @@ create table if not exists leaderboard_events (
 alter table leaderboard_events enable row level security;
 
 create policy "leaderboard events admin" on leaderboard_events
-for all using (is_admin()) with check (is_admin());
+for all
+to authenticated
+using ((select app.is_admin()))
+with check ((select app.is_admin()));
 
 create or replace function increment_points(source text, source_id uuid)
 returns void
@@ -897,20 +1040,23 @@ end;
 $$;
 
 create index if not exists idx_questions_status_topic on questions(status, topic, lesion);
+create index if not exists idx_questions_media_bundle_published on questions(media_bundle_id) where status = 'published';
 create index if not exists idx_responses_user_time on responses(user_id, created_at desc);
 create index if not exists idx_responses_question on responses(question_id);
 create index if not exists idx_item_stats_attempts on item_stats(n_attempts);
+create index if not exists idx_murmur_attempts_user on murmur_attempts(user_id);
+create index if not exists idx_cxr_attempts_user on cxr_attempts(user_id);
 
 create or replace function grant_admin_by_email(p_email text)
 returns void
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, app
 as $$
 declare
   v_id uuid;
 begin
-  if not is_admin() then
+  if not app.is_admin() then
     raise exception 'admin required';
   end if;
 
@@ -918,6 +1064,10 @@ begin
   if v_id is null then
     raise exception 'No user %', p_email;
   end if;
+
+  insert into app_roles(user_id, role)
+  values (v_id, 'admin')
+  on conflict (user_id) do update set role = excluded.role;
 
   update app_users set role = 'admin' where id = v_id;
   if not found then

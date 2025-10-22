@@ -31,10 +31,10 @@ create or replace function analytics_refresh_heatmap()
 returns void
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, app
 as $$
 begin
-  if not is_admin() and auth.role() <> 'service_role' then
+  if not app.is_admin() and auth.role() <> 'service_role' then
     raise exception 'Admin privileges required';
   end if;
 
@@ -60,10 +60,10 @@ returns table (
 )
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, app
 as $$
 begin
-  if not is_admin() and auth.role() <> 'service_role' then
+  if not app.is_admin() and auth.role() <> 'service_role' then
     raise exception 'Admin privileges required';
   end if;
 
