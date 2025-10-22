@@ -4,36 +4,14 @@ import { Button } from "../../components/ui/Button";
 import { supabase } from "../../lib/supabaseClient";
 import { useSessionStore } from "../../lib/auth";
 import { markdownRemarkPlugins, markdownRehypePlugins } from "../../lib/markdown";
-
-type MurmurOption = {
-  id: string;
-  label: string;
-  text_md: string;
-  is_correct: boolean;
-};
-
-type MurmurItem = {
-  id: string;
-  prompt_md?: string | null;
-  rationale_md?: string | null;
-  media_url: string;
-  options: MurmurOption[];
-};
-
-type MurmurOptionRow = {
-  id: string;
-  label: string;
-  text_md: string;
-  is_correct: boolean;
-};
-
-type MurmurItemRow = {
-  id: string;
-  prompt_md: string | null;
-  rationale_md: string | null;
-  media_url: string;
-  murmur_options: MurmurOptionRow[] | null;
-};
+import {
+  feedbackForMurmurOption,
+  getNextMurmurIndex,
+  MurmurItem,
+  MurmurItemRow,
+  MurmurOption,
+  normalizeMurmurItems
+} from "../../lib/games/murmurs";
 
 export default function Murmurs() {
   const { session } = useSessionStore();
@@ -71,18 +49,7 @@ export default function Murmurs() {
         return;
       }
 
-      const normalized: MurmurItem[] = ((data ?? []) as MurmurItemRow[]).map((item) => ({
-        id: item.id,
-        prompt_md: item.prompt_md,
-        rationale_md: item.rationale_md,
-        media_url: item.media_url,
-        options: (item.murmur_options ?? []).map((option) => ({
-          id: option.id,
-          label: option.label,
-          text_md: option.text_md,
-          is_correct: option.is_correct
-        }))
-      }));
+      const normalized = normalizeMurmurItems((data ?? []) as MurmurItemRow[]);
 
       setItems(normalized);
       setIndex(0);
@@ -103,7 +70,7 @@ export default function Murmurs() {
   const choose = async (option: MurmurOption) => {
     if (!current) return;
     setSelected(option);
-    setFeedback(option.is_correct ? "Correct!" : "Try again");
+    setFeedback(feedbackForMurmurOption(option));
     if (session) {
       await supabase.from("murmur_attempts").insert({
         user_id: session.user.id,
@@ -121,7 +88,7 @@ export default function Murmurs() {
     if (items.length === 0) return;
     setSelected(null);
     setFeedback(null);
-    setIndex((prev) => (prev + 1) % items.length);
+    setIndex((prev) => getNextMurmurIndex(prev, items.length));
   };
 
   return (
