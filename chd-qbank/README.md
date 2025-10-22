@@ -40,6 +40,7 @@ The development server runs at [http://localhost:5173](http://localhost:5173). S
 5. Configure SMTP (Resend) inside Supabase; no client key is required.
 6. To rotate invite access, set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `INVITE_CODE`, and `INVITE_EXPIRES` in your environment (or `.env`) and run `npm run seed:invite` to upsert the current values into `app_settings`.
 7. Review [`docs/analytics/heatmap.md`](../docs/analytics/heatmap.md) for guidance on the admin heatmap materialized view and refresh routines.
+8. Review [`docs/ops/event-retention.md`](../docs/ops/event-retention.md) for retention policies and scheduling details for audit tables.
 
 ## Deployment
 
