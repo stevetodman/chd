@@ -42,16 +42,18 @@ function RequireAuth({ children }: { children: JSX.Element }) {
 }
 
 function RequireAdmin({ children }: { children: JSX.Element }) {
-  const { session } = useSessionStore();
+  const { session, loading } = useSessionStore();
   const [allowed, setAllowed] = useState<boolean | null>(null);
 
   useEffect(() => {
+    setAllowed(null);
     if (!session) return;
     requireAdmin()
       .then((isAdmin) => setAllowed(isAdmin))
       .catch(() => setAllowed(false));
   }, [session]);
 
+  if (loading) return <div className="p-6 text-center">Loading…</div>;
   if (!session) return <Navigate to="/login" replace />;
   if (allowed === null) return <div className="p-6 text-center">Checking permissions…</div>;
   if (!allowed) return <Navigate to="/dashboard" replace />;
