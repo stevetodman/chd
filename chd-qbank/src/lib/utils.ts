@@ -1,6 +1,6 @@
 export function formatMs(ms?: number | null): string {
   if (ms === undefined || ms === null) return "–";
-  const seconds = Math.round(ms / 1000);
+  const seconds = Math.max(0, Math.floor(ms / 1000));
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
