@@ -4,12 +4,16 @@ import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import rehypeHighlight from "rehype-highlight";
 import { supabase } from "../lib/supabaseClient";
-import type { Question } from "../lib/constants";
 import { useSessionStore } from "../lib/auth";
+
+type FlaggedResponse = {
+  id: string;
+  questions: { stem_md: string; lead_in: string | null } | null;
+};
 
 export default function Review() {
   const { session } = useSessionStore();
-  const [flags, setFlags] = useState<any[]>([]);
+  const [flags, setFlags] = useState<FlaggedResponse[]>([]);
 
   useEffect(() => {
     if (!session) return;
@@ -19,7 +23,9 @@ export default function Review() {
       .eq("user_id", session.user.id)
       .eq("flagged", true)
       .order("created_at", { ascending: false })
-      .then(({ data }) => setFlags(data ?? []));
+      .then(({ data }) => {
+        setFlags((data ?? []) as FlaggedResponse[]);
+      });
   }, [session]);
 
   return (
@@ -28,13 +34,13 @@ export default function Review() {
       <ul className="space-y-3">
         {flags.map((flag) => (
           <li key={flag.id} className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm">
-            <p className="text-sm font-semibold">{(flag.questions as Question)?.lead_in}</p>
+            <p className="text-sm font-semibold">{flag.questions?.lead_in}</p>
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               rehypePlugins={[rehypeRaw, rehypeHighlight]}
               className="prose prose-sm text-neutral-700"
             >
-              {(flag.questions as Question)?.stem_md ?? ""}
+              {flag.questions?.stem_md ?? ""}
             </ReactMarkdown>
           </li>
         ))}

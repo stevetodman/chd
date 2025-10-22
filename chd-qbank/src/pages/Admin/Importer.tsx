@@ -32,6 +32,8 @@ interface CsvRow {
 export default function Importer() {
   const [rows, setRows] = useState<CsvRow[]>([]);
   const [message, setMessage] = useState<string | null>(null);
+  const [errors, setErrors] = useState<{ slug: string | null; error: string }[]>([]);
+  const [publishing, setPublishing] = useState(false);
 
   const handleFile = (file: File) => {
     Papa.parse<CsvRow>(file, {
@@ -45,49 +47,48 @@ export default function Importer() {
 
   const publish = async () => {
     setMessage(null);
-    for (const row of rows) {
-      // Supabase integration: upsert questions + media bundles per CSV row.
-      const { data: media } = await supabase
-        .from("media_bundles")
-        .insert({
-          murmur_url: row.media_murmur,
-          cxr_url: row.media_cxr,
-          ekg_url: row.media_ekg,
-          diagram_url: row.media_diagram,
-          alt_text: row.alt_text
-        })
-        .select()
-        .single();
+    setErrors([]);
+    setPublishing(true);
 
-      const { data: question } = await supabase
-        .from("questions")
-        .insert({
-          slug: row.slug,
-          stem_md: row.stem_md,
-          lead_in: row.lead_in,
-          explanation_brief_md: row.explanation_brief_md,
-          explanation_deep_md: row.explanation_deep_md,
-          topic: row.topic,
-          subtopic: row.subtopic,
-          lesion: row.lesion,
-          status: row.status,
-          media_bundle_id: media?.id
-        })
-        .select()
-        .single();
+    const payload = rows.map((row) => ({
+      slug: row.slug?.trim(),
+      stem_md: row.stem_md,
+      lead_in: row.lead_in,
+      explanation_brief_md: row.explanation_brief_md,
+      explanation_deep_md: row.explanation_deep_md,
+      topic: row.topic,
+      subtopic: row.subtopic,
+      lesion: row.lesion,
+      difficulty: row.difficulty,
+      bloom: row.bloom,
+      lecture_link: row.lecture_link,
+      status: row.status,
+      media_murmur: row.media_murmur,
+      media_cxr: row.media_cxr,
+      media_ekg: row.media_ekg,
+      media_diagram: row.media_diagram,
+      alt_text: row.alt_text,
+      choiceA: row.choiceA,
+      choiceB: row.choiceB,
+      choiceC: row.choiceC,
+      choiceD: row.choiceD,
+      choiceE: row.choiceE,
+      correct_label: row.correct_label?.toUpperCase()
+    }));
 
-      const labels = ["A", "B", "C", "D", "E"] as const;
-      const choiceTexts = [row.choiceA, row.choiceB, row.choiceC, row.choiceD, row.choiceE];
-      for (let i = 0; i < labels.length; i++) {
-        await supabase.from("choices").insert({
-          question_id: question?.id,
-          label: labels[i],
-          text_md: choiceTexts[i],
-          is_correct: labels[i] === row.correct_label
-        });
+    const { data, error } = await supabase.rpc("import_question_rows", { rows: payload });
+
+    if (error) {
+      setMessage("Import failed");
+      setErrors([{ slug: null, error: error.message }]);
+    } else if (data) {
+      setMessage(`Processed ${data.processed} rows`);
+      if (Array.isArray(data.errors)) {
+        setErrors(data.errors as { slug: string | null; error: string }[]);
       }
     }
-    setMessage(`Imported ${rows.length} items`);
+
+    setPublishing(false);
   };
 
   return (
@@ -104,12 +105,25 @@ export default function Importer() {
       {rows.length > 0 ? (
         <div className="rounded-lg border border-neutral-200 bg-white p-4">
           <p className="text-sm text-neutral-600">Previewing {rows.length} rows.</p>
-          <Button type="button" onClick={publish}>
+          <Button type="button" onClick={publish} disabled={publishing}>
             Publish to Supabase
           </Button>
         </div>
       ) : null}
       {message ? <p className="text-sm text-neutral-600">{message}</p> : null}
+      {errors.length > 0 ? (
+        <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <p className="font-semibold">Import errors</p>
+          <ul className="mt-2 space-y-1">
+            {errors.map((err, idx) => (
+              <li key={`${err.slug ?? "batch"}-${idx}`}>
+                {err.slug ? <span className="font-medium">{err.slug}: </span> : null}
+                {err.error}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </div>
   );
 }

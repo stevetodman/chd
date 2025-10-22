@@ -8,6 +8,10 @@ type LeaderRow = {
 };
 
 type Filter = "weekly" | "all";
+type LeaderboardAllTimeRow = {
+  points: number | null;
+  public_aliases: { alias: string | null } | null;
+};
 
 export default function LeaderboardTable() {
   const [rows, setRows] = useState<LeaderRow[]>([]);
@@ -45,7 +49,7 @@ export default function LeaderboardTable() {
           .limit(100);
         if (error) throw error;
         setRows(
-          (data ?? []).map((row: any) => ({
+          ((data ?? []) as LeaderboardAllTimeRow[]).map((row) => ({
             alias: row.public_aliases?.alias ?? "Anon",
             points: row.points ?? 0
           }))

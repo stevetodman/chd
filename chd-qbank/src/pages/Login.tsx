@@ -14,8 +14,9 @@ export default function Login() {
     try {
       await signIn(email, password);
       navigate("/dashboard");
-    } catch (err: any) {
-      setError(err.message ?? "Unable to sign in");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to sign in";
+      setError(message);
     }
   };
 

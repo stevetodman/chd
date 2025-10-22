@@ -11,6 +11,7 @@ const Review = lazy(() => import("./pages/Review"));
 const Murmurs = lazy(() => import("./pages/Games/Murmurs"));
 const CxrMatch = lazy(() => import("./pages/Games/CxrMatch"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
+const AliasSettings = lazy(() => import("./pages/Profile/AliasSettings"));
 const Items = lazy(() => import("./pages/Admin/Items"));
 const ItemEditor = lazy(() => import("./pages/Admin/ItemEditor"));
 const Importer = lazy(() => import("./pages/Admin/Importer"));
@@ -101,6 +102,14 @@ export function AppRoutes() {
           element: (
             <RequireAuth>
               <Leaderboard />
+            </RequireAuth>
+          )
+        },
+        {
+          path: "/profile/alias",
+          element: (
+            <RequireAuth>
+              <AliasSettings />
             </RequireAuth>
           )
         },

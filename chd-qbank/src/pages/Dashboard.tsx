@@ -1,13 +1,20 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card";
-import { SEED_QUESTIONS } from "../lib/constants";
 import { supabase } from "../lib/supabaseClient";
 import { useSessionStore } from "../lib/auth";
+
+interface FeaturedQuestion {
+  id: string;
+  lead_in: string | null;
+}
 
 export default function Dashboard() {
   const { session } = useSessionStore();
   const [aliasNeeded, setAliasNeeded] = useState(false);
+  const [featured, setFeatured] = useState<FeaturedQuestion[]>([]);
+  const [loadingFeatured, setLoadingFeatured] = useState(false);
+  const [featuredError, setFeaturedError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session) return;
@@ -16,12 +23,40 @@ export default function Dashboard() {
       .select("alias, alias_locked")
       .eq("id", session.user.id)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          setAliasNeeded(false);
+          return;
+        }
         if (data && (!data.alias || data.alias.trim().length === 0)) {
           setAliasNeeded(true);
+        } else {
+          setAliasNeeded(false);
         }
       });
   }, [session]);
+
+  useEffect(() => {
+    setLoadingFeatured(true);
+    setFeaturedError(null);
+    supabase
+      .from("questions")
+      .select("id, lead_in")
+      .eq("status", "published")
+      .limit(5)
+      .then(({ data, error }) => {
+        if (error) {
+          setFeaturedError(error.message);
+          setFeatured([]);
+          return;
+        }
+        const randomized = (data ?? []).sort(() => Math.random() - 0.5);
+        setFeatured(randomized.map((row) => ({ id: row.id, lead_in: row.lead_in })));
+      })
+      .finally(() => {
+        setLoadingFeatured(false);
+      });
+  }, []);
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
@@ -31,10 +66,18 @@ export default function Dashboard() {
             <CardTitle>Choose your alias</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-neutral-700">
-            <p>Set your leaderboard alias in profile settings to participate. Aliases are visible to peers and locked after first save.</p>
-            <Link to="/leaderboard" className="text-brand-600 underline">
-              View leaderboard guidance
-            </Link>
+            <p>
+              Set your leaderboard alias in profile settings to participate. Aliases are visible to peers and locked after first
+              save.
+            </p>
+            <div className="flex items-center gap-4">
+              <Link to="/profile/alias" className="text-brand-600 underline">
+                Go to alias settings
+              </Link>
+              <Link to="/leaderboard" className="text-brand-600 underline">
+                View leaderboard guidance
+              </Link>
+            </div>
           </CardContent>
         </Card>
       ) : null}
@@ -51,14 +94,19 @@ export default function Dashboard() {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Seed content</CardTitle>
+          <CardTitle>Published content</CardTitle>
         </CardHeader>
         <CardContent>
           <ul className="list-disc space-y-1 pl-6 text-sm text-neutral-700">
-            {SEED_QUESTIONS.map((q) => (
-              <li key={q.id}>{q.lead_in}</li>
+            {featured.map((q) => (
+              <li key={q.id}>{q.lead_in ?? "Practice question"}</li>
             ))}
           </ul>
+          {loadingFeatured ? <p className="mt-2 text-xs text-neutral-500">Loading fresh questions…</p> : null}
+          {featuredError ? <p className="mt-2 text-xs text-red-600">{featuredError}</p> : null}
+          {!loadingFeatured && featured.length === 0 && !featuredError ? (
+            <p className="mt-2 text-xs text-neutral-500">No published questions yet.</p>
+          ) : null}
         </CardContent>
       </Card>
       <Card className="md:col-span-2">

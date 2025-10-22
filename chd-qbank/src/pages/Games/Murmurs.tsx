@@ -22,6 +22,21 @@ type MurmurItem = {
   options: MurmurOption[];
 };
 
+type MurmurOptionRow = {
+  id: string;
+  label: string;
+  text_md: string;
+  is_correct: boolean;
+};
+
+type MurmurItemRow = {
+  id: string;
+  prompt_md: string | null;
+  rationale_md: string | null;
+  media_url: string;
+  murmur_options: MurmurOptionRow[] | null;
+};
+
 const SEED: MurmurItem[] = [
   {
     id: "seed-murmur-1",
@@ -52,7 +67,7 @@ export default function Murmurs() {
       .then(({ data }) => {
         if (data && data.length > 0) {
           setItems(
-            data.map((item: any) => ({
+            ((data ?? []) as MurmurItemRow[]).map((item) => ({
               id: item.id,
               prompt_md: item.prompt_md,
               rationale_md: item.rationale_md,
