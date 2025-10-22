@@ -8,7 +8,7 @@ export default function Settings() {
   const globalLeaderboardEnabled = useSettingsStore((state) => state.leaderboardEnabled);
   const setGlobalLeaderboardEnabled = useSettingsStore((state) => state.setLeaderboardEnabled);
   const [leaderboardEnabled, setLeaderboardEnabled] = useState(globalLeaderboardEnabled);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ text: string; tone: "success" | "error" } | null>(null);
 
   useEffect(() => {
     void loadSettings();
@@ -20,14 +20,39 @@ export default function Settings() {
 
   const save = async () => {
     setMessage(null);
-    await supabase.from("app_settings").upsert({ key: "leaderboard_enabled", value: leaderboardEnabled ? "true" : "false" });
-    setGlobalLeaderboardEnabled(leaderboardEnabled);
-    setMessage("Settings saved");
+    try {
+      const { error } = await supabase
+        .from("app_settings")
+        .upsert({ key: "leaderboard_enabled", value: leaderboardEnabled ? "true" : "false" });
+
+      if (error) {
+        setMessage({ text: `Failed to save settings: ${error.message}`, tone: "error" });
+        return;
+      }
+
+      setGlobalLeaderboardEnabled(leaderboardEnabled);
+      setMessage({ text: "Settings saved", tone: "success" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      setMessage({ text: `Failed to save settings: ${message}`, tone: "error" });
+    }
   };
 
   const resetLeaderboard = async () => {
-    await supabase.from("leaderboard").delete().neq("user_id", "");
-    setMessage("Leaderboard reset");
+    setMessage(null);
+    try {
+      const { error } = await supabase.from("leaderboard").delete().neq("user_id", "");
+
+      if (error) {
+        setMessage({ text: `Failed to reset leaderboard: ${error.message}`, tone: "error" });
+        return;
+      }
+
+      setMessage({ text: "Leaderboard reset", tone: "success" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      setMessage({ text: `Failed to reset leaderboard: ${message}`, tone: "error" });
+    }
   };
 
   return (
@@ -47,7 +72,17 @@ export default function Settings() {
       <Button type="button" variant="secondary" onClick={resetLeaderboard}>
         Reset all-time leaderboard
       </Button>
-      {message ? <p className="text-sm text-neutral-600">{message}</p> : null}
+      {message ? (
+        <p
+          className={
+            message.tone === "error"
+              ? "text-sm text-red-600"
+              : "text-sm text-neutral-600"
+          }
+        >
+          {message.text}
+        </p>
+      ) : null}
     </div>
   );
 }
