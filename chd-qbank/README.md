@@ -1,53 +1,97 @@
-# CHD QBank
+# CHD QBank application
 
-A static-first CHD-focused tutor platform bundling a Step-1 style question bank with two learning games. This scaffold pairs Vite + React with Supabase Auth, Postgres, and Storage. It includes invite-only signup enforced via a Supabase Edge Function, fully RLS-protected schemas, and admin tooling for analytics and item management.
+The CHD QBank is a static-first React application that delivers a congenital heart disease question bank, telemetry-backed practice analytics, and teaching games. This package contains the web client, automation scripts, Supabase assets, and seed templates used to stand up development and production environments.
 
-## Prerequisites
+## Directory tour
 
-- Node.js 18+
-- npm 9+
-- Access to a Supabase project (development and/or production)
-- An invite code issued through the Supabase Edge Function
+| Path | Description |
+| --- | --- |
+| `src/` | React + TypeScript source code, including routing, Zustand stores, and UI primitives. |
+| `public/` | Static assets copied into the production build. |
+| `supabase/` | Edge Functions and migration helpers deployed to Supabase. |
+| `schema.sql`, `storage-policies.sql`, `cron.sql` | Canonical SQL used to bootstrap Postgres tables, Row Level Security, and scheduled jobs. |
+| `scripts/` | Node/TypeScript utilities for seeding, verification, and migration safety checks. |
+| `data/templates/` | Seed JSON referenced by automation scripts (`npm run seed:full`). |
+| `tests/` | Vitest suites covering core UI flows and utility logic. |
 
-## Getting Started
+## Getting started
 
-```bash
-npm install
-npm run dev
-```
+1. Install dependencies:
 
-Copy `.env.example` to `.env` and populate with the Supabase project URL and anon key. If you are working with multiple environments, commit only the example file—never your secrets.
+   ```bash
+   npm install
+   ```
 
-The development server runs at [http://localhost:5173](http://localhost:5173). Sign in with an account that has been invited through the Supabase Edge Function to access gated routes.
+2. Copy `.env.example` to `.env` and set:
 
-## Scripts
+   ```bash
+   VITE_SUPABASE_URL=<your-supabase-url>
+   VITE_SUPABASE_ANON_KEY=<your-anon-key>
+
+   # Optional: enable automation helpers that use service-role access
+   SUPABASE_URL=<your-supabase-url>
+   SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
+   INVITE_CODE=<optional-invite-code>
+   INVITE_EXPIRES=<optional-iso-date>
+   ```
+
+3. Start the Vite development server:
+
+   ```bash
+   npm run dev
+   ```
+
+4. Visit [http://localhost:5173](http://localhost:5173) and sign in with an invited account.
+
+## Supabase bootstrap
+
+Provision both development and production Supabase projects:
+
+1. Run `schema.sql`, `storage-policies.sql`, and `cron.sql` in the Supabase SQL editor (or via `supabase db push`).
+2. Deploy the `signup-with-code` Edge Function from `supabase/functions/signup-with-code` and configure `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` for the function environment.
+3. Create storage buckets: `murmurs`, `cxr`, `ekg`, and `diagrams`.
+4. Configure SMTP (e.g., Resend) inside Supabase so invite emails can be delivered.
+5. Seed representative content once the schema exists:
+
+   ```bash
+   npm run seed:full
+   ```
+
+6. Keep invite codes synchronized across environments:
+
+   ```bash
+   npm run seed:invite
+   ```
+
+The seed utilities read from `data/templates/` and enforce idempotency, so re-running them updates existing rows safely.
+
+## Available scripts
 
 | Command | Purpose |
 | --- | --- |
-| `npm run dev` | Start the Vite dev server. |
-| `npm run build` | Build the static assets. |
-| `npm run preview` | Preview the production build. |
-| `npm run lint` | Run ESLint against the source tree. |
-| `npm run test` | Run Vitest (placeholder suite). |
-| `npm run seed:invite` | Upsert invite codes into `app_settings` using service-role credentials. |
+| `npm run dev` | Launch the development server. |
+| `npm run build` | Generate the production build in `dist/`. |
+| `npm run preview` | Preview the production build locally. |
+| `npm run lint` | Run ESLint on `src/`. |
+| `npm run test` | Execute the Vitest suite. |
+| `npm run build:scripts` | Compile TypeScript utilities in `scripts/`. |
+| `npm run check:migration-safety` | Scan `supabase/migrations` for destructive or unsafe SQL patterns. |
+| `npm run seed:invite` | Upsert the invite-code configuration in `app_settings`. |
+| `npm run seed:full` | Seed questions, games, media bundles, and related metadata. |
+| `npm run verify:seed` | Perform a read-only integrity check against the current database contents. |
+| `npm run verify:analytics:heatmap` | Exercise the analytics materialized view using synthetic responses. |
 
-## Supabase Setup
+## Testing & quality
 
-1. Create development and production Supabase projects.
-2. Run `schema.sql`, `storage-policies.sql`, and `cron.sql` in the SQL editor.
-3. Deploy the `signup-with-code` Edge Function and set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in the function environment.
-4. Create storage buckets: `murmurs`, `cxr`, `ekg`, `diagrams`.
-5. Configure SMTP (Resend) inside Supabase; no client key is required.
-6. To rotate invite access, set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `INVITE_CODE`, and `INVITE_EXPIRES` in your environment (or `.env`) and run `npm run seed:invite` to upsert the current values into `app_settings`.
-7. Review [`docs/analytics/heatmap.md`](../docs/analytics/heatmap.md) for guidance on the admin heatmap materialized view and refresh routines.
-8. Review [`docs/ops/event-retention.md`](../docs/ops/event-retention.md) for retention policies and scheduling details for audit tables.
+- Run `npm run lint` and `npm run test` prior to submitting pull requests.
+- End-to-end style tests live in `tests/e2e/` (onboarding, murmur drills, CXR labeling, practice responses). Ensure fixtures remain consistent with seed data when making gameplay changes.
+- Use `npm run check:migration-safety` whenever editing SQL migrations to catch non-concurrent index creation, `DROP TABLE`, or risky constraint updates.
 
-## Deployment
+## Operational references
 
-Use Vercel Hobby for static hosting and point preview environments to the dev Supabase project. Production should use Supabase Pro to enable `pg_cron` and other advanced features. After promoting a build, refresh materialized views and rotate invite codes as needed.
+- Heatmap analytics workflow: [`../docs/analytics/heatmap.md`](../docs/analytics/heatmap.md)
+- Event retention jobs: [`../docs/ops/event-retention.md`](../docs/ops/event-retention.md)
+- Service worker behavior: [`../docs/runtime/service-worker.md`](../docs/runtime/service-worker.md)
+- Admin role management: [`../docs/security/admin-roles.md`](../docs/security/admin-roles.md)
 
-## Testing
-
-The scaffold ships with a minimal Vitest setup; add integration tests as features land. Run tests and lint before committing changes, and document the commands you executed in your pull request.
-
-For documentation-only updates, note the exemption in the PR template and briefly explain the reason.
+Keep documentation and seed templates updated whenever schemas or user flows change—automation scripts assume they stay in sync.

@@ -1,8 +1,6 @@
-# Event Retention Jobs
+# Event retention jobs
 
-The question bank accumulates high-volume audit data in `public.answer_events` and
-`public.leaderboard_events`. A nightly retention job keeps these tables lean while
-preserving a configurable history window.
+Telemetry tables (`answer_events`, `leaderboard_events`) can grow quickly. The retention job keeps them trimmed to a rolling window while preserving recent activity for analytics and audit purposes. All logic lives under the `app` schema in [`chd-qbank/schema.sql`](../../chd-qbank/schema.sql).
 
 ## Configuration
 
@@ -21,31 +19,27 @@ update app.app_settings
  where id = true;
 ```
 
-The `retain_event_days` value must be at least `1`. The pruning function falls back to
-180 days if the table has not been initialized yet.
+`retain_event_days` must be at least `1`. If the field is unset, the pruning function defaults to 180 days.
 
 ## Manual execution
 
-Invoke pruning on demand from psql or the Supabase SQL editor:
+Trigger pruning on demand:
 
 ```sql
 select * from app.prune_old_events();
 ```
 
-The function operates in small batches (default 1,000 rows per loop) so that it can be
-re-run safely without long locks. Pass a smaller batch size if needed:
+The function deletes rows in batches (default 1,000). Pass a smaller batch size if needed:
 
 ```sql
 select * from app.prune_old_events(250);
 ```
 
-Each invocation returns the number of rows deleted per table, allowing the job to resume
-where it left off if terminated mid-run.
+Each invocation reports the number of rows removed per table, allowing the job to resume safely if interrupted.
 
 ## Scheduled execution
 
-When `pg_cron` is available (the default in the Supabase-hosted Postgres instance), the
-migration schedules a daily run at 04:15 UTC:
+When `pg_cron` is available (default for hosted Supabase Postgres) the migration schedules a daily run at 04:15 UTC:
 
 ```sql
 select *
@@ -53,14 +47,11 @@ select *
  where jobname = 'app_prune_old_events';
 ```
 
-Use the query above to confirm the job is registered. The job executes the same function
-shown in the manual example and therefore honors updated retention values immediately.
+The scheduled job executes the same function and therefore respects updated retention values immediately.
 
-### Supabase Scheduled Function fallback
+### Supabase scheduled function fallback
 
-If `pg_cron` is not installed in the environment, create a Supabase Edge Function that
-invokes the RPC and run it with the Supabase scheduler. A minimal function might look
-like this:
+If `pg_cron` is unavailable, create a Supabase Edge Function that calls `app.prune_old_events` and schedule it through the Supabase dashboard. A minimal example:
 
 ```ts
 // supabase/functions/prune-events/index.ts
@@ -79,5 +70,4 @@ Deno.serve(async () => {
 });
 ```
 
-Deploy the function and wire it to a daily Scheduled Trigger inside the Supabase dashboard.
-This matches the cron-based workflow and keeps retention automated even without `pg_cron`.
+Deploy the function and assign a daily Scheduled Trigger to mirror the cron-based workflow.
