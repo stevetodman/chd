@@ -13,9 +13,10 @@ import { clampMs } from "../lib/utils";
 type Props = {
   question: Question;
   onAnswer: (choice: Choice, durationMs: number, flagged: boolean) => Promise<void> | void;
+  onFlagChange?: (flagged: boolean) => Promise<void> | void;
 };
 
-export default function QuestionCard({ question, onAnswer }: Props) {
+export default function QuestionCard({ question, onAnswer, onFlagChange }: Props) {
   const [selected, setSelected] = useState<Choice | null>(null);
   const [flagged, setFlagged] = useState(false);
   const [start, setStart] = useState<number>(() => performance.now());
@@ -36,6 +37,14 @@ export default function QuestionCard({ question, onAnswer }: Props) {
     await onAnswer(choice, elapsed, flagged);
   };
 
+  const toggleFlag = () => {
+    setFlagged((prev) => {
+      const next = !prev;
+      void onFlagChange?.(next);
+      return next;
+    });
+  };
+
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <Card className="lg:col-span-1">
@@ -47,7 +56,7 @@ export default function QuestionCard({ question, onAnswer }: Props) {
           <ChoiceList choices={question.choices} onSelect={handleSelect} selectedId={selected?.id ?? null} />
         </CardContent>
         <CardFooter className="flex items-center justify-between gap-3">
-          <FlagButton flagged={flagged} onToggle={() => setFlagged((prev) => !prev)} />
+          <FlagButton flagged={flagged} onToggle={toggleFlag} />
           <Button type="button" onClick={() => setShowExplanation(true)} disabled={!selected}>
             Reveal explanation
           </Button>

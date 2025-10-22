@@ -144,6 +144,19 @@ export default function Practice() {
     }
   };
 
+  const handleFlagChange = useCallback(
+    async (flagged: boolean) => {
+      const current = questionsRef.current[index];
+      if (!current || !session) return;
+      await supabase
+        .from("responses")
+        .update({ flagged })
+        .eq("user_id", session.user.id)
+        .eq("question_id", current.id);
+    },
+    [index, session]
+  );
+
   const next = () => {
     const nextIndex = index + 1;
     if (nextIndex < questions.length) {
@@ -178,7 +191,7 @@ export default function Practice() {
 
   return (
     <div className="space-y-6">
-      <QuestionCard question={current} onAnswer={handleAnswer} />
+      <QuestionCard question={current} onAnswer={handleAnswer} onFlagChange={handleFlagChange} />
       <div className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-600">
         <div>
           Q {index + 1} of {questions.length}
