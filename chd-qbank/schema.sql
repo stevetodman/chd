@@ -334,10 +334,16 @@ alter table cxr_attempts enable row level security;
 
 create or replace function is_admin() returns boolean
 language sql stable as $$
-  select exists (
-    select 1 from app_users au
-    where au.id = auth.uid() and au.role = 'admin'
-  );
+  select case
+    when auth.role() = 'service_role' then true
+    when auth.uid() is null then false
+    else exists (
+      select 1
+      from app_users au
+      where au.id = auth.uid()
+        and au.role = 'admin'
+    )
+  end;
 $$;
 
 create or replace function leaderboard_is_enabled() returns boolean
