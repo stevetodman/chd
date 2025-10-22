@@ -1,9 +1,14 @@
 import { Link, NavLink } from "react-router-dom";
 import { APP_NAME } from "../lib/constants";
 import { signOut, useSessionStore } from "../lib/auth";
+import { useSettingsStore } from "../lib/settings";
 
 export default function Navbar() {
   const { session } = useSessionStore();
+  const { leaderboardEnabled, loaded: settingsLoaded } = useSettingsStore((state) => ({
+    leaderboardEnabled: state.leaderboardEnabled,
+    loaded: state.loaded
+  }));
 
   return (
     <header className="border-b border-neutral-200 bg-white">
@@ -22,9 +27,11 @@ export default function Navbar() {
             <NavLink to="/games/cxr" className={({ isActive }) => (isActive ? "font-semibold" : "")}>
               CXR Match
             </NavLink>
-            <NavLink to="/leaderboard" className={({ isActive }) => (isActive ? "font-semibold" : "")}>
-              Leaderboard
-            </NavLink>
+            {leaderboardEnabled && settingsLoaded ? (
+              <NavLink to="/leaderboard" className={({ isActive }) => (isActive ? "font-semibold" : "")}>
+                Leaderboard
+              </NavLink>
+            ) : null}
             <NavLink to="/profile/alias" className={({ isActive }) => (isActive ? "font-semibold" : "")}>
               Profile
             </NavLink>

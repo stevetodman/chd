@@ -2,6 +2,7 @@ import { lazy, useEffect, useState } from "react";
 import { useRoutes, Navigate } from "react-router-dom";
 import { requireAdmin, useSessionStore } from "./lib/auth";
 import Layout from "./components/Layout";
+import { useSettingsStore } from "./lib/settings";
 
 const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
@@ -17,6 +18,21 @@ const ItemEditor = lazy(() => import("./pages/Admin/ItemEditor"));
 const Importer = lazy(() => import("./pages/Admin/Importer"));
 const Analytics = lazy(() => import("./pages/Admin/Analytics"));
 const Settings = lazy(() => import("./pages/Admin/Settings"));
+
+function LeaderboardGuard() {
+  const loadSettings = useSettingsStore((state) => state.loadSettings);
+  const leaderboardEnabled = useSettingsStore((state) => state.leaderboardEnabled);
+  const settingsLoading = useSettingsStore((state) => state.loading);
+  const settingsLoaded = useSettingsStore((state) => state.loaded);
+
+  useEffect(() => {
+    void loadSettings();
+  }, [loadSettings]);
+
+  if (settingsLoading || !settingsLoaded) return <div className="p-6 text-center">Loading…</div>;
+  if (!leaderboardEnabled) return <Navigate to="/dashboard" replace />;
+  return <Leaderboard />;
+}
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { session, loading } = useSessionStore();
@@ -101,7 +117,7 @@ export function AppRoutes() {
           path: "/leaderboard",
           element: (
             <RequireAuth>
-              <Leaderboard />
+              <LeaderboardGuard />
             </RequireAuth>
           )
         },
