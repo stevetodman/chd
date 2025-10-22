@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import QuestionCard from "../components/QuestionCard";
-import type { Choice, Question } from "../lib/constants";
+import type { Choice, ContextPanel, Question } from "../lib/constants";
 import { supabase } from "../lib/supabaseClient";
 import { Button } from "../components/ui/Button";
 import { useSessionStore } from "../lib/auth";
@@ -17,6 +17,7 @@ type QuestionQueryRow = {
   subtopic: string | null;
   lesion: string | null;
   media_bundle: Question["media_bundle"];
+  context_panels: ContextPanel[] | null;
   choices: Choice[] | null;
 };
 
@@ -52,7 +53,7 @@ export default function Practice() {
       const { data, error: fetchError, count } = await supabase
         .from("questions")
         .select(
-          "id, slug, stem_md, lead_in, explanation_brief_md, explanation_deep_md, topic, subtopic, lesion, media_bundle:media_bundles(id, murmur_url, cxr_url, ekg_url, diagram_url, alt_text), choices(id,label,text_md,is_correct)",
+          "id, slug, stem_md, lead_in, explanation_brief_md, explanation_deep_md, topic, subtopic, lesion, context_panels, media_bundle:media_bundles(id, murmur_url, cxr_url, ekg_url, diagram_url, alt_text), choices(id,label,text_md,is_correct)",
           { count: "exact" }
         )
         .eq("status", "published")
@@ -76,6 +77,7 @@ export default function Practice() {
         subtopic: item.subtopic,
         lesion: item.lesion,
         media_bundle: item.media_bundle ?? null,
+        context_panels: item.context_panels ?? null,
         choices: (item.choices ?? []).slice().sort((a, b) => a.label.localeCompare(b.label))
       }));
 
