@@ -2,7 +2,7 @@ import { Button } from "./ui/Button";
 
 type Props = {
   flagged: boolean;
-  onToggle: () => void;
+  onToggle: () => void | Promise<void>;
 };
 
 export default function FlagButton({ flagged, onToggle }: Props) {

@@ -128,7 +128,18 @@ export default function Practice() {
 
   const handleAnswer = async (choice: Choice, ms: number, flagged: boolean) => {
     const current = questions[index];
-    if (!current || !session) return;
+    if (!current) return;
+
+    if (!session) {
+      setError("You must be signed in to save your progress.");
+      throw new Error("Missing session");
+    }
+
+    const fail = (message: string): never => {
+      setError(message);
+      throw new Error(message);
+    };
+
     let existing = responses[current.id];
     if (!existing) {
       const { data, error } = await supabase
@@ -139,7 +150,12 @@ export default function Practice() {
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (!error && data) {
+
+      if (error) {
+        fail("We couldn't load your previous response. Check your connection and try again.");
+      }
+
+      if (data) {
         existing = mapResponse(data);
         setResponses((prev) => ({
           ...prev,
@@ -147,6 +163,9 @@ export default function Practice() {
         }));
       }
     }
+
+    let saved: PracticeResponse | null = null;
+
     if (existing) {
       const { data, error } = await supabase
         .from("responses")
@@ -159,12 +178,12 @@ export default function Practice() {
         .eq("id", existing.id)
         .select("id, flagged, choice_id, is_correct, ms_to_answer")
         .maybeSingle();
-      if (!error && data) {
-        setResponses((prev) => ({
-          ...prev,
-          [current.id]: mapResponse(data)
-        }));
+
+      if (error || !data) {
+        fail("We couldn't update your response. Please try again.");
       }
+
+      saved = mapResponse(data);
     } else {
       const { data, error } = await supabase
         .from("responses")
@@ -178,16 +197,28 @@ export default function Practice() {
         })
         .select("id, flagged, choice_id, is_correct, ms_to_answer")
         .single();
-      if (!error && data) {
-        setResponses((prev) => ({
-          ...prev,
-          [current.id]: mapResponse(data)
-        }));
+
+      if (error || !data) {
+        fail("We couldn't submit your response. Please check your connection and try again.");
+      }
+
+      saved = mapResponse(data);
+    }
+
+    setResponses((prev) => ({
+      ...prev,
+      [current.id]: saved
+    }));
+
+    if (choice.is_correct) {
+      const { error: rpcError } = await supabase.rpc("increment_points", { delta: 1 });
+      if (rpcError) {
+        setError("Your answer was saved, but we couldn't update your points. Please try again later.");
+        return;
       }
     }
-    if (choice.is_correct) {
-      await supabase.rpc("increment_points", { delta: 1 });
-    }
+
+    setError(null);
   };
 
   const handleFlagChange = useCallback(
@@ -195,6 +226,11 @@ export default function Practice() {
       const current = questionsRef.current[index];
       if (!current || !session) return;
       const existing = responsesRef.current[current.id];
+      const fail = (message: string): never => {
+        setError(message);
+        throw new Error(message);
+      };
+
       if (existing) {
         const { data, error } = await supabase
           .from("responses")
@@ -202,12 +238,15 @@ export default function Practice() {
           .eq("id", existing.id)
           .select("id, flagged, choice_id, is_correct, ms_to_answer")
           .maybeSingle();
-        if (!error && data) {
-          setResponses((prev) => ({
-            ...prev,
-            [current.id]: mapResponse(data)
-          }));
+
+        if (error || !data) {
+          fail("We couldn't update the flag. Please try again.");
         }
+
+        setResponses((prev) => ({
+          ...prev,
+          [current.id]: mapResponse(data)
+        }));
       } else {
         const { data, error } = await supabase
           .from("responses")
@@ -221,13 +260,18 @@ export default function Practice() {
           })
           .select("id, flagged, choice_id, is_correct, ms_to_answer")
           .single();
-        if (!error && data) {
-          setResponses((prev) => ({
-            ...prev,
-            [current.id]: mapResponse(data)
-          }));
+
+        if (error || !data) {
+          fail("We couldn't save the flag. Please check your connection and try again.");
         }
+
+        setResponses((prev) => ({
+          ...prev,
+          [current.id]: mapResponse(data)
+        }));
       }
+
+      setError(null);
     },
     [index, session]
   );
