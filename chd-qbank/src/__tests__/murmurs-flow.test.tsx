@@ -5,6 +5,11 @@ import Murmurs from "../pages/Games/Murmurs";
 import { useSessionStore } from "../lib/auth";
 import { createMockSession } from "./test-helpers";
 
+const { insertMock, rpcMock } = vi.hoisted(() => ({
+  insertMock: vi.fn(async () => ({ data: null, error: null })),
+  rpcMock: vi.fn(async () => ({ data: null, error: null }))
+}));
+
 const items = [
   {
     id: "item-1",
@@ -17,9 +22,6 @@ const items = [
     ]
   }
 ];
-
-const insertMock = vi.fn(async () => ({ data: null, error: null }));
-const rpcMock = vi.fn(async () => ({ data: null, error: null }));
 
 vi.mock("../lib/supabaseClient", () => ({
   supabase: {

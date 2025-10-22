@@ -68,7 +68,7 @@ export async function requireAdmin(): Promise<boolean> {
   return data?.role === "admin";
 }
 
-supabase.auth.onAuthStateChange((_event, session) => {
+supabase.auth?.onAuthStateChange?.((_event, session) => {
   const sessionStore = useSessionStore.getState();
   sessionStore.setSession(session);
   if (sessionStore.initialized) {
