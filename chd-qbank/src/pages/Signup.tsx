@@ -8,6 +8,7 @@ export default function Signup() {
   const [form, setForm] = useState({ email: "", password: "", invite_code: "", desired_alias: "" });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -16,7 +17,8 @@ export default function Signup() {
     try {
       // Supabase Edge Function validates invite code and seeds alias server-side.
       const { data, error: fnError } = await supabase.functions.invoke("signup-with-code", {
-        body: form
+        body: form,
+        headers: { "Idempotency-Key": idempotencyKey }
       });
       if (fnError) throw fnError;
       if (!data?.ok) throw new Error(data?.error ?? "Failed to create account");
@@ -25,6 +27,8 @@ export default function Signup() {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unable to sign up";
       setError(message);
+    } finally {
+      setIdempotencyKey(crypto.randomUUID());
     }
   };
 
