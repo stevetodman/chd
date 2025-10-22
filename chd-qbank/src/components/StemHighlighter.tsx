@@ -1,9 +1,7 @@
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeRaw from "rehype-raw";
-import rehypeHighlight from "rehype-highlight";
 import { Button } from "./ui/Button";
+import { markdownRemarkPlugins, markdownRehypePlugins } from "../lib/markdown";
 
 type Props = {
   stem: string;
@@ -14,7 +12,11 @@ export default function StemHighlighter({ stem }: Props) {
   return (
     <div className="space-y-3">
       <div className={highlight ? "rounded-md bg-yellow-100 p-4" : "rounded-md bg-white p-4"}>
-        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeHighlight]} className="prose prose-sm max-w-none">
+        <ReactMarkdown
+          remarkPlugins={markdownRemarkPlugins}
+          rehypePlugins={markdownRehypePlugins}
+          className="prose prose-sm max-w-none"
+        >
           {stem}
         </ReactMarkdown>
       </div>

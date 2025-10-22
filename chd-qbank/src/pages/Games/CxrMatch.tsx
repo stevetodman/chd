@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeRaw from "rehype-raw";
-import rehypeHighlight from "rehype-highlight";
 import { Button } from "../../components/ui/Button";
 import { supabase } from "../../lib/supabaseClient";
 import { useSessionStore } from "../../lib/auth";
+import { markdownRemarkPlugins, markdownRehypePlugins } from "../../lib/markdown";
 
 interface Label {
   id: string;
@@ -123,7 +121,11 @@ export default function CxrMatch() {
         <div className="flex flex-col gap-4 lg:flex-row">
           <img src={current.image_url} alt="CXR" className="w-full max-w-md rounded" />
           <div className="flex-1 space-y-2 text-sm text-neutral-700">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeHighlight]} className="prose prose-sm max-w-none">
+            <ReactMarkdown
+              remarkPlugins={markdownRemarkPlugins}
+              rehypePlugins={markdownRehypePlugins}
+              className="prose prose-sm max-w-none"
+            >
               {current.caption_md ?? "Match the imaging sign with the lesion."}
             </ReactMarkdown>
             <p className="text-xs text-neutral-500">

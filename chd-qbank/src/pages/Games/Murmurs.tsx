@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeRaw from "rehype-raw";
-import rehypeHighlight from "rehype-highlight";
 import { Button } from "../../components/ui/Button";
 import { supabase } from "../../lib/supabaseClient";
 import { useSessionStore } from "../../lib/auth";
+import { markdownRemarkPlugins, markdownRehypePlugins } from "../../lib/markdown";
 
 type MurmurOption = {
   id: string;
@@ -135,7 +133,11 @@ export default function Murmurs() {
         <div className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm">
           <audio controls src={current.media_url} className="mb-4 w-full" />
           <div className="mb-4 text-sm text-neutral-700">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeHighlight]} className="prose prose-sm max-w-none">
+            <ReactMarkdown
+              remarkPlugins={markdownRemarkPlugins}
+              rehypePlugins={markdownRehypePlugins}
+              className="prose prose-sm max-w-none"
+            >
               {current.prompt_md ?? ""}
             </ReactMarkdown>
           </div>
@@ -148,7 +150,11 @@ export default function Murmurs() {
                 disabled={Boolean(selected)}
               >
                 <span className="mr-2 font-semibold">{option.label}.</span>
-                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeHighlight]} className="inline prose prose-sm max-w-none">
+                <ReactMarkdown
+                  remarkPlugins={markdownRemarkPlugins}
+                  rehypePlugins={markdownRehypePlugins}
+                  className="inline prose prose-sm max-w-none"
+                >
                   {option.text_md}
                 </ReactMarkdown>
               </Button>
@@ -157,7 +163,11 @@ export default function Murmurs() {
           {feedback ? <p className="mt-4 text-sm font-semibold">{feedback}</p> : null}
           {selected && current.rationale_md ? (
             <div className="mt-2 text-sm text-neutral-600">
-              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeHighlight]} className="prose prose-sm max-w-none">
+              <ReactMarkdown
+                remarkPlugins={markdownRemarkPlugins}
+                rehypePlugins={markdownRehypePlugins}
+                className="prose prose-sm max-w-none"
+              >
                 {current.rationale_md}
               </ReactMarkdown>
             </div>

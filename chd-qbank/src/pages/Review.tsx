@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeRaw from "rehype-raw";
-import rehypeHighlight from "rehype-highlight";
 import { supabase } from "../lib/supabaseClient";
 import { useSessionStore } from "../lib/auth";
+import { markdownRemarkPlugins, markdownRehypePlugins } from "../lib/markdown";
 
 type FlaggedResponse = {
   id: string;
@@ -36,8 +34,8 @@ export default function Review() {
           <li key={flag.id} className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm">
             <p className="text-sm font-semibold">{flag.questions?.lead_in}</p>
             <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeRaw, rehypeHighlight]}
+              remarkPlugins={markdownRemarkPlugins}
+              rehypePlugins={markdownRehypePlugins}
               className="prose prose-sm text-neutral-700"
             >
               {flag.questions?.stem_md ?? ""}

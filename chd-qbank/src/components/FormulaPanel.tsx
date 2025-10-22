@@ -1,9 +1,7 @@
 import ReactMarkdown from "react-markdown";
-import rehypeHighlight from "rehype-highlight";
-import rehypeRaw from "rehype-raw";
-import remarkGfm from "remark-gfm";
 import type { FormulaReference } from "../lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/Card";
+import { markdownRemarkPlugins, markdownRehypePlugins } from "../lib/markdown";
 
 type Props = {
   title?: string | null;
@@ -44,8 +42,8 @@ export default function FormulaPanel({ title = "Formula Quick Ref", formulas, bo
         ) : null}
         {trimmedBody ? (
           <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeRaw, rehypeHighlight]}
+            remarkPlugins={markdownRemarkPlugins}
+            rehypePlugins={markdownRehypePlugins}
             className="prose prose-sm max-w-none text-neutral-700"
           >
             {trimmedBody}
