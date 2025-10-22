@@ -9,24 +9,7 @@ export default function App() {
   const { session, loading, initialized } = useSessionStore();
 
   useEffect(() => {
-    let cancelled = false;
-    let retryHandle: number | null = null;
-
-    const attemptSession = () => {
-      void getSession().catch(() => {
-        if (cancelled) return;
-        retryHandle = window.setTimeout(attemptSession, 2000);
-      });
-    };
-
-    attemptSession();
-
-    return () => {
-      cancelled = true;
-      if (retryHandle !== null) {
-        window.clearTimeout(retryHandle);
-      }
-    };
+    void getSession();
   }, []);
 
   useEffect(() => {

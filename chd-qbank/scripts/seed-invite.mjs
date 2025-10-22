@@ -69,9 +69,15 @@ async function seedInviteSettings() {
     { key: 'invite_expires', value: expiresDate.toISOString().slice(0, 10) }
   ];
 
-  const { error } = await supabase
-    .from('app_settings')
-    .upsert(payload, { onConflict: 'key' });
+  const withTimeout = (promise, ms = 15000) =>
+    Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
+    ]);
+
+  const { error } = await withTimeout(
+    supabase.from('app_settings').upsert(payload, { onConflict: 'key' })
+  );
 
   if (error) {
     console.error('Failed to seed invite settings:', error.message);
