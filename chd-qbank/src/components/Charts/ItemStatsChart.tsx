@@ -55,7 +55,7 @@ export default function ItemStatsChart() {
           },
           scales: {
             y: {
-              min: 0,
+              min: -1,
               max: 1
             }
           }
