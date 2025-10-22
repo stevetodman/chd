@@ -8,70 +8,124 @@ declare const self: ServiceWorkerGlobalScope;
 const CACHE_VERSION = "v1";
 const APP_SHELL_CACHE = `app-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `runtime-${CACHE_VERSION}`;
-const APP_SHELL_ASSETS = ["/", "/index.html", "/manifest.json"];
+const APP_SHELL_ASSETS = ["/", "/index.html", "/manifest.json", "/offline.html"];
 const STATIC_ASSET_PATTERN = /\.(?:css|js|woff2?|png|jpg|jpeg|svg|gif|webp|ico)$/i;
+const API_REQUEST_PATTERN = /\/api\//i;
 
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(APP_SHELL_CACHE).then((cache) => cache.addAll(APP_SHELL_ASSETS))
-  );
-  void self.skipWaiting();
-});
+if (typeof self !== "undefined") {
+  self.addEventListener("install", (event) => {
+    event.waitUntil(
+      caches.open(APP_SHELL_CACHE).then((cache) => cache.addAll(APP_SHELL_ASSETS))
+    );
+  });
 
-self.addEventListener("activate", (event) => {
-  const expectedCaches = new Set([APP_SHELL_CACHE, RUNTIME_CACHE]);
+  self.addEventListener("activate", (event) => {
+    const expectedCaches = new Set([APP_SHELL_CACHE, RUNTIME_CACHE]);
 
-  event.waitUntil(
-    caches
-      .keys()
-      .then((cacheNames) =>
-        Promise.all(
-          cacheNames.map((cacheName) => {
-            if (!expectedCaches.has(cacheName)) {
-              return caches.delete(cacheName);
-            }
-            return Promise.resolve(true);
-          })
+    event.waitUntil(
+      caches
+        .keys()
+        .then((cacheNames) =>
+          Promise.all(
+            cacheNames.map((cacheName) => {
+              if (!expectedCaches.has(cacheName)) {
+                return caches.delete(cacheName);
+              }
+              return Promise.resolve(true);
+            })
+          )
         )
-      )
-      .then(() => self.clients.claim())
-  );
-});
+        .then(() => self.clients.claim())
+    );
+  });
 
-self.addEventListener("fetch", (event) => {
-  const { request } = event;
+  self.addEventListener("message", (event) => {
+    if (event.data?.type === "SKIP_WAITING") {
+      void self.skipWaiting();
+    }
+  });
 
-  if (request.method !== "GET") {
-    return;
-  }
+  self.addEventListener("fetch", (event) => {
+    const { request } = event;
 
-  const url = new URL(request.url);
+    if (request.method !== "GET") {
+      return;
+    }
 
-  if (request.mode === "navigate") {
-    event.respondWith(handleNavigationRequest(request));
-    return;
-  }
+    const url = new URL(request.url);
 
-  if (url.origin !== self.location.origin) {
-    return;
-  }
+    if (request.mode === "navigate") {
+      event.respondWith(handleNavigationRequest(request));
+      return;
+    }
 
-  if (STATIC_ASSET_PATTERN.test(url.pathname)) {
-    event.respondWith(cacheFirst(request));
-  }
-});
+    if (url.origin !== self.location.origin) {
+      return;
+    }
 
-async function cacheFirst(request: Request): Promise<Response> {
+    if (API_REQUEST_PATTERN.test(url.pathname)) {
+      event.respondWith(networkFirst(request));
+      return;
+    }
+
+    if (STATIC_ASSET_PATTERN.test(url.pathname)) {
+      event.respondWith(staleWhileRevalidate(request, event));
+    }
+  });
+}
+
+async function staleWhileRevalidate(request: Request, event?: FetchEvent): Promise<Response> {
   const cache = await caches.open(RUNTIME_CACHE);
   const cachedResponse = await cache.match(request);
 
+  const networkPromise = fetch(request)
+    .then((networkResponse) => {
+      if (networkResponse && networkResponse.ok) {
+        void cache.put(request, networkResponse.clone());
+      }
+      return networkResponse;
+    })
+    .catch(() => undefined);
+
   if (cachedResponse) {
+    if (event) {
+      event.waitUntil(networkPromise.then(() => undefined));
+    }
     return cachedResponse;
   }
 
-  const networkResponse = await fetch(request);
-  void cache.put(request, networkResponse.clone());
-  return networkResponse;
+  const networkResponse = await networkPromise;
+  if (networkResponse) {
+    return networkResponse;
+  }
+
+  return new Response("Service Unavailable", {
+    status: 503,
+    statusText: "Service Unavailable",
+    headers: { "Content-Type": "text/plain" }
+  });
+}
+
+async function networkFirst(request: Request): Promise<Response> {
+  const cache = await caches.open(RUNTIME_CACHE);
+
+  try {
+    const networkResponse = await fetch(request);
+    if (networkResponse && networkResponse.ok) {
+      void cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  } catch (error) {
+    const cachedResponse = await cache.match(request);
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+    return new Response("Offline", {
+      status: 503,
+      statusText: "Service Unavailable",
+      headers: { "Content-Type": "text/plain" }
+    });
+  }
 }
 
 async function handleNavigationRequest(request: Request): Promise<Response> {
@@ -82,10 +136,14 @@ async function handleNavigationRequest(request: Request): Promise<Response> {
     return networkResponse;
   } catch (error) {
     const cache = await caches.open(APP_SHELL_CACHE);
-    const cachedResponse = await cache.match("/index.html");
+    const offlineResponse = await cache.match("/offline.html");
+    if (offlineResponse) {
+      return offlineResponse;
+    }
 
-    if (cachedResponse) {
-      return cachedResponse;
+    const fallbackResponse = await cache.match("/index.html");
+    if (fallbackResponse) {
+      return fallbackResponse;
     }
 
     return new Response("Offline", {
@@ -95,3 +153,14 @@ async function handleNavigationRequest(request: Request): Promise<Response> {
     });
   }
 }
+
+export const __TESTING__ = {
+  APP_SHELL_CACHE,
+  RUNTIME_CACHE,
+  APP_SHELL_ASSETS,
+  STATIC_ASSET_PATTERN,
+  API_REQUEST_PATTERN,
+  staleWhileRevalidate,
+  networkFirst,
+  handleNavigationRequest
+};
