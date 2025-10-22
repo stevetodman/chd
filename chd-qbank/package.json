@@ -9,7 +9,10 @@
     "preview": "vite preview",
     "test": "vitest",
     "lint": "eslint --ext .ts,.tsx src",
+    "build:scripts": "tsc -p tsconfig.scripts.json",
     "seed:invite": "node scripts/seed-invite.mjs",
+    "seed:full": "npm run build:scripts && node scripts/dist/seed/full.js",
+    "verify:seed": "npm run build:scripts && node scripts/dist/verifySeed.js",
     "verify:analytics:heatmap": "node scripts/verify-analytics-heatmap.mjs"
   },
   "dependencies": {
