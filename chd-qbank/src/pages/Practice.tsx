@@ -165,6 +165,7 @@ export default function Practice() {
     }
 
     let saved: PracticeResponse | null = null;
+    const wasCorrect = existing?.is_correct ?? false;
 
     if (existing) {
       const { data, error } = await supabase
@@ -210,7 +211,7 @@ export default function Practice() {
       [current.id]: saved
     }));
 
-    if (choice.is_correct) {
+    if (saved?.is_correct && !wasCorrect) {
       const { error: rpcError } = await supabase.rpc("increment_points", { delta: 1 });
       if (rpcError) {
         setError("Your answer was saved, but we couldn't update your points. Please try again later.");
