@@ -92,6 +92,62 @@ create table if not exists responses (
   constraint responses_unique_user_question unique (user_id, question_id)
 );
 
+create table if not exists answer_events (
+  id uuid primary key default gen_random_uuid(),
+  response_id uuid not null references responses(id) on delete cascade,
+  user_id uuid not null references app_users(id) on delete cascade,
+  question_id uuid not null references questions(id) on delete cascade,
+  is_correct boolean not null,
+  points int not null check (points in (0, 1)),
+  effective_at timestamptz not null default timezone('utc', now()),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_answer_events_user_question on answer_events(user_id, question_id, effective_at desc);
+create index if not exists idx_answer_events_effective_at on answer_events(effective_at);
+create index if not exists idx_answer_events_response on answer_events(response_id);
+
+create or replace function log_answer_event()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_effective_at timestamptz;
+  v_points int := case when new.is_correct then 1 else 0 end;
+begin
+  if TG_OP = 'UPDATE' and coalesce(new.is_correct, false) = coalesce(old.is_correct, false) then
+    return new;
+  end if;
+
+  if TG_OP = 'INSERT' then
+    v_effective_at := new.created_at;
+  else
+    v_effective_at := timezone('utc', now());
+  end if;
+
+  insert into answer_events(response_id, user_id, question_id, is_correct, points, effective_at)
+  values (new.id, new.user_id, new.question_id, new.is_correct, v_points, v_effective_at);
+
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_log_answer_event on responses;
+
+create trigger trg_log_answer_event
+after insert or update on responses
+for each row
+execute function log_answer_event();
+
+insert into answer_events(response_id, user_id, question_id, is_correct, points, effective_at, created_at)
+select r.id, r.user_id, r.question_id, r.is_correct, case when r.is_correct then 1 else 0 end, r.created_at, r.created_at
+from responses r
+where not exists (
+  select 1 from answer_events ae where ae.response_id = r.id
+);
+
 create table if not exists item_stats (
   question_id uuid primary key references questions(id) on delete cascade,
   n_attempts int not null default 0,
@@ -585,15 +641,39 @@ language sql
 security definer
 set search_path = public
 as $$
+  with week_bounds as (
+    select
+      date_trunc('week', timezone('utc', now())) as start_at,
+      date_trunc('week', timezone('utc', now())) + interval '1 week' as end_at
+  ),
+  response_points as (
+    select distinct on (ae.user_id, ae.question_id)
+      ae.user_id,
+      ae.points
+    from answer_events ae
+    join week_bounds wb on ae.effective_at >= wb.start_at and ae.effective_at < wb.end_at
+    order by ae.user_id, ae.question_id, ae.effective_at desc, ae.created_at desc
+  ),
+  murmur_points as (
+    select ma.user_id, 1 as points
+    from murmur_attempts ma
+    join week_bounds wb on ma.created_at >= wb.start_at and ma.created_at < wb.end_at
+    where ma.is_correct
+  ),
+  cxr_points as (
+    select ca.user_id, 1 as points
+    from cxr_attempts ca
+    join week_bounds wb on ca.created_at >= wb.start_at and ca.created_at < wb.end_at
+    where ca.is_correct
+  )
   select user_id, sum(points) as points
   from (
-    select user_id, 1 as points, created_at from responses where is_correct
+    select user_id, points from response_points where points > 0
     union all
-    select user_id, 1 as points, created_at from murmur_attempts where is_correct
+    select user_id, points from murmur_points
     union all
-    select user_id, 1 as points, created_at from cxr_attempts where is_correct
+    select user_id, points from cxr_points
   ) e
-  where created_at >= date_trunc('week', timezone('utc', now()))
   group by user_id
   order by points desc, user_id
   limit 100;
@@ -699,6 +779,7 @@ set search_path = public as $$
 declare
   v_user uuid := auth.uid();
   v_week_start timestamptz := date_trunc('week', timezone('utc', now()));
+  v_week_end timestamptz := v_week_start + interval '1 week';
 begin
   if v_user is null then
     raise exception 'auth required';
@@ -710,7 +791,19 @@ begin
     (select count(*) from responses where user_id = v_user and is_correct)::bigint,
     (select count(*) from responses where user_id = v_user and flagged)::bigint,
     (
-      (select count(*) from responses where user_id = v_user and is_correct and created_at >= v_week_start) +
+      coalesce((
+        select sum(points)
+        from (
+          select distinct on (ae.question_id)
+            ae.points
+          from answer_events ae
+          where ae.user_id = v_user
+            and ae.effective_at >= v_week_start
+            and ae.effective_at < v_week_end
+          order by ae.question_id, ae.effective_at desc, ae.created_at desc
+        ) rp
+        where rp.points > 0
+      ), 0) +
       (select count(*) from murmur_attempts where user_id = v_user and is_correct and created_at >= v_week_start) +
       (select count(*) from cxr_attempts where user_id = v_user and is_correct and created_at >= v_week_start)
     )::bigint,
