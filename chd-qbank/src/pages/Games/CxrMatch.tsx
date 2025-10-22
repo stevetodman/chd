@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { DragEvent } from "react";
 import ReactMarkdown from "react-markdown";
 import { Button } from "../../components/ui/Button";
 import { supabase } from "../../lib/supabaseClient";
@@ -43,6 +44,7 @@ export default function CxrMatch() {
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isDropActive, setIsDropActive] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -78,6 +80,7 @@ export default function CxrMatch() {
   const correctLabel = useMemo(() => current?.labels.find((label) => label.is_correct) ?? null, [current]);
 
   const submit = async (label: Label) => {
+    if (selected) return;
     const correct = label.is_correct;
     setSelected(label.id);
     if (correct) {
@@ -104,6 +107,65 @@ export default function CxrMatch() {
     setIndex((prev) => (prev + 1) % items.length);
     setSelected(null);
     setMessage(null);
+    setIsDropActive(false);
+  };
+
+  const selectedLabel = useMemo(
+    () => (selected && current ? current.labels.find((label) => label.id === selected) ?? null : null),
+    [current, selected]
+  );
+
+  useEffect(() => {
+    setIsDropActive(false);
+  }, [current?.id]);
+
+  const handleDragStart = (event: DragEvent<HTMLButtonElement>, label: Label) => {
+    if (selected) {
+      event.preventDefault();
+      return;
+    }
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("application/json", JSON.stringify({ id: label.id }));
+  };
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDropActive(false);
+    if (selected || !current) return;
+    try {
+      const payload = event.dataTransfer.getData("application/json");
+      if (!payload) return;
+      const { id } = JSON.parse(payload) as { id: string };
+      const match = current.labels.find((label) => label.id === id);
+      if (match) {
+        void submit(match);
+      }
+    } catch {
+      // Ignore malformed payloads.
+    }
+  };
+
+  const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
+    if (selected) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDragEnter = (event: DragEvent<HTMLDivElement>) => {
+    if (selected) return;
+    event.preventDefault();
+    setIsDropActive(true);
+  };
+
+  const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    if (event.currentTarget.contains(event.relatedTarget as Node)) {
+      return;
+    }
+    setIsDropActive(false);
+  };
+
+  const handleDragEnd = () => {
+    setIsDropActive(false);
   };
 
   if (!current) {
@@ -128,14 +190,35 @@ export default function CxrMatch() {
             >
               {current.caption_md ?? "Match the imaging sign with the lesion."}
             </ReactMarkdown>
-            <p className="text-xs text-neutral-500">
-              Drag-and-drop ready: wire up react-dnd for production; this scaffold provides a keyboard-accessible picker.
-            </p>
+            <div
+              className={`flex min-h-[6rem] items-center justify-center rounded-md border-2 border-dashed text-center text-sm transition-colors ${
+                isDropActive ? "border-brand-500 bg-brand-50 text-brand-700" : "border-neutral-300 text-neutral-500"
+              }`}
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              role="button"
+              tabIndex={0}
+              aria-label="Drop a lesion label here"
+            >
+              {selectedLabel ? (
+                <span className="font-semibold text-neutral-900">{selectedLabel.label}</span>
+              ) : (
+                <span>
+                  Drag a label here to submit, or activate a button below.
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-neutral-500">Labels remain keyboard accessible—use space or enter to select.</p>
             <div className="grid gap-2">
               {current.labels.map((label) => (
                 <Button
                   key={label.id}
                   variant={selected === label.id ? "primary" : "secondary"}
+                  draggable={!selected}
+                  onDragStart={(event) => handleDragStart(event, label)}
+                  onDragEnd={handleDragEnd}
                   onClick={() => submit(label)}
                   disabled={Boolean(selected)}
                 >
