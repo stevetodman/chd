@@ -62,6 +62,7 @@ create table if not exists questions (
   lesion text,
   lecture_link text,
   media_bundle_id uuid references media_bundles(id),
+  context_panels jsonb,
   correct_choice_id uuid,
   updated_by uuid references app_users(id),
   updated_at timestamptz not null default now()
