@@ -13,6 +13,115 @@ import {
   normalizeMurmurItems
 } from "../../lib/games/murmurs";
 
+type MurmurSupabaseClient = Pick<typeof supabase, "from" | "rpc">;
+
+interface MurmurStateHandlers {
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
+  setItems: (items: MurmurItem[]) => void;
+  setIndex: (index: number) => void;
+  setSelected: (option: MurmurOption | null) => void;
+  setFeedback: (feedback: string | null) => void;
+}
+
+export async function loadMurmurs(
+  client: MurmurSupabaseClient,
+  handlers: MurmurStateHandlers,
+  isActive: () => boolean = () => true
+) {
+  handlers.setLoading(true);
+  handlers.setError(null);
+
+  const { data, error } = await client
+    .from("murmur_items")
+    .select(
+      "id, prompt_md, rationale_md, media_url, murmur_options(id,label,text_md,is_correct)"
+    )
+    .eq("status", "published")
+    .order("updated_at", { ascending: false })
+    .limit(20);
+
+  if (!isActive()) {
+    return;
+  }
+
+  if (error) {
+    handlers.setError(error.message);
+    handlers.setItems([]);
+    handlers.setIndex(0);
+    handlers.setSelected(null);
+    handlers.setFeedback(null);
+    handlers.setLoading(false);
+    return;
+  }
+
+  const normalized = normalizeMurmurItems((data ?? []) as MurmurItemRow[]);
+
+  handlers.setItems(normalized);
+  handlers.setIndex(0);
+  handlers.setSelected(null);
+  handlers.setFeedback(null);
+  handlers.setLoading(false);
+}
+
+type MurmurSession = { user: { id: string } } | null;
+
+interface ChooseMurmurOptionParams {
+  option: MurmurOption;
+  current: MurmurItem | null;
+  session: MurmurSession;
+  supabaseClient: MurmurSupabaseClient;
+  setSelected: (option: MurmurOption) => void;
+  setFeedback: (feedback: string | null) => void;
+}
+
+export async function chooseMurmurOption({
+  option,
+  current,
+  session,
+  supabaseClient,
+  setSelected,
+  setFeedback
+}: ChooseMurmurOptionParams) {
+  if (!current) return;
+
+  setSelected(option);
+  setFeedback(feedbackForMurmurOption(option));
+
+  if (!session) return;
+
+  await supabaseClient.from("murmur_attempts").insert({
+    user_id: session.user.id,
+    item_id: current.id,
+    option_id: option.id,
+    is_correct: option.is_correct
+  });
+
+  if (option.is_correct) {
+    await supabaseClient.rpc("increment_points", { delta: 1 });
+  }
+}
+
+interface AdvanceMurmurParams {
+  itemsLength: number;
+  setIndex: (updater: (index: number) => number) => void;
+  setSelected: (option: MurmurOption | null) => void;
+  setFeedback: (feedback: string | null) => void;
+}
+
+export function advanceMurmur({
+  itemsLength,
+  setIndex,
+  setSelected,
+  setFeedback
+}: AdvanceMurmurParams) {
+  if (itemsLength === 0) return;
+
+  setSelected(null);
+  setFeedback(null);
+  setIndex((prev) => getNextMurmurIndex(prev, itemsLength));
+}
+
 export default function Murmurs() {
   const { session } = useSessionStore();
   const [items, setItems] = useState<MurmurItem[]>([]);
@@ -25,40 +134,18 @@ export default function Murmurs() {
   useEffect(() => {
     let active = true;
 
-    const fetchItems = async () => {
-      setLoading(true);
-      setError(null);
-      const { data, error: fetchError } = await supabase
-        .from("murmur_items")
-        .select(
-          "id, prompt_md, rationale_md, media_url, murmur_options(id,label,text_md,is_correct)"
-        )
-        .eq("status", "published")
-        .order("updated_at", { ascending: false })
-        .limit(20);
-
-      if (!active) return;
-
-      if (fetchError) {
-        setError(fetchError.message);
-        setItems([]);
-        setIndex(0);
-        setSelected(null);
-        setFeedback(null);
-        setLoading(false);
-        return;
-      }
-
-      const normalized = normalizeMurmurItems((data ?? []) as MurmurItemRow[]);
-
-      setItems(normalized);
-      setIndex(0);
-      setSelected(null);
-      setFeedback(null);
-      setLoading(false);
-    };
-
-    void fetchItems();
+    void loadMurmurs(
+      supabase,
+      {
+        setLoading,
+        setError,
+        setItems,
+        setIndex,
+        setSelected,
+        setFeedback
+      },
+      () => active
+    );
 
     return () => {
       active = false;
@@ -69,26 +156,23 @@ export default function Murmurs() {
 
   const choose = async (option: MurmurOption) => {
     if (!current) return;
-    setSelected(option);
-    setFeedback(feedbackForMurmurOption(option));
-    if (session) {
-      await supabase.from("murmur_attempts").insert({
-        user_id: session.user.id,
-        item_id: current.id,
-        option_id: option.id,
-        is_correct: option.is_correct
-      });
-      if (option.is_correct) {
-        await supabase.rpc("increment_points", { delta: 1 });
-      }
-    }
+    await chooseMurmurOption({
+      option,
+      current,
+      session,
+      supabaseClient: supabase,
+      setSelected,
+      setFeedback
+    });
   };
 
   const next = () => {
-    if (items.length === 0) return;
-    setSelected(null);
-    setFeedback(null);
-    setIndex((prev) => getNextMurmurIndex(prev, items.length));
+    advanceMurmur({
+      itemsLength: items.length,
+      setIndex,
+      setSelected,
+      setFeedback
+    });
   };
 
   return (
