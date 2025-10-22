@@ -26,9 +26,12 @@ export default function QuestionCard({ question, onAnswer, onFlagChange, initial
   useEffect(() => {
     setStart(performance.now());
     setSelected(null);
-    setFlagged(initialFlagged);
     setShowExplanation(false);
-  }, [initialFlagged, question.id]);
+  }, [question.id]);
+
+  useEffect(() => {
+    setFlagged(initialFlagged);
+  }, [question.id, initialFlagged]);
 
   const handleSelect = async (choice: Choice) => {
     if (selected) return;
