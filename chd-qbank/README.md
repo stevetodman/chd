@@ -26,6 +26,7 @@ Copy `.env.example` to `.env` and populate with the Supabase project URL and ano
 3. Deploy the `signup-with-code` Edge Function and set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in the function environment.
 4. Create storage buckets: `murmurs`, `cxr`, `ekg`, `diagrams`.
 5. Configure SMTP (Resend) inside Supabase; no client key is required.
+6. To rotate invite access, set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `INVITE_CODE`, and `INVITE_EXPIRES` in your environment (or `.env`) and run `npm run seed:invite` to upsert the current values into `app_settings`.
 
 ## Deployment
 
