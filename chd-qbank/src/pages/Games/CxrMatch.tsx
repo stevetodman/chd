@@ -80,7 +80,7 @@ export default function CxrMatch() {
   const correctLabel = useMemo(() => current?.labels.find((label) => label.is_correct) ?? null, [current]);
 
   const submit = async (label: Label) => {
-    if (selected) return;
+    if (selected || !current) return;
     const correct = label.is_correct;
     setSelected(label.id);
     if (correct) {
@@ -91,13 +91,28 @@ export default function CxrMatch() {
       setMessage("Not quite. Try another lesion.");
     }
     if (session) {
+      let alreadyCorrect = false;
+
+      if (correct) {
+        const { data: previousCorrect } = await supabase
+          .from("cxr_attempts")
+          .select("id")
+          .eq("user_id", session.user.id)
+          .eq("item_id", current.id)
+          .eq("is_correct", true)
+          .limit(1)
+          .maybeSingle();
+
+        alreadyCorrect = Boolean(previousCorrect);
+      }
+
       await supabase.from("cxr_attempts").insert({
         user_id: session.user.id,
         item_id: current.id,
         is_correct: correct,
         detail: { selected: label.label }
       });
-      if (correct) {
+      if (correct && !alreadyCorrect) {
         await supabase.rpc("increment_points", { delta: 1 });
       }
     }

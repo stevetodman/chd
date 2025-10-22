@@ -72,13 +72,28 @@ export default function Murmurs() {
     setSelected(option);
     setFeedback(feedbackForMurmurOption(option));
     if (session) {
+      let alreadyCorrect = false;
+
+      if (option.is_correct) {
+        const { data: previousCorrect } = await supabase
+          .from("murmur_attempts")
+          .select("id")
+          .eq("user_id", session.user.id)
+          .eq("item_id", current.id)
+          .eq("is_correct", true)
+          .limit(1)
+          .maybeSingle();
+
+        alreadyCorrect = Boolean(previousCorrect);
+      }
+
       await supabase.from("murmur_attempts").insert({
         user_id: session.user.id,
         item_id: current.id,
         option_id: option.id,
         is_correct: option.is_correct
       });
-      if (option.is_correct) {
+      if (option.is_correct && !alreadyCorrect) {
         await supabase.rpc("increment_points", { delta: 1 });
       }
     }

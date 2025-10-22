@@ -78,3 +78,27 @@ export function shouldLoadNextPage(index: number, totalQuestions: number, hasMor
   if (totalQuestions === 0) return false;
   return index >= totalQuestions - 2;
 }
+
+export type PracticeResponseSummary = {
+  choice_id: string | null;
+  is_correct: boolean;
+};
+
+export function shouldIncrementPracticePoints(
+  previous: PracticeResponseSummary | null,
+  choice: Pick<Choice, "id" | "is_correct">
+): boolean {
+  if (!choice.is_correct) {
+    return false;
+  }
+
+  if (!previous) {
+    return true;
+  }
+
+  if (!previous.is_correct) {
+    return true;
+  }
+
+  return previous.choice_id !== choice.id;
+}

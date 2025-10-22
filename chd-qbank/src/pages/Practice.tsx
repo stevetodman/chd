@@ -12,6 +12,7 @@ import {
   QuestionRow,
   QuestionQueryRow,
   shuffleQuestions,
+  shouldIncrementPracticePoints,
   shouldLoadNextPage
 } from "../lib/practice";
 
@@ -164,6 +165,8 @@ export default function Practice() {
       }
     }
 
+    const previousResponse = existing ?? null;
+
     let saved: PracticeResponse | null = null;
 
     if (existing) {
@@ -210,7 +213,9 @@ export default function Practice() {
       [current.id]: saved
     }));
 
-    if (choice.is_correct) {
+    const shouldIncrement = shouldIncrementPracticePoints(previousResponse, choice);
+
+    if (shouldIncrement) {
       const { error: rpcError } = await supabase.rpc("increment_points", { delta: 1 });
       if (rpcError) {
         setError("Your answer was saved, but we couldn't update your points. Please try again later.");

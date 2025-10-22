@@ -5,6 +5,7 @@ import {
   normalizeQuestionRows,
   PRACTICE_PAGE_SIZE,
   shuffleQuestions,
+  shouldIncrementPracticePoints,
   shouldLoadNextPage,
   type QuestionQueryRow
 } from "../lib/practice";
@@ -98,5 +99,17 @@ describe("practice helpers", () => {
     expect(shouldLoadNextPage(0, 0, true)).toBe(false);
     expect(shouldLoadNextPage(2, 5, false)).toBe(false);
     expect(shouldLoadNextPage(3, 5, true)).toBe(true);
+  });
+
+  it("awards points when a question is answered correctly for the first time", () => {
+    const choice = { id: "choice-1", label: "A" as const, text_md: "Answer", is_correct: true };
+    expect(shouldIncrementPracticePoints(null, choice)).toBe(true);
+  });
+
+  it("does not award additional points for repeated correct submissions", () => {
+    const choice = { id: "choice-1", label: "A" as const, text_md: "Answer", is_correct: true };
+    const previous = { choice_id: "choice-1", is_correct: true };
+
+    expect(shouldIncrementPracticePoints(previous, choice)).toBe(false);
   });
 });
