@@ -2,6 +2,22 @@
 
 This repository hosts the code and infrastructure assets for the **CHD QBank**—a congenital heart disease learning platform that combines a Step 1–style question bank with teaching games for cardiology trainees. It is structured as a Vite + React single page application backed by Supabase for authentication, data storage, and scheduled jobs.
 
+## Project Status
+
+- **Overall progress:** ~80% complete. Core learning flows, analytics, and Supabase integrations are in place, but automated QA, offline readiness, and operational tooling still need to be productionized.
+
+### Completed Milestones
+
+- **End-to-end learner flows** for question practice, review, murmur identification, and CXR pattern matching that record attempts, award leaderboard points, and surface media/context from Supabase.
+- **Admin tooling** covering item lists, an editor, CSV importer, analytics dashboards, and feature toggles wired to RPC helpers and scheduled refresh routines.
+- **Supabase backend** with RLS-secured schemas, nightly stats refresh via `pg_cron`, invite-only onboarding, and a service-role Edge Function that mints aliases during signup.
+
+### Gaps & Risks
+
+- **Testing debt:** Only a smoke-level unit test exists; critical client flows, Supabase RPC contracts, and access controls lack automated coverage.
+- **Offline and resilience gaps:** The service worker is still a stub with no asset/runtime caching or background sync, keeping the app network-dependent.
+- **Operational readiness:** No telemetry, CI pipelines, or seeded analytics dashboards are configured beyond local scripts, leaving production monitoring and migration automation to be defined.
+
 ## Repository Layout
 
 | Path | Description |
