@@ -350,7 +350,10 @@ for each row execute function sync_public_alias();
 create or replace function lock_alias_once() returns trigger language plpgsql as $$
 begin
   if new.alias is distinct from old.alias then
-    if old.alias_locked then
+    if old.alias is null then
+      -- Service seeding the first alias keeps it editable
+      new.alias_locked := false;
+    elsif old.alias_locked then
       raise exception 'Alias already locked';
     else
       new.alias_locked := true;
