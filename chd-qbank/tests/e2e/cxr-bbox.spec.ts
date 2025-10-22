@@ -16,21 +16,63 @@ describe("CXR bounding box hit testing", () => {
     expect(hitTestDisplayPoint(displayPoint, bbox, naturalSize, displaySize)).toBe(true);
   });
 
-  it("accepts drops within the ±5% tolerance band", () => {
+  it("rejects drops just beyond the horizontal tolerance band", () => {
     const tolerance = hitTolerance(naturalSize);
-    const naturalPointInside = {
-      x: naturalSize.width * (bbox.x + bbox.w) + tolerance * 0.75,
+    const naturalPointOutside = {
+      x: naturalSize.width * (bbox.x + bbox.w) + tolerance + 0.5,
       y: naturalSize.height * (bbox.y + bbox.h / 2)
     };
-    expect(hitTestBoundingBox(naturalPointInside, bbox, naturalSize, tolerance)).toBe(true);
+    expect(hitTestBoundingBox(naturalPointOutside, bbox, naturalSize, tolerance)).toBe(false);
   });
 
-  it("rejects drops outside the tolerance band", () => {
-    const displayPoint = {
-      x: displaySize.width * (bbox.x + bbox.w) + displaySize.width * 0.12,
-      y: displaySize.height * (bbox.y + bbox.h / 2)
+  it("handles extreme aspect ratios without accepting out-of-band drops", () => {
+    const tallNatural = { width: 2800, height: 400 };
+    const tallDisplay = { width: 560, height: 200 };
+    const tallBox = { x: 0.05, y: 0.25, w: 0.1, h: 0.4 };
+    const tolerance = hitTolerance(tallNatural);
+    const offTarget = {
+      x: tallDisplay.width * (tallBox.x + tallBox.w / 2),
+      y: tallDisplay.height * (tallBox.y + tallBox.h) + tolerance * 0.8
     };
-    const naturalPoint = displayPointToNaturalPoint(displayPoint, naturalSize, displaySize);
-    expect(hitTestBoundingBox(naturalPoint, bbox, naturalSize)).toBe(false);
+    const naturalOffTarget = displayPointToNaturalPoint(offTarget, tallNatural, tallDisplay);
+    expect(hitTestBoundingBox(naturalOffTarget, tallBox, tallNatural, tolerance)).toBe(false);
+  });
+
+  it("keeps fractional display pixels inside the tolerance band", () => {
+    const tolerance = hitTolerance(naturalSize);
+    const naturalPoint = {
+      x: naturalSize.width * (bbox.x + bbox.w / 2),
+      y: naturalSize.height * (bbox.y + bbox.h / 2)
+    };
+    const fractionalDisplay = {
+      x: (naturalPoint.x / naturalSize.width) * displaySize.width,
+      y: (naturalPoint.y / naturalSize.height) * displaySize.height
+    };
+    const roundedDisplay = {
+      x: Math.round(fractionalDisplay.x + 0.25),
+      y: Math.floor(fractionalDisplay.y + 0.1)
+    };
+    expect(hitTestDisplayPoint(roundedDisplay, bbox, naturalSize, displaySize, tolerance)).toBe(true);
+  });
+
+  it("correctly maps points recorded in device pixels when DPR > 1", () => {
+    const natural = { width: 2048, height: 1536 };
+    const display = { width: 512, height: 384 };
+    const lesion = { x: 0.62, y: 0.35, w: 0.08, h: 0.12 };
+    const dpr = 2.5;
+    const naturalPoint = {
+      x: natural.width * (lesion.x + lesion.w / 2),
+      y: natural.height * (lesion.y + lesion.h / 2)
+    };
+    const cssDisplayPoint = {
+      x: (naturalPoint.x / natural.width) * display.width,
+      y: (naturalPoint.y / natural.height) * display.height
+    };
+    const devicePixelPoint = {
+      x: Math.round(cssDisplayPoint.x * dpr),
+      y: Math.round(cssDisplayPoint.y * dpr)
+    };
+    const tolerance = hitTolerance(natural);
+    expect(hitTestDisplayPoint(devicePixelPoint, lesion, natural, display, tolerance, dpr)).toBe(true);
   });
 });
