@@ -77,6 +77,7 @@ export default function Practice() {
           { count: "exact" }
         )
         .eq("status", "published")
+        .order("id", { ascending: true })
         .range(from, to);
 
       if (fetchError) {
