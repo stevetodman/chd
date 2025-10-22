@@ -279,12 +279,12 @@ for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "responses delete self" on responses
 for delete using (auth.uid() = user_id);
 
-create policy "item_stats read" on item_stats
-for select using (true);
+create policy "item_stats read admin" on item_stats
+for select using (is_admin());
 create policy "item_stats write admin" on item_stats
 for all using (is_admin()) with check (is_admin());
-create policy "distractor_stats read" on distractor_stats
-for select using (true);
+create policy "distractor_stats read admin" on distractor_stats
+for select using (is_admin());
 create policy "distractor_stats write admin" on distractor_stats
 for all using (is_admin()) with check (is_admin());
 
@@ -602,12 +602,36 @@ $$;
 create or replace view leaderboard_weekly as
 select * from leaderboard_weekly_entries();
 
-create or replace view item_stats_public as
-select question_id,
-       case when n_attempts >= 30 then p_value end as p_value,
-       case when n_attempts >= 30 then discrimination_pb end as discrimination_pb,
-       avg_time_ms, n_attempts, last_computed_at
-from item_stats;
+drop view if exists item_stats_public;
+
+create or replace function item_stats_public()
+returns table (
+  question_id uuid,
+  p_value double precision,
+  discrimination_pb double precision,
+  avg_time_ms double precision,
+  n_attempts int,
+  last_computed_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.role() is distinct from 'authenticated' then
+    raise exception 'auth required';
+  end if;
+
+  return query
+  select question_id,
+         case when n_attempts >= 30 then p_value end as p_value,
+         case when n_attempts >= 30 then discrimination_pb end as discrimination_pb,
+         avg_time_ms,
+         n_attempts,
+         last_computed_at
+  from item_stats;
+end;
+$$;
 
 create or replace function heatmap_by_lesion_topic()
 returns table(lesion text, topic text, attempts int, correct_rate double precision)

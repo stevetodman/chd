@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-const navigateMock = vi.fn();
-const signInMock = vi.fn();
+const { navigateMock, signInMock } = vi.hoisted(() => ({
+  navigateMock: vi.fn(),
+  signInMock: vi.fn()
+}));
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
@@ -13,9 +15,11 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
-vi.mock("../lib/auth", () => ({
-  signIn: signInMock
-}));
+vi.mock("../lib/auth", () => {
+  return {
+    signIn: signInMock
+  };
+});
 
 import { MemoryRouter } from "react-router-dom";
 import Login from "../pages/Login";
@@ -24,6 +28,10 @@ describe("auth flow", () => {
   beforeEach(() => {
     navigateMock.mockReset();
     signInMock.mockReset();
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   it("signs in successfully and redirects to the dashboard", async () => {

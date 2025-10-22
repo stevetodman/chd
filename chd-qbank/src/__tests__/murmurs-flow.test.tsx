@@ -18,13 +18,25 @@ const items = [
   }
 ];
 
-const insertMock = vi.fn(async () => ({ data: null, error: null }));
-const rpcMock = vi.fn(async () => ({ data: null, error: null }));
+const { insertMock, rpcMock } = vi.hoisted(() => ({
+  insertMock: vi.fn(async () => ({ data: null, error: null })),
+  rpcMock: vi.fn(async () => ({ data: null, error: null }))
+}));
 
-vi.mock("../lib/supabaseClient", () => ({
-  supabase: {
-    rpc: rpcMock,
-    from: vi.fn((table: string) => {
+vi.mock("../lib/supabaseClient", () => {
+  return {
+    supabase: {
+      rpc: rpcMock,
+      auth: {
+        onAuthStateChange: () => ({
+          data: {
+            subscription: {
+              unsubscribe: vi.fn()
+            }
+          }
+        })
+      },
+      from: vi.fn((table: string) => {
       if (table === "murmur_items") {
         return {
           select: () => ({
@@ -46,7 +58,8 @@ vi.mock("../lib/supabaseClient", () => ({
       throw new Error(`Unexpected table ${table}`);
     })
   }
-}));
+  };
+});
 
 describe("murmur game flow", () => {
   beforeEach(() => {

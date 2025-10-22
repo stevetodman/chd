@@ -59,7 +59,9 @@ const insertPayloads: ResponseRecord[] = [];
 const updatePayloads: ResponseRecord[] = [];
 let responseCounter = 0;
 
-const rpcMock = vi.fn(async () => ({ data: null, error: null }));
+const { rpcMock } = vi.hoisted(() => ({
+  rpcMock: vi.fn(async () => ({ data: null, error: null }))
+}));
 
 const mapRecord = (record: ResponseRecord) => ({
   id: record.id,
@@ -79,10 +81,20 @@ const nextId = () => {
   return `response-${responseCounter}`;
 };
 
-vi.mock("../lib/supabaseClient", () => ({
-  supabase: {
-    rpc: rpcMock,
-    from: vi.fn((table: string) => {
+vi.mock("../lib/supabaseClient", () => {
+  return {
+    supabase: {
+      rpc: rpcMock,
+      auth: {
+        onAuthStateChange: () => ({
+          data: {
+            subscription: {
+              unsubscribe: vi.fn()
+            }
+          }
+        })
+      },
+      from: vi.fn((table: string) => {
       if (table === "questions") {
         return {
           select: () => ({
@@ -167,7 +179,8 @@ vi.mock("../lib/supabaseClient", () => ({
       throw new Error(`Unexpected table ${table}`);
     })
   }
-}));
+  };
+});
 
 describe("practice flow", () => {
   beforeEach(() => {
