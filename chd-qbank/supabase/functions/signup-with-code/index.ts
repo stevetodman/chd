@@ -5,6 +5,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 
+import { createLogger } from "./logger.ts";
+
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const sb = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
@@ -21,6 +23,45 @@ function genAlias(): string {
 }
 
 serve(async (req) => {
+  const start = performance.now();
+  const requestId = crypto.randomUUID();
+  const path = new URL(req.url).pathname;
+  const ip = extractIp(req.headers);
+  const ipHash = await hashValue(ip);
+  const logger = createLogger({ requestId, path, ipHash });
+
+  const respond = (
+    status: number,
+    body: Record<string, unknown>,
+    meta: {
+      outcome?: string;
+      userId?: string;
+      error?: string;
+      level?: "info" | "error";
+    } = {}
+  ) => {
+    const latencyMs = Math.round(performance.now() - start);
+    const level = meta.level ?? (status >= 400 ? "error" : "info");
+    const outcome = meta.outcome ?? (status >= 400 ? "error" : "success");
+    const logEntry = {
+      outcome,
+      latencyMs,
+      userId: meta.userId,
+      error: meta.error
+    };
+
+    if (level === "error") {
+      logger.error(logEntry);
+    } else {
+      logger.info(logEntry);
+    }
+
+    return new Response(JSON.stringify({ requestId, ...body }), {
+      status,
+      headers: { "content-type": "application/json" }
+    });
+  };
+
   try {
     const { email, password, invite_code, desired_alias } = await req.json();
 
@@ -30,9 +71,27 @@ serve(async (req) => {
 
     const code = settings?.find((s) => s.key === "invite_code")?.value;
     const expires = settings?.find((s) => s.key === "invite_expires")?.value;
-    if (!code || !expires) return new Response("Invite not configured", { status: 400 });
-    if (invite_code !== code) return new Response("Invalid invite code", { status: 403 });
-    if (new Date() > new Date(expires)) return new Response("Invite expired", { status: 403 });
+    if (!code || !expires) {
+      return respond(
+        400,
+        { ok: false, error: "Invite not configured" },
+        { outcome: "invite_not_configured" }
+      );
+    }
+    if (invite_code !== code) {
+      return respond(
+        403,
+        { ok: false, error: "Invalid invite code" },
+        { outcome: "invalid_invite_code" }
+      );
+    }
+    if (new Date() > new Date(expires)) {
+      return respond(
+        403,
+        { ok: false, error: "Invite expired" },
+        { outcome: "invite_expired" }
+      );
+    }
 
     const { data: created, error: createErr } = await sb.auth.admin.createUser({
       email,
@@ -50,13 +109,36 @@ serve(async (req) => {
     }
     await sb.from("app_users").update({ alias, alias_locked: false }).eq("id", user.id);
 
-    return new Response(JSON.stringify({ ok: true, alias, user_id: user.id }), {
-      headers: { "content-type": "application/json" }
-    });
+    return respond(
+      200,
+      { ok: true, alias, user_id: user.id },
+      { outcome: "success", userId: user.id }
+    );
   } catch (e) {
-    return new Response(JSON.stringify({ ok: false, error: String(e) }), {
-      status: 400,
-      headers: { "content-type": "application/json" }
-    });
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    return respond(
+      400,
+      { ok: false, error: errorMessage },
+      { outcome: "exception", error: errorMessage, level: "error" }
+    );
   }
 });
+
+function extractIp(headers: Headers): string {
+  const forwarded = headers.get("x-forwarded-for");
+  if (forwarded) {
+    const first = forwarded.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  const realIp = headers.get("x-real-ip");
+  if (realIp) return realIp;
+  return "unknown";
+}
+
+async function hashValue(value: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(value);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
