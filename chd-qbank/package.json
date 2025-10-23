@@ -9,6 +9,8 @@
     "preview": "vite preview",
     "test": "vitest",
     "lint": "eslint --ext .ts,.tsx src",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "build:scripts": "tsc -p tsconfig.scripts.json",
     "check:migration-safety": "npm run build:scripts && node scripts/dist/check-migration-safety.js",
     "seed:invite": "node scripts/seed-invite.mjs",
