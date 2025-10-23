@@ -21,7 +21,9 @@ export default defineConfig(({ mode }) => {
     build: { sourcemap: mode !== "production" },
     test: {
       environment: "jsdom",
-      setupFiles: "./src/__tests__/setup.ts"
+      setupFiles: "./src/__tests__/setup.ts",
+      include: ["src/__tests__/**/*.test.ts", "src/__tests__/**/*.test.tsx"],
+      exclude: ["tests/e2e/**"]
     }
   };
 });
