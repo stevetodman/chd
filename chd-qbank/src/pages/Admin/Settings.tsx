@@ -4,94 +4,86 @@ import { Button } from "../../components/ui/Button";
 import { useSettingsStore } from "../../lib/settings";
 
 export default function Settings() {
-  const loadSettings = useSettingsStore((state) => state.loadSettings);
-  const globalLeaderboardEnabled = useSettingsStore((state) => state.leaderboardEnabled);
-  const setGlobalLeaderboardEnabled = useSettingsStore((state) => state.setLeaderboardEnabled);
-  const [leaderboardEnabled, setLeaderboardEnabled] = useState(globalLeaderboardEnabled);
+  const loadSettings = useSettingsStore((s) => s.loadSettings);
+  const globalLeaderboard = useSettingsStore((s) => s.leaderboardEnabled);
+  const globalMaintenance = useSettingsStore((s) => s.maintenanceMode);
+  const setGlobalLeaderboard = useSettingsStore((s) => s.setLeaderboardEnabled);
+  const setGlobalMaintenance = useSettingsStore((s) => s.setMaintenanceMode);
+
+  const [leaderboardEnabled, setLeaderboardEnabled] = useState(globalLeaderboard);
+  const [maintenanceMode, setMaintenanceMode] = useState(globalMaintenance);
+  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ text: string; tone: "success" | "error" } | null>(null);
 
-  useEffect(() => {
-    void loadSettings();
-  }, [loadSettings]);
+  useEffect(() => { void loadSettings(); }, [loadSettings]);
+  useEffect(() => { setLeaderboardEnabled(globalLeaderboard); }, [globalLeaderboard]);
+  useEffect(() => { setMaintenanceMode(globalMaintenance); }, [globalMaintenance]);
 
-  useEffect(() => {
-    setLeaderboardEnabled(globalLeaderboardEnabled);
-  }, [globalLeaderboardEnabled]);
-
-  const save = async () => {
+  const saveSettings = async () => {
     setMessage(null);
+    setSaving(true);
     try {
-      const { error } = await supabase
-        .from("app_settings")
-        .upsert({ key: "leaderboard_enabled", value: leaderboardEnabled ? "true" : "false" });
-
-      if (error) {
-        setMessage({ text: `Failed to save settings: ${error.message}`, tone: "error" });
-        return;
-      }
-
-      setGlobalLeaderboardEnabled(leaderboardEnabled);
-      setMessage({ text: "Settings saved", tone: "success" });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      setMessage({ text: `Failed to save settings: ${message}`, tone: "error" });
+      const rows = [
+        { key: "leaderboard_enabled", value: leaderboardEnabled ? "true" : "false" },
+        { key: "maintenance_mode",    value: maintenanceMode ? "true" : "false" }
+      ];
+      const { error } = await supabase.from("app_settings").upsert(rows, { onConflict: "key" });
+      if (error) throw error;
+      setGlobalLeaderboard(leaderboardEnabled);
+      setGlobalMaintenance(maintenanceMode);
+      setMessage({ text: "Settings saved.", tone: "success" });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setMessage({ text: `Failed to save: ${msg}`, tone: "error" });
+    } finally {
+      setSaving(false);
     }
   };
 
   const resetLeaderboard = async () => {
     if (typeof window !== "undefined") {
-      const confirmed = window.confirm(
-        "This will clear all all-time leaderboard scores. Are you sure you want to continue?"
-      );
-      if (!confirmed) {
-        return;
-      }
+      const ok = window.confirm("This will clear all all-time leaderboard scores. Continue?");
+      if (!ok) return;
     }
-
     setMessage(null);
     try {
       const { error } = await supabase.from("leaderboard").delete().neq("user_id", "");
-
-      if (error) {
-        setMessage({ text: `Failed to reset leaderboard: ${error.message}`, tone: "error" });
-        return;
-      }
-
-      setMessage({ text: "Leaderboard reset", tone: "success" });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      setMessage({ text: `Failed to reset leaderboard: ${message}`, tone: "error" });
+      if (error) throw error;
+      setMessage({ text: "Leaderboard reset.", tone: "success" });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setMessage({ text: `Failed to reset leaderboard: ${msg}`, tone: "error" });
     }
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <h1 className="text-xl font-semibold">Admin Settings</h1>
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={leaderboardEnabled}
-          onChange={(e) => setLeaderboardEnabled(e.target.checked)}
-        />
-        Enable leaderboard
-      </label>
-      <Button type="button" onClick={save}>
-        Save
-      </Button>
-      <Button type="button" variant="secondary" onClick={resetLeaderboard}>
-        Reset all-time leaderboard
-      </Button>
-      {message ? (
-        <p
-          className={
-            message.tone === "error"
-              ? "text-sm text-red-600"
-              : "text-sm text-neutral-600"
-          }
-        >
-          {message.text}
-        </p>
-      ) : null}
+
+      <div className="rounded-lg border border-neutral-200 bg-white p-4 space-y-3">
+        <label className="flex items-center gap-3 text-sm">
+          <input type="checkbox" className="h-4 w-4"
+            checked={leaderboardEnabled}
+            onChange={(e) => setLeaderboardEnabled(e.target.checked)} />
+          <span>Enable leaderboard for all users</span>
+        </label>
+
+        <label className="flex items-center gap-3 text-sm">
+          <input type="checkbox" className="h-4 w-4"
+            checked={maintenanceMode}
+            onChange={(e) => setMaintenanceMode(e.target.checked)} />
+          <span>Enable maintenance mode (lock out non-admins)</span>
+        </label>
+
+        <div className="flex items-center gap-3">
+          <Button onClick={saveSettings} disabled={saving}>{saving ? "Saving…" : "Save settings"}</Button>
+          <Button onClick={resetLeaderboard} variant="secondary">Reset all-time leaderboard</Button>
+        </div>
+
+        {message ? (
+          <p className={message.tone === "error" ? "text-sm text-red-600" : "text-sm text-neutral-700"}>{message.text}</p>
+        ) : null}
+      </div>
     </div>
   );
 }
