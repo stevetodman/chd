@@ -34,6 +34,7 @@ export default function ReviewQuestionCard({ flag, onMarkReviewed, processing = 
 
   const handleRetry = () => {
     setSelected(null);
+    setShowExplanation(false);
   };
 
   const attemptStatus = selected ? (selected.is_correct ? "correct" : "incorrect") : "idle";
