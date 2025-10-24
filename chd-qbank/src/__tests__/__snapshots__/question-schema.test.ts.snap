@@ -1,3 +1,16 @@
-// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
-
-exports[`QBank question shape & assets > stable top-level keys (snapshot) 1`] = `[]`;
+exports[`QBank question shape & assets stable top-level keys (snapshot) 1`] = `
+Array [
+  Array [
+    "choices",
+    "difficulty",
+    "explanation",
+    "id",
+    "mediaBundle",
+    "objective",
+    "offlineRequired",
+    "references",
+    "stem",
+    "tags",
+  ],
+]
+`;
