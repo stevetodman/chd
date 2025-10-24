@@ -1,0 +1,15 @@
+{
+  "id": "vsd_vs_pda_001",
+  "objective": "Differentiate VSD vs PDA by timing and location of murmur",
+  "stem": "A 2-month-old has a harsh holosystolic murmur at the LLSB…",
+  "choices": [
+    { "id": "A", "label": "A", "text": "PDA" },
+    { "id": "B", "label": "B", "text": "VSD", "isCorrect": true }
+  ],
+  "explanation": "VSD: holosystolic at LLSB; PDA: continuous machinery at LUSB.",
+  "tags": ["murmurs","acyanotic"],
+  "difficulty": "easy",
+  "references": ["Lilly Ch. 12"],
+  "mediaBundle": [],
+  "offlineRequired": true
+}

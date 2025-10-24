@@ -95,3 +95,11 @@ The seed utilities read from `data/templates/` and enforce idempotency, so re-ru
 - Admin role management: [`../docs/security/admin-roles.md`](../docs/security/admin-roles.md)
 
 Keep documentation and seed templates updated whenever schemas or user flows change—automation scripts assume they stay in sync.
+
+## QBank Tests
+
+Add new question items by placing JSON files under `content/questions/`. Each file should follow the schema defined in `src/schema/question.schema.ts` and include any media assets referenced in `public/media/`.
+
+Run the validation suite with `npm test` for a one-time check or `npm run test:watch` while iterating locally.
+
+If you intentionally change the question shape, update snapshots with `npx vitest -u`.
