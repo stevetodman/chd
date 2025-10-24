@@ -44,3 +44,4 @@ end;
 $$;
 
 select cron.schedule('refresh_stats_nightly', '30 2 * * *', $$select refresh_item_stats();$$);
+select cron.schedule('refresh_reliability_nightly', '45 2 * * *', $$select refresh_assessment_reliability();$$);

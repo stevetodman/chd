@@ -103,6 +103,17 @@ export type HeatmapAggregateRow = {
   avg_time_ms: number | null;
 };
 
+export type ReliabilitySnapshot = {
+  kr20_alpha: number | null;
+  cronbach_alpha: number | null;
+  n_items: number;
+  n_users: number;
+  total_attempts: number;
+  score_variance: number | null;
+  sum_item_variance: number | null;
+  last_computed_at: string | null;
+};
+
 export type DashboardMetrics = {
   total_attempts: number;
   correct_attempts: number;

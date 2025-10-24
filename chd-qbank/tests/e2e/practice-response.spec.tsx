@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Practice from "../../src/pages/Practice";
 import { useSessionStore } from "../../src/lib/auth";
-import type { HeatmapAggregateRow } from "../../src/lib/constants";
+import type { HeatmapAggregateRow, ReliabilitySnapshot } from "../../src/lib/constants";
 import type { QuestionQueryRow } from "../../src/lib/practice";
 import { supabase } from "../../src/lib/supabaseClient";
 import { createMockSession } from "../../src/__tests__/test-helpers";
@@ -37,6 +37,7 @@ type SupabaseMockState = {
   responses: ResponseRow[];
   events: AnswerEventRow[];
   heatmapRows: HeatmapAggregateRow[];
+  reliability: ReliabilitySnapshot | null;
   nextResponseId: number;
   nextEventId: number;
   timestamp: string;
@@ -50,6 +51,7 @@ const supabaseState = vi.hoisted(() => ({
   responses: [] as ResponseRow[],
   events: [] as AnswerEventRow[],
   heatmapRows: [] as HeatmapAggregateRow[],
+  reliability: null as ReliabilitySnapshot | null,
   nextResponseId: 1,
   nextEventId: 1,
   timestamp: "2024-07-08T12:00:00.000Z",
@@ -348,6 +350,76 @@ function computeHeatmap(state: SupabaseMockState): HeatmapAggregateRow[] {
     );
 }
 
+function computeReliability(state: SupabaseMockState): ReliabilitySnapshot {
+  const events = state.events.slice().sort((a, b) => {
+    const effectiveComparison = b.effective_at.localeCompare(a.effective_at);
+    if (effectiveComparison !== 0) return effectiveComparison;
+    return b.created_at.localeCompare(a.created_at);
+  });
+
+  const latest = new Map<string, AnswerEventRow>();
+  for (const event of events) {
+    const key = `${event.user_id}__${event.question_id}`;
+    if (!latest.has(key)) {
+      latest.set(key, event);
+    }
+  }
+
+  const itemStats = new Map<
+    string,
+    {
+      attempts: number;
+      correct: number;
+    }
+  >();
+  const userScores = new Map<string, number>();
+
+  for (const event of latest.values()) {
+    const item = itemStats.get(event.question_id) ?? { attempts: 0, correct: 0 };
+    item.attempts += 1;
+    if (event.is_correct) item.correct += 1;
+    itemStats.set(event.question_id, item);
+
+    const previousScore = userScores.get(event.user_id) ?? 0;
+    userScores.set(event.user_id, previousScore + (event.is_correct ? 1 : 0));
+  }
+
+  const nItems = itemStats.size;
+  const nUsers = userScores.size;
+  const totalAttempts = Array.from(itemStats.values()).reduce((acc, value) => acc + value.attempts, 0);
+
+  let sumItemVariance = 0;
+  for (const stats of itemStats.values()) {
+    if (stats.attempts === 0) continue;
+    const p = stats.correct / stats.attempts;
+    sumItemVariance += p * (1 - p);
+  }
+
+  const scores = Array.from(userScores.values());
+  let scoreVariance: number | null = null;
+  if (scores.length >= 2) {
+    const mean = scores.reduce((acc, value) => acc + value, 0) / scores.length;
+    const sumSq = scores.reduce((acc, value) => acc + (value - mean) ** 2, 0);
+    scoreVariance = sumSq / (scores.length - 1);
+  }
+
+  let alpha: number | null = null;
+  if (nItems >= 2 && nUsers >= 2 && scoreVariance !== null && scoreVariance > 0) {
+    alpha = (nItems / (nItems - 1)) * (1 - sumItemVariance / scoreVariance);
+  }
+
+  return {
+    kr20_alpha: alpha,
+    cronbach_alpha: alpha,
+    n_items: nItems,
+    n_users: nUsers,
+    total_attempts: totalAttempts,
+    score_variance: scoreVariance,
+    sum_item_variance: nItems > 0 ? sumItemVariance : 0,
+    last_computed_at: state.timestamp,
+  };
+}
+
 describe("practice response analytics capture", () => {
   beforeEach(() => {
     supabaseState.from.mockReset();
@@ -356,6 +428,7 @@ describe("practice response analytics capture", () => {
     supabaseState.responses = [];
     supabaseState.events = [];
     supabaseState.heatmapRows = [];
+    supabaseState.reliability = null;
     supabaseState.nextResponseId = 1;
     supabaseState.nextEventId = 1;
     supabaseState.timestamp = "2024-07-08T12:00:00.000Z";
@@ -377,8 +450,18 @@ describe("practice response analytics capture", () => {
         supabaseState.heatmapRows = computeHeatmap(supabaseState);
         return { data: null, error: null };
       }
+      if (fn === "analytics_refresh_reliability") {
+        supabaseState.reliability = computeReliability(supabaseState);
+        return { data: null, error: null };
+      }
       if (fn === "analytics_heatmap_admin") {
         return { data: supabaseState.heatmapRows.slice(), error: null };
+      }
+      if (fn === "analytics_reliability_snapshot") {
+        return {
+          data: supabaseState.reliability ? [supabaseState.reliability] : [],
+          error: null
+        };
       }
       throw new Error(`Unexpected RPC: ${fn}`);
     });
@@ -465,6 +548,25 @@ describe("practice response analytics capture", () => {
         incorrect_attempts: 0,
         correct_rate: 1,
         avg_time_ms: 1500
+      })
+    );
+
+    const { data: initialReliability } = await supabase.rpc("analytics_reliability_snapshot");
+    expect(initialReliability).toEqual([]);
+
+    await supabase.rpc("analytics_refresh_reliability");
+
+    const { data: refreshedReliability } = await supabase.rpc("analytics_reliability_snapshot");
+    expect(refreshedReliability).toContainEqual(
+      expect.objectContaining({
+        n_items: 1,
+        n_users: 1,
+        total_attempts: 1,
+        kr20_alpha: null,
+        cronbach_alpha: null,
+        score_variance: null,
+        sum_item_variance: 0,
+        last_computed_at: supabaseState.timestamp
       })
     );
 
