@@ -46,7 +46,7 @@ describe("import_question_rows edge cases", () => {
             lead_in: "Lead 1",
             explanation_brief_md: "Brief 1",
             explanation_deep_md: "",
-            topic: "",
+            topic: "Topic",
             subtopic: "",
             lesion: "Lesion",
             difficulty: "easy",
@@ -60,13 +60,40 @@ describe("import_question_rows edge cases", () => {
             alt_text: "Diagram alt",
             choiceA: "Choice A",
             choiceB: "Choice B",
-            choiceC: "",
-            choiceD: "",
-            choiceE: "",
+            choiceC: "Choice C",
+            choiceD: "Choice D",
+            choiceE: "Choice E",
             correct_label: "a"
           }
-        ]
-      } as unknown as { data: Array<Record<string, string>> });
+        ],
+        meta: {
+          fields: [
+            "slug",
+            "stem_md",
+            "lead_in",
+            "choiceA",
+            "choiceB",
+            "choiceC",
+            "choiceD",
+            "choiceE",
+            "correct_label",
+            "explanation_brief_md",
+            "explanation_deep_md",
+            "topic",
+            "subtopic",
+            "lesion",
+            "difficulty",
+            "bloom",
+            "lecture_link",
+            "media_murmur",
+            "media_cxr",
+            "media_ekg",
+            "media_diagram",
+            "alt_text",
+            "status"
+          ]
+        }
+      } as unknown as { data: Array<Record<string, string>>; meta: { fields: string[] } });
     });
 
     rpcMock.mockResolvedValueOnce({
@@ -84,9 +111,9 @@ describe("import_question_rows edge cases", () => {
     const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
     await user.upload(fileInput, new File(["slug"], "import.csv", { type: "text/csv" }));
 
-    await screen.findByText(/previewing 1 rows/i);
+    await screen.findByText(/previewing 1 row/i);
 
-    await user.click(screen.getByRole("button", { name: /publish to supabase/i }));
+    await user.click(screen.getByRole("button", { name: /import rows/i }));
 
     await waitFor(() => expect(rpcMock).toHaveBeenCalled());
     expect(rpcMock).toHaveBeenCalledWith("import_question_rows", {
@@ -97,7 +124,7 @@ describe("import_question_rows edge cases", () => {
           lead_in: "Lead 1",
           explanation_brief_md: "Brief 1",
           explanation_deep_md: "",
-          topic: "",
+          topic: "Topic",
           subtopic: "",
           lesion: "Lesion",
           difficulty: "easy",
@@ -111,9 +138,9 @@ describe("import_question_rows edge cases", () => {
           alt_text: "Diagram alt",
           choiceA: "Choice A",
           choiceB: "Choice B",
-          choiceC: "",
-          choiceD: "",
-          choiceE: "",
+          choiceC: "Choice C",
+          choiceD: "Choice D",
+          choiceE: "Choice E",
           correct_label: "A"
         }
       ]
@@ -153,8 +180,35 @@ describe("import_question_rows edge cases", () => {
             choiceE: "E",
             correct_label: "b"
           }
-        ]
-      } as unknown as { data: Array<Record<string, string>> });
+        ],
+        meta: {
+          fields: [
+            "slug",
+            "stem_md",
+            "lead_in",
+            "choiceA",
+            "choiceB",
+            "choiceC",
+            "choiceD",
+            "choiceE",
+            "correct_label",
+            "explanation_brief_md",
+            "explanation_deep_md",
+            "topic",
+            "subtopic",
+            "lesion",
+            "difficulty",
+            "bloom",
+            "lecture_link",
+            "media_murmur",
+            "media_cxr",
+            "media_ekg",
+            "media_diagram",
+            "alt_text",
+            "status"
+          ]
+        }
+      } as unknown as { data: Array<Record<string, string>>; meta: { fields: string[] } });
     });
 
     rpcMock.mockResolvedValueOnce({
@@ -167,9 +221,9 @@ describe("import_question_rows edge cases", () => {
     const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
     await user.upload(fileInput, new File(["slug"], "import.csv", { type: "text/csv" }));
 
-    await screen.findByText(/previewing 1 rows/i);
+    await screen.findByText(/previewing 1 row/i);
 
-    await user.click(screen.getByRole("button", { name: /publish to supabase/i }));
+    await user.click(screen.getByRole("button", { name: /import rows/i }));
 
     await waitFor(() => expect(rpcMock).toHaveBeenCalled());
     expect(await screen.findByText(/import failed/i)).toBeInTheDocument();
