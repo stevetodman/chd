@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { Button } from "../components/ui/Button";
+import { getErrorMessage } from "../lib/utils";
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -25,8 +26,7 @@ export default function Signup() {
       setSuccess("Account created. Please sign in.");
       setTimeout(() => navigate("/login"), 800);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unable to sign up";
-      setError(message);
+      setError(getErrorMessage(err, "Unable to sign up"));
     } finally {
       setIdempotencyKey(crypto.randomUUID());
     }

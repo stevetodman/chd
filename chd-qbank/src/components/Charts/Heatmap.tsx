@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchAdminHeatmap } from "../../lib/analytics";
 import type { HeatmapAggregateRow } from "../../lib/constants";
+import { getErrorMessage } from "../../lib/utils";
 
 type Cell = {
   lesion: string;
@@ -53,8 +54,7 @@ export default function Heatmap() {
       .catch((err) => {
         if (cancelled) return;
         console.error("Failed to load heatmap", err);
-        const message = err instanceof Error ? err.message : "Failed to load heatmap data.";
-        setError(message);
+        setError(getErrorMessage(err, "Failed to load heatmap data."));
       });
 
     return () => {

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { Button } from "../../components/ui/Button";
 import { useSettingsStore } from "../../lib/settings";
+import { getErrorMessage } from "../../lib/utils";
 
 export default function Settings() {
   const loadSettings = useSettingsStore((s) => s.loadSettings);
@@ -40,8 +41,7 @@ export default function Settings() {
       setGlobalMaintenance(maintenanceMode);
       setMessage({ text: "Settings saved.", tone: "success" });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Unknown error";
-      setMessage({ text: `Failed to save: ${msg}`, tone: "error" });
+      setMessage({ text: `Failed to save: ${getErrorMessage(err, "Unknown error")}`, tone: "error" });
     } finally {
       setSaving(false);
     }
@@ -57,8 +57,10 @@ export default function Settings() {
       if (error) throw error;
       setMessage({ text: "Leaderboard reset.", tone: "success" });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Unknown error";
-      setMessage({ text: `Failed to reset leaderboard: ${msg}`, tone: "error" });
+      setMessage({
+        text: `Failed to reset leaderboard: ${getErrorMessage(err, "Unknown error")}`,
+        tone: "error"
+      });
     }
   };
 
