@@ -16,12 +16,16 @@ const baseStyles =
 
 const toneStyles: Record<FilterChipTone, { base: string; active: string }> = {
   default: {
-    base: "border-surface-muted bg-surface-base text-surface-inverted shadow-elevation-xs",
-    active: "border-brand-300 bg-brand-50 text-brand-700 shadow-elevation-sm"
+    base:
+      "border-surface-muted bg-surface-base text-surface-inverted shadow-elevation-xs dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100",
+    active:
+      "border-brand-300 bg-brand-50 text-brand-700 shadow-elevation-sm dark:border-brand-400 dark:bg-brand-500/10 dark:text-brand-200"
   },
   brand: {
-    base: "border-brand-200 bg-brand-50/40 text-brand-700 shadow-elevation-xs",
-    active: "border-brand-400 bg-brand-100 text-brand-800 shadow-elevation-sm"
+    base:
+      "border-brand-200 bg-brand-50/40 text-brand-700 shadow-elevation-xs dark:border-brand-500/50 dark:bg-brand-500/10 dark:text-brand-200",
+    active:
+      "border-brand-400 bg-brand-100 text-brand-800 shadow-elevation-sm dark:border-brand-400 dark:bg-brand-500/20 dark:text-brand-100"
   }
 };
 

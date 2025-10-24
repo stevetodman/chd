@@ -6,14 +6,100 @@
   color-scheme: light;
 }
 
+.dark {
+  color-scheme: dark;
+}
+
 body {
-  @apply bg-surface-subtle text-surface-inverted antialiased font-sans;
+  @apply bg-surface-subtle text-surface-inverted antialiased font-sans transition-colors duration-200;
+}
+
+.dark body {
+  @apply bg-neutral-950 text-neutral-100;
 }
 
 a {
   @apply font-medium text-brand-600 underline transition-colors hover:text-brand-500;
 }
 
+.dark a {
+  @apply text-brand-300 hover:text-brand-200;
+}
+
 main {
-  @apply flex-1 w-full;
+  @apply w-full flex-1;
+}
+
+.dark .bg-surface-base {
+  --tw-bg-opacity: 1;
+  background-color: rgb(15 23 42 / var(--tw-bg-opacity));
+}
+
+.dark .bg-surface-subtle {
+  --tw-bg-opacity: 1;
+  background-color: rgb(24 33 52 / var(--tw-bg-opacity));
+}
+
+.dark .bg-surface-muted {
+  --tw-bg-opacity: 1;
+  background-color: rgb(30 41 59 / var(--tw-bg-opacity));
+}
+
+.dark .bg-white {
+  --tw-bg-opacity: 1;
+  background-color: rgb(24 33 52 / var(--tw-bg-opacity));
+}
+
+.dark .bg-neutral-50 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(30 41 59 / var(--tw-bg-opacity));
+}
+
+.dark .bg-neutral-100 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(42 54 78 / var(--tw-bg-opacity));
+}
+
+.dark .border-surface-muted {
+  --tw-border-opacity: 1;
+  border-color: rgb(71 85 105 / var(--tw-border-opacity));
+}
+
+.dark .border-neutral-200 {
+  --tw-border-opacity: 1;
+  border-color: rgb(71 85 105 / var(--tw-border-opacity));
+}
+
+.dark .border-neutral-300 {
+  --tw-border-opacity: 1;
+  border-color: rgb(100 116 139 / var(--tw-border-opacity));
+}
+
+.dark .text-surface-inverted {
+  --tw-text-opacity: 1;
+  color: rgb(226 232 240 / var(--tw-text-opacity));
+}
+
+.dark .text-neutral-700 {
+  --tw-text-opacity: 1;
+  color: rgb(226 232 240 / var(--tw-text-opacity));
+}
+
+.dark .text-neutral-600 {
+  --tw-text-opacity: 1;
+  color: rgb(203 213 225 / var(--tw-text-opacity));
+}
+
+.dark .text-neutral-500 {
+  --tw-text-opacity: 1;
+  color: rgb(148 163 184 / var(--tw-text-opacity));
+}
+
+.dark .text-neutral-400 {
+  --tw-text-opacity: 1;
+  color: rgb(148 163 184 / var(--tw-text-opacity));
+}
+
+.dark .focus-visible\:ring-offset-surface-base:focus-visible {
+  --tw-ring-offset-color: rgb(15 23 42 / var(--tw-ring-offset-opacity, 1));
 }

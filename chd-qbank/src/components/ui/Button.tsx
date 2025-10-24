@@ -12,9 +12,12 @@ const base =
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "primary", ...props }, ref) => {
     const variantClasses = {
-      primary: "bg-brand-600 text-white shadow-elevation-xs hover:bg-brand-500",
-      secondary: "border border-surface-muted bg-surface-base text-surface-inverted shadow-elevation-xs hover:bg-surface-subtle",
-      ghost: "bg-transparent text-surface-inverted hover:bg-surface-muted/60"
+      primary:
+        "bg-brand-600 text-white shadow-elevation-xs hover:bg-brand-500 dark:bg-brand-500 dark:hover:bg-brand-400",
+      secondary:
+        "border border-surface-muted bg-surface-base text-surface-inverted shadow-elevation-xs hover:bg-surface-subtle dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800",
+      ghost:
+        "bg-transparent text-surface-inverted hover:bg-surface-muted/60 dark:text-neutral-100 dark:hover:bg-neutral-800/80"
     }[variant];
 
     return <button ref={ref} className={classNames(base, variantClasses, className)} {...props} />;

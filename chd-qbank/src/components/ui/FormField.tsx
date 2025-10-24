@@ -15,8 +15,8 @@ export const FormField = forwardRef<HTMLLabelElement, FieldProps>(
       className={classNames("flex flex-col gap-2.5 text-left", className)}
       {...props}
     >
-      <span className="text-label-xs uppercase text-neutral-500">{label}</span>
-      {hint ? <span className="text-xs text-neutral-500">{hint}</span> : null}
+      <span className="text-label-xs uppercase text-neutral-500 dark:text-neutral-400">{label}</span>
+      {hint ? <span className="text-xs text-neutral-500 dark:text-neutral-400">{hint}</span> : null}
       {children}
     </label>
   )
@@ -40,13 +40,13 @@ export const FormFieldset = ({
 }: FieldsetProps) => (
   <fieldset
     className={classNames(
-      "rounded-2xl border border-surface-muted bg-surface-base/70 px-5 py-4",
+      "rounded-2xl border border-surface-muted bg-surface-base/70 px-5 py-4 dark:border-neutral-700 dark:bg-neutral-900/70",
       className
     )}
     {...props}
   >
-    <legend className="px-2 text-label-xs uppercase text-neutral-500">{legend}</legend>
-    {description ? <p className="mt-2 text-xs text-neutral-500">{description}</p> : null}
+    <legend className="px-2 text-label-xs uppercase text-neutral-500 dark:text-neutral-400">{legend}</legend>
+    {description ? <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">{description}</p> : null}
     <div className={classNames("mt-4 grid gap-3", contentClassName)}>{children}</div>
   </fieldset>
 );

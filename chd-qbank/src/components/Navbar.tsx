@@ -33,14 +33,16 @@ export default function Navbar() {
 
   const linkClasses = ({ isActive }: { isActive: boolean }) =>
     classNames(
-      "block rounded px-3 py-2 text-sm font-medium transition-colors hover:bg-neutral-50 hover:text-neutral-900 md:rounded-none md:px-0 md:py-0 md:text-sm md:hover:bg-transparent md:border-b-2 md:border-transparent",
-      isActive ? "text-neutral-900 md:border-brand-500" : "text-neutral-600"
+      "block rounded px-3 py-2 text-sm font-medium transition-colors hover:bg-neutral-50 hover:text-neutral-900 md:rounded-none md:px-0 md:py-0 md:text-sm md:hover:bg-transparent md:border-b-2 md:border-transparent dark:hover:bg-neutral-800 dark:hover:text-neutral-100",
+      isActive
+        ? "text-neutral-900 md:border-brand-500 dark:text-neutral-50 dark:md:border-brand-400"
+        : "text-neutral-600 dark:text-neutral-300"
     );
 
   const secondaryLinkClasses = ({ isActive }: { isActive: boolean }) =>
     classNames(
-      "text-sm font-medium transition-colors hover:text-neutral-900",
-      isActive ? "text-neutral-900" : "text-neutral-600"
+      "text-sm font-medium transition-colors hover:text-neutral-900 dark:hover:text-neutral-100",
+      isActive ? "text-neutral-900 dark:text-neutral-100" : "text-neutral-600 dark:text-neutral-300"
     );
 
   const handleNavLinkClick = () => {
@@ -48,10 +50,10 @@ export default function Navbar() {
   };
 
   return (
-    <header className="border-b border-neutral-200 bg-white">
+    <header className="border-b border-neutral-200 bg-white transition-colors dark:border-neutral-800 dark:bg-neutral-900">
       <div className="mx-auto max-w-6xl px-4 py-4">
         <div className="flex items-center justify-between gap-4">
-          <Link to="/dashboard" className="text-lg font-semibold text-brand-600">
+          <Link to="/dashboard" className="text-lg font-semibold text-brand-600 transition-colors dark:text-brand-300">
             {APP_NAME}
           </Link>
           <div className="flex items-center gap-3">
@@ -73,7 +75,7 @@ export default function Navbar() {
                     onClick={() => {
                       void signOut();
                     }}
-                    className="rounded bg-neutral-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-700"
+                    className="rounded bg-neutral-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
                   >
                     Sign out
                   </button>
@@ -90,7 +92,7 @@ export default function Navbar() {
             )}
             <button
               type="button"
-              className="inline-flex items-center justify-center rounded-md border border-neutral-200 px-2 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 md:hidden"
+              className="inline-flex items-center justify-center rounded-md border border-neutral-200 px-2 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 md:hidden dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800"
               aria-expanded={mobileOpen}
               aria-label="Toggle navigation menu"
               onClick={() => setMobileOpen((open) => !open)}
@@ -114,7 +116,7 @@ export default function Navbar() {
           </div>
         </div>
         {mobileOpen ? (
-          <div className="mt-4 space-y-6 border-t border-neutral-200 pt-4 md:hidden">
+          <div className="mt-4 space-y-6 border-t border-neutral-200 pt-4 md:hidden dark:border-neutral-800">
             {session ? (
               <nav className="space-y-1">
                 {primaryLinks.map((link) => (
@@ -124,7 +126,7 @@ export default function Navbar() {
                 ))}
               </nav>
             ) : null}
-            <div className="space-y-1 border-t border-neutral-100 pt-4">
+            <div className="space-y-1 border-t border-neutral-100 pt-4 dark:border-neutral-800">
               {accountLinks.map((link) => (
                 <NavLink key={link.to} to={link.to} className={linkClasses} onClick={handleNavLinkClick}>
                   {link.label}
@@ -137,7 +139,7 @@ export default function Navbar() {
                     setMobileOpen(false);
                     void signOut();
                   }}
-                  className="w-full rounded bg-neutral-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-700"
+                  className="w-full rounded bg-neutral-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
                 >
                   Sign out
                 </button>

@@ -56,14 +56,14 @@ export default function Layout() {
   const showMaintenance = !!session && maintenanceMode && !isAdmin;
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-neutral-50 text-surface-inverted transition-colors dark:bg-neutral-950 dark:text-neutral-100">
       <Navbar />
-      <main className="mx-auto max-w-6xl px-4 py-6">
+      <main className="mx-auto max-w-6xl px-4 py-6 transition-colors">
         {showMaintenance ? (
           <div className="flex min-h-[60vh] items-center justify-center">
-            <div className="max-w-lg rounded-xl border border-neutral-200 bg-white p-6 text-center shadow-sm">
-              <h1 className="text-xl font-semibold">We&rsquo;re doing a quick tune-up</h1>
-              <p className="mt-2 text-neutral-600">
+            <div className="max-w-lg rounded-xl border border-neutral-200 bg-white p-6 text-center shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+              <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">We&rsquo;re doing a quick tune-up</h1>
+              <p className="mt-2 text-neutral-600 dark:text-neutral-300">
                 The app is temporarily unavailable for students while we update things.
                 Please check back soon.
               </p>

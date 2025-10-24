@@ -68,21 +68,21 @@ export default function Settings() {
     <div className="space-y-5">
       <h1 className="text-xl font-semibold">Admin Settings</h1>
 
-      <div className="rounded-lg border border-neutral-200 bg-white p-4 space-y-3">
-        <label className="flex items-center gap-3 text-sm">
+      <div className="space-y-3 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+        <label className="flex items-center gap-3 text-sm text-neutral-700 dark:text-neutral-300">
           <input
             type="checkbox"
-            className="h-4 w-4"
+            className="h-4 w-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-400 dark:border-neutral-700 dark:bg-neutral-900"
             checked={leaderboardEnabled}
             onChange={(e) => setLeaderboardEnabled(e.target.checked)}
           />
           <span>Enable leaderboard for all users</span>
         </label>
 
-        <label className="flex items-center gap-3 text-sm">
+        <label className="flex items-center gap-3 text-sm text-neutral-700 dark:text-neutral-300">
           <input
             type="checkbox"
-            className="h-4 w-4"
+            className="h-4 w-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-400 dark:border-neutral-700 dark:bg-neutral-900"
             checked={maintenanceMode}
             onChange={(e) => setMaintenanceMode(e.target.checked)}
           />
@@ -97,7 +97,15 @@ export default function Settings() {
         </div>
 
         {message ? (
-          <p className={message.tone === "error" ? "text-sm text-red-600" : "text-sm text-neutral-700"}>{message.text}</p>
+          <p
+            className={
+              message.tone === "error"
+                ? "text-sm text-red-600 dark:text-red-400"
+                : "text-sm text-neutral-700 dark:text-neutral-300"
+            }
+          >
+            {message.text}
+          </p>
         ) : null}
       </div>
     </div>

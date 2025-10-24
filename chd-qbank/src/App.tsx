@@ -4,6 +4,7 @@ import PageState from "./components/PageState";
 import { AppRoutes } from "./routes";
 import { getSession, useSessionStore } from "./lib/auth";
 import { useServiceWorkerUpdates } from "./hooks/useServiceWorkerUpdates";
+import { useFeatureFlagsStore } from "./store/featureFlags";
 
 const PUBLIC_ROUTES = new Set(["/login", "/signup", "/privacy", "/terms"]);
 
@@ -12,10 +13,18 @@ export default function App() {
   const navigate = useNavigate();
   const { session, loading, initialized } = useSessionStore();
   const { updateVersion, confirmUpdate, dismissUpdate } = useServiceWorkerUpdates();
+  const darkModeEnabled = useFeatureFlagsStore((state) => state.darkModeEnabled);
 
   useEffect(() => {
     void getSession();
   }, []);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    root.classList.toggle("dark", darkModeEnabled);
+    root.style.colorScheme = darkModeEnabled ? "dark" : "light";
+  }, [darkModeEnabled]);
 
   useEffect(() => {
     if (loading || !initialized) return;
@@ -29,7 +38,7 @@ export default function App() {
     <>
       <Suspense
         fallback={
-          <div className="flex min-h-screen items-center justify-center bg-neutral-50 p-6">
+          <div className="flex min-h-screen items-center justify-center bg-neutral-50 p-6 dark:bg-neutral-950">
             <PageState title="Loading the app" description="Hang tight while we prep your workspace." fullHeight />
           </div>
         }

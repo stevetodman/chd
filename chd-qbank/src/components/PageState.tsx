@@ -3,19 +3,24 @@ import { classNames } from "../lib/utils";
 
 const variantStyles = {
   loading: {
-    container: "border-neutral-200 bg-white text-neutral-700",
-    heading: "text-neutral-900",
-    icon: (
-      <span aria-hidden="true" className="inline-flex h-12 w-12 items-center justify-center rounded-full border-4 border-neutral-200 border-t-brand-500 align-middle [animation:spin_0.8s_linear_infinite]" />
-    )
-  },
-  error: {
-    container: "border-rose-200 bg-rose-50 text-rose-800",
-    heading: "text-rose-700",
+    container:
+      "border-neutral-200 bg-white text-neutral-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200",
+    heading: "text-neutral-900 dark:text-neutral-100",
     icon: (
       <span
         aria-hidden="true"
-        className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-600"
+        className="inline-flex h-12 w-12 items-center justify-center rounded-full border-4 border-neutral-200 border-t-brand-500 align-middle [animation:spin_0.8s_linear_infinite] dark:border-neutral-700 dark:border-t-brand-400"
+      />
+    )
+  },
+  error: {
+    container:
+      "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-500/60 dark:bg-rose-500/10 dark:text-rose-200",
+    heading: "text-rose-700 dark:text-rose-100",
+    icon: (
+      <span
+        aria-hidden="true"
+        className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-200"
       >
         <svg
           className="h-6 w-6"
@@ -34,12 +39,13 @@ const variantStyles = {
     )
   },
   empty: {
-    container: "border-neutral-200 bg-white text-neutral-600",
-    heading: "text-neutral-700",
+    container:
+      "border-neutral-200 bg-white text-neutral-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300",
+    heading: "text-neutral-700 dark:text-neutral-100",
     icon: (
       <span
         aria-hidden="true"
-        className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 text-neutral-500"
+        className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-300"
       >
         <svg
           className="h-6 w-6"
@@ -57,12 +63,13 @@ const variantStyles = {
     )
   },
   info: {
-    container: "border-neutral-200 bg-white text-neutral-700",
-    heading: "text-neutral-800",
+    container:
+      "border-neutral-200 bg-white text-neutral-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200",
+    heading: "text-neutral-800 dark:text-neutral-100",
     icon: (
       <span
         aria-hidden="true"
-        className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-600"
+        className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/20 dark:text-brand-200"
       >
         <svg
           className="h-6 w-6"
