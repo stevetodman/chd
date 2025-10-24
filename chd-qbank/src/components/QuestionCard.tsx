@@ -65,7 +65,12 @@ export default function QuestionCard({ question, onAnswer, onFlagChange, initial
           <StemHighlighter stem={question.stem_md} />
         </CardHeader>
         <CardContent>
-          <ChoiceList choices={question.choices} onSelect={handleSelect} selectedId={selected?.id ?? null} />
+          <ChoiceList
+            choices={question.choices}
+            onSelect={handleSelect}
+            selectedId={selected?.id ?? null}
+            showFeedback={!!selected}
+          />
         </CardContent>
         <CardFooter className="flex items-center justify-between gap-3">
           <FlagButton flagged={flagged} onToggle={toggleFlag} />
