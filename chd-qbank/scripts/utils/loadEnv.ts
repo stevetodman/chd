@@ -1,8 +1,19 @@
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 
-export function loadEnvFile(): void {
-  const envPath = resolve(process.cwd(), ".env");
+type LoadEnvOptions = {
+  /**
+   * Force an explicit environment name instead of inferring from APP_ENV/NODE_ENV.
+   * Accepts values such as "development", "staging", or "production".
+   */
+  env?: string;
+  /** Override the working directory when resolving .env files. */
+  cwd?: string;
+};
+
+const ORIGINAL_ENV_KEYS = new Set(Object.keys(process.env));
+
+function parseEnvFile(envPath: string, loadedKeys: Set<string>): void {
   if (!existsSync(envPath)) {
     return;
   }
@@ -23,8 +34,37 @@ export function loadEnvFile(): void {
       ) {
         value = value.slice(1, -1);
       }
-      if (!(key in process.env)) {
-        process.env[key] = value;
+
+      const alreadyProvided = ORIGINAL_ENV_KEYS.has(key) && !loadedKeys.has(key);
+      if (alreadyProvided) {
+        return;
       }
+
+      process.env[key] = value;
+      loadedKeys.add(key);
     });
+}
+
+function resolveEnvFilenames(envName: string): string[] {
+  const normalized = envName.trim().toLowerCase();
+  const candidates = [
+    ".env",
+    ".env.local",
+    `.env.${normalized}`,
+    `.env.${normalized}.local`
+  ];
+
+  return [...new Set(candidates)];
+}
+
+export function loadEnvFile(options: LoadEnvOptions = {}): void {
+  const cwd = options.cwd ?? process.cwd();
+  const envName =
+    options.env ?? process.env.APP_ENV ?? process.env.NODE_ENV ?? "development";
+  const loadedKeys = new Set<string>();
+
+  for (const file of resolveEnvFilenames(envName)) {
+    const envPath = resolve(cwd, file);
+    parseEnvFile(envPath, loadedKeys);
+  }
 }

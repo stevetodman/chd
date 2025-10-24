@@ -55,7 +55,7 @@ This monorepo packages everything required to operate the **CHD QBank**: a conge
    npm install
    ```
 
-2. Copy `.env.example` to `.env` and populate Supabase credentials (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`). If you plan to run automation scripts locally, also set service-role variables (see [Environment variables](#environment-variables)).
+2. Copy `.env.example` to `.env.development` (or `.env`) and populate Supabase credentials (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`). If you plan to run automation scripts locally, also set service-role variables (see [Environment variables](#environment-variables)).
 
 3. Start the development server:
 
@@ -99,7 +99,8 @@ All commands below run from `chd-qbank/`:
 
 ## Environment variables
 
-Create `chd-qbank/.env` with the variables required for your workflow:
+Create environment files in `chd-qbank/` with the variables required for your workflow (e.g. `.env.development`, `.env.staging`,
+or a shared `.env`):
 
 ```bash
 VITE_SUPABASE_URL=<your-supabase-url>
@@ -112,7 +113,25 @@ INVITE_CODE=<optional-invite-code>
 INVITE_EXPIRES=<optional-iso-date>
 ```
 
-The automation helpers load `.env` automatically. Invite codes are only written to the `app_settings` table via `npm run seed:invite`—do **not** expose them through Vite environment variables. When deploying Edge Functions, configure their environment variables separately inside Supabase.
+Automation helpers automatically load `.env`, `.env.local`, `.env.<environment>`, and `.env.<environment>.local` files in that
+order. Set `APP_ENV` (or `NODE_ENV`) to `development`, `staging`, or `production` when running scripts to select the appropriate
+configuration:
+
+```bash
+APP_ENV=staging npm run seed:invite
+APP_ENV=production npm run verify:policies
+```
+
+Vite commands accept the same environment names via `--mode`. Convenience scripts are available for staging builds and previews:
+
+```bash
+npm run dev:staging
+npm run build:staging
+npm run preview:staging
+```
+
+Invite codes are only written to the `app_settings` table via `npm run seed:invite`—do **not** expose them through Vite
+environment variables. When deploying Edge Functions, configure their environment variables separately inside Supabase.
 
 ## Testing expectations
 
