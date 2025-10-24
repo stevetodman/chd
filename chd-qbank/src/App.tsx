@@ -1,6 +1,7 @@
 import { Suspense, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import PageState from "./components/PageState";
+import OfflineStatusBanner from "./components/OfflineStatusBanner";
 import { AppRoutes } from "./routes";
 import { getSession, useSessionStore } from "./lib/auth";
 import { useServiceWorkerUpdates } from "./hooks/useServiceWorkerUpdates";
@@ -27,6 +28,7 @@ export default function App() {
 
   return (
     <>
+      <OfflineStatusBanner />
       <Suspense
         fallback={
           <div className="flex min-h-screen items-center justify-center bg-neutral-50 p-6">
