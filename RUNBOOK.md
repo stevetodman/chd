@@ -30,9 +30,12 @@ npm --prefix chd-qbank run seed:invite
 1. Open PR → CI must pass (lint/types/unit/build).
 2. Merge → Vercel deploys staging.
 3. Rehearsal (signup → login → answer → results).
-4. Flip maintenance_mode ON if needed.
-5. Promote to prod (merge to main or Vercel prod deploy).
-6. Turn maintenance OFF.
+4. Run automated verification against the deployed database:
+   - `npm --prefix chd-qbank run verify:seed`
+   - `npm --prefix chd-qbank run verify:analytics:heatmap`
+5. Flip maintenance_mode ON if needed.
+6. Promote to prod (merge to main or Vercel prod deploy).
+7. Repeat step 4 against prod after promotion, then turn maintenance OFF.
 
 ## Rollback
 - Vercel → Project → Deployments → Promote previous.
