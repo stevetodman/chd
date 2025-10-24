@@ -24,3 +24,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run test -- --run --reporter=dot
       - run: npm run build
+      - run: npm run notice
+      - name: Ensure NOTICE and license inventory are current
+        working-directory: ..
+        run: git diff --exit-code
