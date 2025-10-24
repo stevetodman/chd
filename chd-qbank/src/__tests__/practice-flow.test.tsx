@@ -157,6 +157,8 @@ describe("practice flow", () => {
 
     render(<Practice />);
 
+    await user.click(await screen.findByRole("button", { name: /skip setup/i }));
+
     await screen.findByText("What is the next best step in management?");
 
     await user.click(screen.getByRole("button", { name: /flag/i }));
