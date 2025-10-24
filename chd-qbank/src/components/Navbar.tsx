@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import classNames from "classnames";
 import { Link, NavLink } from "react-router-dom";
 import { APP_NAME } from "../lib/constants";
 import { signOut, useSessionStore } from "../lib/auth";
 import { useSettingsStore } from "../lib/settings";
+import { useI18n } from "../i18n";
 
 export default function Navbar() {
   const { session } = useSessionStore();
@@ -12,24 +13,35 @@ export default function Navbar() {
     loaded: state.loaded
   }));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { t } = useI18n();
 
-  const primaryLinks = [
-    { to: "/practice", label: "Practice" },
-    { to: "/review", label: "Review" },
-    { to: "/games/murmurs", label: "Murmurs" },
-    { to: "/games/cxr", label: "CXR Match" }
-  ];
+  const basePrimaryLinks = useMemo(
+    () => [
+      { to: "/practice", label: t("nav.practice", { defaultValue: "Practice" }) },
+      { to: "/review", label: t("nav.review", { defaultValue: "Review" }) },
+      { to: "/games/murmurs", label: t("nav.games.murmurs", { defaultValue: "Murmurs" }) },
+      { to: "/games/cxr", label: t("nav.games.cxr", { defaultValue: "CXR Match" }) }
+    ],
+    [t]
+  );
 
-  if (leaderboardEnabled && settingsLoaded) {
-    primaryLinks.push({ to: "/leaderboard", label: "Leaderboard" });
-  }
+  const primaryLinks = useMemo(() => {
+    const links = [...basePrimaryLinks];
+    if (leaderboardEnabled && settingsLoaded) {
+      links.push({ to: "/leaderboard", label: t("nav.leaderboard", { defaultValue: "Leaderboard" }) });
+    }
+    return links;
+  }, [basePrimaryLinks, leaderboardEnabled, settingsLoaded, t]);
 
-  const accountLinks = session
-    ? [{ to: "/profile/alias", label: "Profile" }]
-    : [
-        { to: "/login", label: "Login" },
-        { to: "/signup", label: "Signup" }
-      ];
+  const accountLinks = useMemo(() => {
+    if (session) {
+      return [{ to: "/profile/alias", label: t("nav.profile", { defaultValue: "Profile" }) }];
+    }
+    return [
+      { to: "/login", label: t("nav.login", { defaultValue: "Login" }) },
+      { to: "/signup", label: t("nav.signup", { defaultValue: "Signup" }) }
+    ];
+  }, [session, t]);
 
   const linkClasses = ({ isActive }: { isActive: boolean }) =>
     classNames(
@@ -66,7 +78,7 @@ export default function Navbar() {
                 </nav>
                 <div className="hidden items-center gap-3 md:flex">
                   <NavLink to="/profile/alias" className={linkClasses}>
-                    Profile
+                    {t("nav.profile", { defaultValue: "Profile" })}
                   </NavLink>
                   <button
                     type="button"
@@ -75,7 +87,7 @@ export default function Navbar() {
                     }}
                     className="rounded bg-neutral-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-700"
                   >
-                    Sign out
+                    {t("nav.signOut", { defaultValue: "Sign out" })}
                   </button>
                 </div>
               </>
@@ -92,10 +104,10 @@ export default function Navbar() {
               type="button"
               className="inline-flex items-center justify-center rounded-md border border-neutral-200 px-2 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 md:hidden"
               aria-expanded={mobileOpen}
-              aria-label="Toggle navigation menu"
+              aria-label={t("nav.toggleMenu", { defaultValue: "Toggle navigation menu" })}
               onClick={() => setMobileOpen((open) => !open)}
             >
-              <span className="sr-only">Toggle navigation menu</span>
+              <span className="sr-only">{t("nav.toggleMenu", { defaultValue: "Toggle navigation menu" })}</span>
               <svg
                 className="h-5 w-5"
                 xmlns="http://www.w3.org/2000/svg"
@@ -139,7 +151,7 @@ export default function Navbar() {
                   }}
                   className="w-full rounded bg-neutral-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-700"
                 >
-                  Sign out
+                  {t("nav.signOut", { defaultValue: "Sign out" })}
                 </button>
               ) : null}
             </div>

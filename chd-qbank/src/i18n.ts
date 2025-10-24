@@ -1,48 +1,112 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode
+} from "react";
 
-type MessageDescriptor = {
+export type MessageDescriptor = {
   id: string;
-  defaultMessage: string;
+  defaultMessage?: string;
 };
 
-type MessageValues = Record<string, unknown>;
+export type MessageValues = Record<string, unknown>;
+
+export type MessageDictionary = Record<string, string>;
+
+export type MessagesByLocale = Record<string, MessageDictionary>;
+
+type TranslateOptions = {
+  defaultValue?: string;
+} & MessageValues;
 
 type I18nContextValue = {
   locale: string;
+  availableLocales: string[];
+  setLocale: (locale: string) => void;
   formatMessage: (descriptor: MessageDescriptor, values?: MessageValues) => string;
   formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string;
+  t: (key: string, options?: TranslateOptions) => string;
 };
 
 type I18nProviderProps = {
   children: ReactNode;
-  locale?: string;
-  messages?: Record<string, string>;
+  initialLocale?: string;
+  fallbackLocale?: string;
+  messages: MessagesByLocale;
+  onLocaleChange?: (locale: string) => void;
 };
 
 const I18nContext = createContext<I18nContextValue | undefined>(undefined);
 
-function serializeNumberFormatOptions(options?: Intl.NumberFormatOptions) {
-  if (!options) return "{}";
-  return JSON.stringify(Object.keys(options)
-    .sort()
-    .reduce<Record<string, unknown>>((accumulator, key) => {
-      const optionKey = key as keyof Intl.NumberFormatOptions;
-      accumulator[optionKey] = options[optionKey];
-      return accumulator;
-    }, {}));
+export function normalizeLocale(input: string, available: string[], fallback: string) {
+  if (!input) return fallback;
+  if (available.includes(input)) return input;
+  const normalized = input.toLowerCase();
+  const baseMatch = available.find((locale) => locale.toLowerCase() === normalized);
+  if (baseMatch) return baseMatch;
+  const prefixMatch = available.find((locale) => normalized.startsWith(locale.toLowerCase()));
+  if (prefixMatch) return prefixMatch;
+  const languagePart = normalized.split("-")[0];
+  const languageMatch = available.find((locale) => locale.split("-")[0]?.toLowerCase() === languagePart);
+  return languageMatch ?? fallback;
 }
 
-export function I18nProvider({ children, locale = "en-US", messages }: I18nProviderProps) {
-  const resolvedMessages = useMemo(() => new Map(Object.entries(messages ?? {})), [messages]);
+function serializeNumberFormatOptions(options?: Intl.NumberFormatOptions) {
+  if (!options) return "{}";
+  return JSON.stringify(
+    Object.keys(options)
+      .sort()
+      .reduce<Record<string, unknown>>((accumulator, key) => {
+        const optionKey = key as keyof Intl.NumberFormatOptions;
+        accumulator[optionKey] = options[optionKey];
+        return accumulator;
+      }, {})
+  );
+}
+
+function resolveMessages(locale: string, fallbackLocale: string, messages: MessagesByLocale): Map<string, string> {
+  const primary = messages[locale] ?? {};
+  const fallback = locale === fallbackLocale ? {} : messages[fallbackLocale] ?? {};
+  return new Map<string, string>([
+    ...Object.entries(fallback),
+    ...Object.entries(primary)
+  ]);
+}
+
+export function I18nProvider({
+  children,
+  initialLocale = "en",
+  fallbackLocale = "en",
+  messages,
+  onLocaleChange
+}: I18nProviderProps) {
+  const availableLocales = useMemo(() => Object.keys(messages), [messages]);
+  const [locale, setLocaleState] = useState(() =>
+    normalizeLocale(initialLocale, availableLocales, fallbackLocale)
+  );
   const numberFormatterCache = useRef(new Map<string, Intl.NumberFormat>());
 
   useEffect(() => {
     numberFormatterCache.current.clear();
   }, [locale]);
 
+  useEffect(() => {
+    setLocaleState((current) => normalizeLocale(current, availableLocales, fallbackLocale));
+  }, [availableLocales, fallbackLocale]);
+
+  const resolvedMessages = useMemo(
+    () => resolveMessages(locale, fallbackLocale, messages),
+    [locale, fallbackLocale, messages]
+  );
+
   const formatNumber = useCallback(
     (value: number, options?: Intl.NumberFormatOptions) => {
-      const cacheKey = serializeNumberFormatOptions(options);
+      const cacheKey = `${locale}:${serializeNumberFormatOptions(options)}`;
       let formatter = numberFormatterCache.current.get(cacheKey);
       if (!formatter) {
         formatter = new Intl.NumberFormat(locale, options);
@@ -53,54 +117,17 @@ export function I18nProvider({ children, locale = "en-US", messages }: I18nProvi
     [locale]
   );
 
-  const formatMessage = useCallback(
-    (descriptor: MessageDescriptor, values?: MessageValues) => {
-      const template = resolvedMessages.get(descriptor.id) ?? descriptor.defaultMessage ?? descriptor.id;
-
-      const formatValue = (value: unknown) => {
+  const formatTemplate = useCallback(
+    (template: string, values?: MessageValues): string => {
+      const formatValue = (value: unknown): string => {
         if (value === null || value === undefined) return "";
         if (typeof value === "number") {
           return formatNumber(value);
         }
-        return String(value);
-      };
-
-      const formatTemplate = (input: string): string => {
-        let result = "";
-        let index = 0;
-
-        while (index < input.length) {
-          const openIndex = input.indexOf("{", index);
-          if (openIndex === -1) {
-            result += input.slice(index);
-            break;
-          }
-
-          result += input.slice(index, openIndex);
-          let depth = 1;
-          let cursor = openIndex + 1;
-
-          while (cursor < input.length && depth > 0) {
-            if (input[cursor] === "{") {
-              depth += 1;
-            } else if (input[cursor] === "}") {
-              depth -= 1;
-            }
-            cursor += 1;
-          }
-
-          if (depth !== 0) {
-            // Unbalanced braces; append remainder and exit.
-            result += input.slice(openIndex);
-            break;
-          }
-
-          const placeholderContent = input.slice(openIndex + 1, cursor - 1);
-          result += formatPlaceholder(placeholderContent.trim());
-          index = cursor;
+        if (value instanceof Date) {
+          return value.toLocaleString(locale);
         }
-
-        return result;
+        return String(value);
       };
 
       const formatPlaceholder = (content: string): string => {
@@ -114,7 +141,7 @@ export function I18nProvider({ children, locale = "en-US", messages }: I18nProvi
 
         for (let i = 0; i < content.length; i += 1) {
           const character = content[i];
-          if (character === "{" ) {
+          if (character === "{") {
             depth += 1;
           } else if (character === "}") {
             depth = Math.max(depth - 1, 0);
@@ -189,24 +216,96 @@ export function I18nProvider({ children, locale = "en-US", messages }: I18nProvi
           const category = pluralRule.select(value);
           const selected = optionsMap[category] ?? optionsMap.other ?? "";
           const formattedCount = formatNumber(value, { maximumFractionDigits: 0 });
-          return formatTemplate(selected.replace(/#/g, formattedCount));
+          return formatTemplate(selected.replace(/#/g, formattedCount), values);
         }
 
         return formatValue(value);
       };
 
-      return formatTemplate(template);
+      let result = "";
+      let index = 0;
+
+      while (index < template.length) {
+        const openIndex = template.indexOf("{", index);
+        if (openIndex === -1) {
+          result += template.slice(index);
+          break;
+        }
+
+        result += template.slice(index, openIndex);
+        let depth = 1;
+        let cursor = openIndex + 1;
+
+        while (cursor < template.length && depth > 0) {
+          if (template[cursor] === "{") {
+            depth += 1;
+          } else if (template[cursor] === "}") {
+            depth -= 1;
+          }
+          cursor += 1;
+        }
+
+        if (depth !== 0) {
+          result += template.slice(openIndex);
+          break;
+        }
+
+        const placeholderContent = template.slice(openIndex + 1, cursor - 1);
+        result += formatPlaceholder(placeholderContent.trim());
+        index = cursor;
+      }
+
+      return result;
     },
-    [formatNumber, resolvedMessages]
+    [formatNumber, locale]
+  );
+
+  const getMessage = useCallback(
+    (id: string, defaultMessage?: string) => {
+      if (resolvedMessages.has(id)) {
+        return resolvedMessages.get(id) ?? defaultMessage ?? id;
+      }
+      return defaultMessage ?? id;
+    },
+    [resolvedMessages]
+  );
+
+  const formatMessage = useCallback(
+    (descriptor: MessageDescriptor, values?: MessageValues) => {
+      const template = getMessage(descriptor.id, descriptor.defaultMessage ?? descriptor.id);
+      return formatTemplate(template, values);
+    },
+    [formatTemplate, getMessage]
+  );
+
+  const translate = useCallback(
+    (key: string, options?: TranslateOptions) => {
+      const { defaultValue, ...values } = options ?? {};
+      const template = getMessage(key, typeof defaultValue === "string" ? defaultValue : undefined);
+      return formatTemplate(template, values);
+    },
+    [formatTemplate, getMessage]
+  );
+
+  const setLocale = useCallback(
+    (nextLocale: string) => {
+      const normalized = normalizeLocale(nextLocale, availableLocales, fallbackLocale);
+      setLocaleState(normalized);
+      onLocaleChange?.(normalized);
+    },
+    [availableLocales, fallbackLocale, onLocaleChange]
   );
 
   const contextValue = useMemo<I18nContextValue>(
     () => ({
       locale,
+      availableLocales,
+      setLocale,
       formatMessage,
-      formatNumber
+      formatNumber,
+      t: translate
     }),
-    [locale, formatMessage, formatNumber]
+    [availableLocales, formatMessage, formatNumber, locale, setLocale, translate]
   );
 
   return <I18nContext.Provider value={contextValue}>{children}</I18nContext.Provider>;
