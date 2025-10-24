@@ -5,6 +5,9 @@ import PageState from "../components/PageState";
 import QuestionCard from "../components/QuestionCard";
 import { Button } from "../components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card";
+import { FilterChip } from "../components/ui/FilterChip";
+import { FormField, FormFieldset } from "../components/ui/FormField";
+import { Select } from "../components/ui/Select";
 import {
   DEFAULT_PRACTICE_FILTERS,
   type PracticeFilters,
@@ -163,25 +166,16 @@ export default function Practice() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [canAdvance, next]);
 
-  const selectClasses =
-    "h-12 w-full rounded-lg border border-neutral-300 bg-white px-4 text-base shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500";
-  const choiceClasses =
-    "flex items-center gap-3 rounded-xl border border-neutral-300 bg-white px-4 py-3 text-base font-medium text-neutral-900 shadow-sm focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500";
-
   const renderFilterFields = () => (
     <>
       {filterOptionsError ? (
-        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
+        <div className="rounded-xl border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-700" role="alert">
           {filterOptionsError}
         </div>
       ) : null}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="flex flex-col gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-            {formatMessage({ id: "practice.filters.topic", defaultMessage: "Topic" })}
-          </span>
-          <select
-            className={selectClasses}
+      <div className="grid gap-5 sm:grid-cols-2">
+        <FormField label={formatMessage({ id: "practice.filters.topic", defaultMessage: "Topic" })}>
+          <Select
             value={pendingFilters.topic ?? ""}
             onChange={(event) =>
               setPendingFilters((prev) => ({
@@ -199,14 +193,10 @@ export default function Practice() {
                 {topic}
               </option>
             ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-            {formatMessage({ id: "practice.filters.lesion", defaultMessage: "Lesion" })}
-          </span>
-          <select
-            className={selectClasses}
+          </Select>
+        </FormField>
+        <FormField label={formatMessage({ id: "practice.filters.lesion", defaultMessage: "Lesion" })}>
+          <Select
             value={pendingFilters.lesion ?? ""}
             onChange={(event) =>
               setPendingFilters((prev) => ({
@@ -224,48 +214,46 @@ export default function Practice() {
                 {lesion}
               </option>
             ))}
-          </select>
-        </label>
+          </Select>
+        </FormField>
       </div>
-      <fieldset className="space-y-3">
-        <legend className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-          {formatMessage({ id: "practice.filters.status", defaultMessage: "Question status" })}
-        </legend>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {[
-            {
-              value: "all",
-              label: formatMessage({ id: "practice.filters.status.all", defaultMessage: "All questions" })
-            },
-            {
-              value: "new",
-              label: formatMessage({ id: "practice.filters.status.new", defaultMessage: "New to me" })
-            },
-            {
-              value: "seen",
-              label: formatMessage({ id: "practice.filters.status.seen", defaultMessage: "Seen before" })
-            }
-          ].map((option) => (
-            <label key={option.value} className={choiceClasses}>
-              <input
-                type="radio"
-                name="question-status"
-                value={option.value}
-                checked={pendingFilters.status === option.value}
-                onChange={() =>
-                  setPendingFilters((prev) => ({
-                    ...prev,
-                    status: option.value as PracticeFilters["status"]
-                  }))
-                }
-                className="h-5 w-5"
-              />
-              <span>{option.label}</span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
-      <label className={choiceClasses}>
+      <FormFieldset
+        legend={formatMessage({ id: "practice.filters.status", defaultMessage: "Question status" })}
+        contentClassName="sm:grid-cols-3"
+      >
+        {[
+          {
+            value: "all",
+            label: formatMessage({ id: "practice.filters.status.all", defaultMessage: "All questions" })
+          },
+          {
+            value: "new",
+            label: formatMessage({ id: "practice.filters.status.new", defaultMessage: "New to me" })
+          },
+          {
+            value: "seen",
+            label: formatMessage({ id: "practice.filters.status.seen", defaultMessage: "Seen before" })
+          }
+        ].map((option) => (
+          <FilterChip key={option.value} active={pendingFilters.status === option.value}>
+            <input
+              type="radio"
+              name="question-status"
+              value={option.value}
+              checked={pendingFilters.status === option.value}
+              onChange={() =>
+                setPendingFilters((prev) => ({
+                  ...prev,
+                  status: option.value as PracticeFilters["status"]
+                }))
+              }
+              className="sr-only"
+            />
+            <span>{option.label}</span>
+          </FilterChip>
+        ))}
+      </FormFieldset>
+      <FilterChip tone="brand" active={pendingFilters.flagged === "flagged"}>
         <input
           type="checkbox"
           checked={pendingFilters.flagged === "flagged"}
@@ -275,25 +263,21 @@ export default function Practice() {
               flagged: event.target.checked ? "flagged" : "all"
             }))
           }
-          className="h-5 w-5"
+          className="sr-only"
         />
         <span>{formatMessage({ id: "practice.filters.flaggedOnly", defaultMessage: "Show only questions I’ve flagged" })}</span>
-      </label>
-      <label className="flex flex-col gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-          {formatMessage({ id: "practice.filters.sessionLengthLabel", defaultMessage: "Session length" })}
-        </span>
-        <select
-          className={selectClasses}
+      </FilterChip>
+      <FormField label={formatMessage({ id: "practice.filters.sessionLengthLabel", defaultMessage: "Session length" })}>
+        <Select
           value={pendingFilters.sessionLength}
           onChange={(event) =>
             setPendingFilters((prev) => ({
               ...prev,
-              sessionLength: Number(event.target.value)
+              sessionLength: Number.parseInt(event.target.value, 10)
             }))
           }
         >
-          {[10, 20, 30, 40].map((length) => (
+          {[10, 20, 40, 60].map((length) => (
             <option key={length} value={length}>
               {formatMessage(
                 { id: "practice.filters.sessionLengthOption", defaultMessage: "{count} questions" },
@@ -301,8 +285,8 @@ export default function Practice() {
               )}
             </option>
           ))}
-        </select>
-      </label>
+        </Select>
+      </FormField>
     </>
   );
 
@@ -313,7 +297,7 @@ export default function Practice() {
           {filterSummaryParts.map((part, index) => (
             <span
               key={`${part}-${index}`}
-              className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-600"
+              className="rounded-full bg-surface-muted px-3 py-1 text-xs font-medium text-neutral-600"
             >
               {part}
             </span>
@@ -327,24 +311,21 @@ export default function Practice() {
           </Dialog.Trigger>
           <Dialog.Portal>
             <Dialog.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" />
-            <Dialog.Content className="fixed inset-0 z-50 flex flex-col bg-white focus:outline-none">
-              <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-4">
-                <Dialog.Title className="text-base font-semibold text-neutral-900">
+            <Dialog.Content className="fixed inset-0 z-50 flex flex-col bg-surface-base focus:outline-none">
+              <div className="flex items-center justify-between border-b border-surface-muted px-4 py-4">
+                <Dialog.Title className="text-base font-semibold text-surface-inverted">
                   {formatMessage({ id: "practice.filters.title", defaultMessage: "Practice filters" })}
                 </Dialog.Title>
                 <Dialog.Close asChild>
-                  <button
-                    type="button"
-                    className="rounded-md px-3 py-2 text-sm font-medium text-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
-                  >
+                  <Button type="button" variant="ghost" className="text-brand-600 hover:text-brand-500">
                     {formatMessage({ id: "practice.filters.done", defaultMessage: "Done" })}
-                  </button>
+                  </Button>
                 </Dialog.Close>
               </div>
               <div className="flex-1 overflow-y-auto px-4 py-4 text-base text-neutral-700">
                 <div className="space-y-6">{renderFilterFields()}</div>
               </div>
-              <div className="space-y-3 border-t border-neutral-200 px-4 py-4">
+              <div className="space-y-3 border-t border-surface-muted px-4 py-4">
                 <Button
                   type="button"
                   className="w-full"
@@ -377,7 +358,7 @@ export default function Practice() {
           </Dialog.Portal>
         </Dialog.Root>
       </div>
-      <Card className="hidden md:block">
+      <Card className="hidden md:block" variant="secondary">
         <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <CardTitle className="text-base">
@@ -432,7 +413,7 @@ export default function Practice() {
         onFlagChange={handleFlagChange}
         initialFlagged={currentResponse?.flagged ?? false}
       />
-      <div className="sticky bottom-0 z-30 rounded-t-2xl border border-neutral-200 bg-white/95 p-4 shadow-[0_-10px_30px_rgba(15,23,42,0.08)] backdrop-blur-sm sm:static sm:rounded-lg sm:shadow-sm">
+      <div className="sticky bottom-0 z-30 rounded-t-2xl border border-surface-muted bg-surface-base/95 p-4 shadow-[0_-10px_30px_rgba(15,23,42,0.08)] backdrop-blur-sm sm:static sm:rounded-lg sm:shadow-elevation-xs">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-sm text-neutral-600">
             {formatMessage(
@@ -455,7 +436,7 @@ export default function Practice() {
         </div>
       </div>
       {sessionComplete ? (
-        <Card className="border-emerald-200">
+        <Card status="success" variant="secondary">
           <CardHeader>
             <CardTitle className="text-base">
               {formatMessage({ id: "practice.sessionComplete.title", defaultMessage: "Session complete" })}
@@ -473,7 +454,7 @@ export default function Practice() {
               )}
             </p>
             <dl className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-md bg-neutral-50 p-3">
+              <div className="rounded-lg border border-surface-muted bg-surface-base/80 p-4">
                 <dt className="text-xs font-medium uppercase tracking-wide text-neutral-500">
                   {formatMessage({ id: "practice.sessionComplete.accuracyLabel", defaultMessage: "Accuracy" })}
                 </dt>
@@ -486,7 +467,7 @@ export default function Practice() {
                       })}
                 </dd>
               </div>
-              <div className="rounded-md bg-neutral-50 p-3">
+              <div className="rounded-lg border border-surface-muted bg-surface-base/80 p-4">
                 <dt className="text-xs font-medium uppercase tracking-wide text-neutral-500">
                   {formatMessage({ id: "practice.sessionComplete.correctLabel", defaultMessage: "Correct answers" })}
                 </dt>
@@ -494,7 +475,7 @@ export default function Practice() {
                   {formatNumber(sessionStats.totalCorrect)} / {formatNumber(sessionStats.totalAnswered)}
                 </dd>
               </div>
-              <div className="rounded-md bg-neutral-50 p-3">
+              <div className="rounded-lg border border-surface-muted bg-surface-base/80 p-4">
                 <dt className="text-xs font-medium uppercase tracking-wide text-neutral-500">
                   {formatMessage({ id: "practice.sessionComplete.averageTimeLabel", defaultMessage: "Avg. time" })}
                 </dt>
@@ -514,7 +495,7 @@ export default function Practice() {
               </div>
             </dl>
             {sessionStats.flagged > 0 ? (
-              <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-amber-800">
+              <div className="rounded-xl border border-warning-200 bg-warning-50 p-4 text-warning-700">
                 <p className="font-medium">
                   {formatMessage(
                     {
@@ -543,7 +524,7 @@ export default function Practice() {
                 </p>
               </div>
             ) : (
-              <div className="rounded-md border border-neutral-200 bg-neutral-50 p-4 text-neutral-700">
+              <div className="rounded-xl border border-surface-muted bg-surface-base/80 p-4 text-neutral-700">
                 <p className="font-medium">
                   {formatMessage({
                     id: "practice.sessionComplete.noFlagged",
