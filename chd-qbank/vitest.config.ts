@@ -20,7 +20,7 @@ export default defineConfig({
     setupFiles: "./src/__tests__/setup.ts",
     coverage: {
       provider: "v8",
-      reporter: ["text", "html"],
+      reporter: ["text", "html", "json-summary"],
       thresholds: {
         statements: 80,
         branches: 80,

@@ -6,6 +6,9 @@ on:
   push:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 jobs:
   build-test:
     runs-on: ubuntu-latest
@@ -25,10 +28,14 @@ jobs:
           filters: |
             migrations:
               - 'chd-qbank/supabase/migrations/**'
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run test -- --run --reporter=dot
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint -- --max-warnings=0
+      - name: Type check
+        run: npm run typecheck
+      - name: Test
+        run: npm run test -- --run --reporter=dot
       - run: npm run build
       - run: npm run notice
       - name: Generate license inventory
@@ -37,15 +44,47 @@ jobs:
       - name: Enforce license policy
         working-directory: ..
         run: npm run license:check
+      - name: Upload unit test coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-coverage
+          path: chd-qbank/coverage
+          if-no-files-found: ignore
+      - name: Publish coverage summary
+        if: always()
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = 'coverage/coverage-summary.json';
+          if (!fs.existsSync(path)) {
+            console.log('No coverage summary found.');
+            process.exit(0);
+          }
+          const summary = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const total = summary.total;
+          const lines = [
+            '| Metric | % | Covered / Total |',
+            '| --- | --- | --- |',
+            `| Statements | ${total.statements.pct}% | ${total.statements.covered} / ${total.statements.total} |`,
+            `| Branches | ${total.branches.pct}% | ${total.branches.covered} / ${total.branches.total} |`,
+            `| Functions | ${total.functions.pct}% | ${total.functions.covered} / ${total.functions.total} |`,
+            `| Lines | ${total.lines.pct}% | ${total.lines.covered} / ${total.lines.total} |`,
+          ].join('\n');
+          fs.writeFileSync(process.env.GITHUB_STEP_SUMMARY, `## Coverage Summary\n\n${lines}\n`);
+          NODE
       - name: Generate SBOM (CycloneDX)
+        if: always()
         run: |
           mkdir -p compliance-artifacts
           npx --yes @cyclonedx/cyclonedx-npm --output-file compliance-artifacts/chd-qbank-cyclonedx.json --output-format json
       - name: Capture npm audit report
+        if: always()
         run: |
           mkdir -p compliance-artifacts
           npm audit --json > compliance-artifacts/npm-audit.json || true
       - name: Upload compliance artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: compliance-artifacts
