@@ -31,6 +31,19 @@ jobs:
       - run: npm run test -- --run --reporter=dot
       - run: npm run build
       - run: npm run notice
+      - name: Generate SBOM (CycloneDX)
+        run: |
+          mkdir -p compliance-artifacts
+          npx --yes @cyclonedx/cyclonedx-npm --output-file compliance-artifacts/chd-qbank-cyclonedx.json --output-format json
+      - name: Capture npm audit report
+        run: |
+          mkdir -p compliance-artifacts
+          npm audit --json > compliance-artifacts/npm-audit.json || true
+      - name: Upload compliance artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: compliance-artifacts
+          path: chd-qbank/compliance-artifacts
       - name: Check Supabase migration safety
         if: steps.changes.outputs.migrations == 'true'
         run: npm run check:migration-safety
