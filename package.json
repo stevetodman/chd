@@ -1,0 +1,7 @@
+{
+  "name": "chd",
+  "private": true,
+  "workspaces": [
+    "chd-qbank"
+  ]
+}
