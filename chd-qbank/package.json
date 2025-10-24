@@ -11,6 +11,8 @@
     "lint": "eslint --ext .ts,.tsx src",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "migrate:qbank": "tsx chd-qbank/scripts/migrate-qbank.ts",
+    "migrate:qbank:dry": "DRY_RUN=1 tsx chd-qbank/scripts/migrate-qbank.ts",
     "build:scripts": "tsc -p tsconfig.scripts.json",
     "check:migration-safety": "npm run build:scripts && node scripts/dist/check-migration-safety.js",
     "seed:invite": "node scripts/seed-invite.mjs",
@@ -60,6 +62,10 @@
     "@tailwindcss/typography": "^0.5.10",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
-    "@types/papaparse": "^5.3.7"
+    "@types/papaparse": "^5.3.7",
+    "fast-glob": "^3.3.2",
+    "picocolors": "^1.0.0",
+    "tsx": "^4.16.0",
+    "zod": "^3.23.8"
   }
 }

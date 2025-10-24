@@ -95,3 +95,15 @@ The seed utilities read from `data/templates/` and enforce idempotency, so re-ru
 - Admin role management: [`../docs/security/admin-roles.md`](../docs/security/admin-roles.md)
 
 Keep documentation and seed templates updated whenever schemas or user flows change—automation scripts assume they stay in sync.
+
+### QBank Migration (schema normalization)
+
+Dry run (no writes):
+  npm run migrate:qbank:dry
+
+Perform migration with backups + CSV report:
+  npm run migrate:qbank
+
+Outputs:
+- Backups: chd-qbank/content/_backup_YYYYMMDD_HHMMSS/
+- Report:  chd-qbank/content/_reports/migration_YYYYMMDD_HHMMSS.csv
