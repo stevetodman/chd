@@ -322,6 +322,7 @@ create table if not exists cxr_attempts (
 );
 
 alter table app_users enable row level security;
+alter table idempotency_keys enable row level security;
 alter table app_settings enable row level security;
 alter table media_bundles enable row level security;
 alter table questions enable row level security;
@@ -380,6 +381,12 @@ for select using (
 );
 create policy "settings update admin" on app_settings
 for update using (is_admin());
+
+drop policy if exists "idempotency service role" on idempotency_keys;
+create policy "idempotency service role" on idempotency_keys
+for all
+  using (auth.role() = 'service_role')
+  with check (auth.role() = 'service_role');
 
 create policy "media read" on media_bundles
 for select using (

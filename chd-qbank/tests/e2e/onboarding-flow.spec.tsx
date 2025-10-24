@@ -66,7 +66,7 @@ describe("onboarding signup flow", () => {
     await user.click(screen.getByRole("button", { name: /request access/i }));
 
     await waitFor(() => expect(invoke).toHaveBeenCalledTimes(1));
-    await screen.findByText("Account created. Please sign in.");
+    await screen.findByText("Account created. Check your email to confirm before signing in.");
 
     expect(invoke).toHaveBeenCalledWith("signup-with-code", {
       body: {

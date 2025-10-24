@@ -1,5 +1,6 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { randomBytes, createHash } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 
 function loadEnvFile() {
@@ -34,6 +35,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const INVITE_CODE = process.env.INVITE_CODE;
 const INVITE_EXPIRES = process.env.INVITE_EXPIRES;
+const INVITE_CODE_SALT = process.env.INVITE_CODE_SALT;
 
 if (!SUPABASE_URL) {
   console.error('Missing SUPABASE_URL environment variable.');
@@ -63,9 +65,17 @@ if (Number.isNaN(expiresDate.getTime())) {
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
+function hashInviteCode(code, salt) {
+  return createHash('sha256').update(`${salt}:${code}`).digest('hex');
+}
+
 async function seedInviteSettings() {
+  const salt = INVITE_CODE_SALT ?? randomBytes(16).toString('hex');
+  const digest = hashInviteCode(INVITE_CODE, salt);
+
   const payload = [
-    { key: 'invite_code', value: INVITE_CODE },
+    { key: 'invite_code_hash', value: digest },
+    { key: 'invite_code_salt', value: salt },
     { key: 'invite_expires', value: expiresDate.toISOString().slice(0, 10) }
   ];
 
@@ -74,6 +84,15 @@ async function seedInviteSettings() {
       promise,
       new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
     ]);
+
+  const { error: cleanupError } = await withTimeout(
+    supabase.from('app_settings').delete().eq('key', 'invite_code')
+  );
+
+  if (cleanupError && cleanupError.code !== 'PGRST116') {
+    console.error('Failed to remove legacy invite code:', cleanupError.message);
+    process.exit(1);
+  }
 
   const { error } = await withTimeout(
     supabase.from('app_settings').upsert(payload, { onConflict: 'key' })
