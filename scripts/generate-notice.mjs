@@ -13,6 +13,8 @@ function buildHeader() {
     '',
     'This document lists third-party packages and their associated license information.',
     '',
+    'For a machine-readable inventory, see `docs/compliance/license-inventory.json`.',
+    '',
     `Generated on: ${new Date().toISOString()}`,
     '',
   ].join('\n');

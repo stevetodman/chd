@@ -31,6 +31,12 @@ jobs:
       - run: npm run test -- --run --reporter=dot
       - run: npm run build
       - run: npm run notice
+      - name: Generate license inventory
+        working-directory: ..
+        run: npm run license:inventory
+      - name: Enforce license policy
+        working-directory: ..
+        run: npm run license:check
       - name: Generate SBOM (CycloneDX)
         run: |
           mkdir -p compliance-artifacts

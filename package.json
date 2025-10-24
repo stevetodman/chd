@@ -6,7 +6,9 @@
   ],
   "scripts": {
     "sbom": "cyclonedx-npm --output sbom.xml",
-    "license:audit": "node scripts/generate-notice.mjs"
+    "license:audit": "node scripts/generate-notice.mjs",
+    "license:inventory": "node scripts/build-license-inventory.mjs",
+    "license:check": "node scripts/check-licenses.mjs"
   },
   "devDependencies": {
     "cyclonedx-npm": "^1.9.0",
