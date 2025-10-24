@@ -66,10 +66,11 @@ async function main() {
         warnings: result.warnings.join(" | "), errors: "" });
       console.log((hasWarn ? pc.yellow : pc.green)(`${hasWarn ? "▲" : "✔"} ${rel}`));
       hasWarn ? warn++ : ok++;
-    } catch (e: any) {
+    } catch (error: unknown) {
       const rel = path.relative(ROOT, file);
-      rows.push({ file: rel, status: "error", addedKeys: "", changedKeys: "", warnings: "", errors: String(e?.message ?? e) });
-      console.log(pc.red(`✖ ${rel} — ${String(e?.message ?? e)}`));
+      const message = error instanceof Error ? error.message : String(error);
+      rows.push({ file: rel, status: "error", addedKeys: "", changedKeys: "", warnings: "", errors: message });
+      console.log(pc.red(`✖ ${rel} — ${message}`));
       err++;
     }
   }
