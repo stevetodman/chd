@@ -1,9 +1,47 @@
 import { FormEvent, useEffect, useState } from "react";
+import classNames from "classnames";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import PageState from "../../components/PageState";
 import { supabase } from "../../lib/supabaseClient";
 import { useSessionStore } from "../../lib/auth";
+import { useFeatureFlagsStore } from "../../store/featureFlags";
+
+type PreferenceToggleProps = {
+  id: string;
+  label: string;
+  description: string;
+  checked: boolean;
+  onToggle: () => void;
+};
+
+function PreferenceToggle({ id, label, description, checked, onToggle }: PreferenceToggleProps) {
+  return (
+    <label htmlFor={id} className="flex items-start justify-between gap-4">
+      <span className="flex-1">
+        <span className="text-sm font-medium text-neutral-900">{label}</span>
+        <span className="mt-1 block text-xs text-neutral-500">{description}</span>
+      </span>
+      <span className="flex items-center pt-1">
+        <input id={id} type="checkbox" checked={checked} onChange={onToggle} className="peer sr-only" />
+        <span
+          aria-hidden
+          className={classNames(
+            "inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-500",
+            checked ? "bg-brand-600" : "bg-neutral-300"
+          )}
+        >
+          <span
+            className={classNames(
+              "ml-[3px] inline-block h-5 w-5 rounded-full bg-white shadow transition-all",
+              checked ? "translate-x-[18px]" : "translate-x-0"
+            )}
+          />
+        </span>
+      </span>
+    </label>
+  );
+}
 
 export default function AliasSettings() {
   const { session } = useSessionStore();
@@ -16,6 +54,10 @@ export default function AliasSettings() {
   const [resetSending, setResetSending] = useState(false);
   const [resetMessage, setResetMessage] = useState<string | null>(null);
   const [resetError, setResetError] = useState<string | null>(null);
+  const tutorModeEnabled = useFeatureFlagsStore((state) => state.tutorModeEnabled);
+  const toggleTutorMode = useFeatureFlagsStore((state) => state.toggleTutorMode);
+  const darkModeEnabled = useFeatureFlagsStore((state) => state.darkModeEnabled);
+  const toggleDarkMode = useFeatureFlagsStore((state) => state.toggleDarkMode);
 
   useEffect(() => {
     if (!session) return;
@@ -163,6 +205,27 @@ export default function AliasSettings() {
             {resetSending ? "Sending…" : "Email me a reset link"}
           </Button>
         </CardFooter>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Learning preferences</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm text-neutral-700">
+          <PreferenceToggle
+            id="tutor-mode-toggle"
+            label="Tutor mode"
+            description="Show guided tutoring prompts while you practice."
+            checked={tutorModeEnabled}
+            onToggle={toggleTutorMode}
+          />
+          <PreferenceToggle
+            id="dark-mode-toggle"
+            label="Dark mode"
+            description="Switch to a darker color palette that’s easier on your eyes."
+            checked={darkModeEnabled}
+            onToggle={toggleDarkMode}
+          />
+        </CardContent>
       </Card>
     </div>
   );
