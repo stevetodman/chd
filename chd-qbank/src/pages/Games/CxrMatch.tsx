@@ -107,6 +107,7 @@ export default function CxrMatch() {
     if (selected) return;
     const correct = label.is_correct;
     setSelected(label.id);
+    setError(null);
     if (correct) {
       setMessage("Correct!");
     } else if (correctLabel) {
@@ -128,6 +129,8 @@ export default function CxrMatch() {
 
       if (attemptError) {
         setError("We couldn't record your attempt. Please try again.");
+        setSelected(null);
+        setMessage(null);
         return;
       }
 

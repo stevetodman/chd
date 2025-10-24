@@ -71,6 +71,7 @@ export default function Murmurs() {
     if (!current) return;
     setSelected(option);
     setFeedback(feedbackForMurmurOption(option));
+    setError(null);
     if (session) {
       const { data: attempt, error: attemptError } = await supabase
         .from("murmur_attempts")
@@ -85,6 +86,8 @@ export default function Murmurs() {
 
       if (attemptError) {
         setError("We couldn't record your attempt. Please try again.");
+        setSelected(null);
+        setFeedback(null);
         return;
       }
 

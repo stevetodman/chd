@@ -18,8 +18,8 @@
     "seed:full": "npm run build:scripts && node scripts/dist/seed/full.js",
     "verify:seed": "npm run build:scripts && node scripts/dist/verifySeed.js",
     "verify:analytics:heatmap": "node scripts/verify-analytics-heatmap.mjs",
-    "migrate:qbank": "tsx chd-qbank/scripts/migrate-qbank.ts",
-    "migrate:qbank:dry": "DRY_RUN=1 tsx chd-qbank/scripts/migrate-qbank.ts"
+    "migrate:qbank": "npm run build:scripts && node scripts/dist/migrate-qbank.js",
+    "migrate:qbank:dry": "npm run build:scripts && DRY_RUN=1 node scripts/dist/migrate-qbank.js"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.0.5",
@@ -65,7 +65,6 @@
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "@types/papaparse": "^5.3.7",
-    "tsx": "^4.16.0",
     "fast-glob": "^3.3.2",
     "picocolors": "^1.0.0"
   }

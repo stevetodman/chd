@@ -10,6 +10,7 @@ export default function Practice() {
     index,
     loading,
     error,
+    hasMore,
     next,
     handleAnswer,
     handleFlagChange
@@ -41,7 +42,7 @@ export default function Practice() {
           type="button"
           onClick={next}
           aria-keyshortcuts="n"
-          disabled={(loading && index >= questions.length - 1) || questions.length === 0}
+          disabled={(!hasMore && index >= questions.length - 1) || questions.length === 0}
         >
           Next question
         </Button>

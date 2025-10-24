@@ -12,6 +12,15 @@ interface FeaturedQuestion {
   lead_in: string | null;
 }
 
+const shuffle = <T,>(values: T[]): T[] => {
+  const copy = [...values];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+};
+
 export default function Dashboard() {
   const { session } = useSessionStore();
   const [aliasNeeded, setAliasNeeded] = useState(false);
@@ -87,7 +96,7 @@ export default function Dashboard() {
           setFeatured([]);
           return;
         }
-        const randomized = (data ?? []).sort(() => Math.random() - 0.5);
+        const randomized = shuffle(data ?? []);
         setFeatured(randomized.map((row) => ({ id: row.id, lead_in: row.lead_in })));
       })
       .finally(() => {
