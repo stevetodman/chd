@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { signIn } from "../lib/auth";
 import { Button } from "../components/ui/Button";
+import { getErrorMessage } from "../lib/utils";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -15,8 +16,7 @@ export default function Login() {
       await signIn(email, password);
       navigate("/dashboard");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unable to sign in";
-      setError(message);
+      setError(getErrorMessage(err, "Unable to sign in"));
     }
   };
 

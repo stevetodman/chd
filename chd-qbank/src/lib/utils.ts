@@ -18,3 +18,21 @@ export function percentage(part: number, total: number): string {
 export function classNames(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
+
+export function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") {
+    const trimmed = error.trim();
+    if (trimmed) return trimmed;
+  }
+  if (
+    error &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof (error as { message?: unknown }).message === "string"
+  ) {
+    const message = (error as { message: string }).message.trim();
+    if (message) return message;
+  }
+  return fallback;
+}

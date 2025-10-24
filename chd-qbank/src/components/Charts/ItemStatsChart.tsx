@@ -9,6 +9,7 @@ import {
   Legend
 } from "chart.js";
 import { fetchItemStats } from "../../lib/analytics";
+import { getErrorMessage } from "../../lib/utils";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
@@ -28,8 +29,7 @@ export default function ItemStatsChart() {
       })
       .catch((err) => {
         console.error("Failed to load item stats", err);
-        const message = err instanceof Error ? err.message : "Failed to load item stats.";
-        setError(message);
+        setError(getErrorMessage(err, "Failed to load item stats."));
         setLabels([]);
         setPValues([]);
         setDiscrimination([]);
