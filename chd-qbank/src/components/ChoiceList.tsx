@@ -9,9 +9,10 @@ type Props = {
   disabled?: boolean;
   onSelect: (choice: Choice) => void;
   selectedId?: string | null;
+  showFeedback?: boolean;
 };
 
-export default function ChoiceList({ choices, disabled, onSelect, selectedId }: Props) {
+export default function ChoiceList({ choices, disabled, onSelect, selectedId, showFeedback = false }: Props) {
   const [struck, setStruck] = useState<Record<string, boolean>>({});
 
   const toggleStrike = useCallback((id: string) => {
@@ -60,6 +61,11 @@ export default function ChoiceList({ choices, disabled, onSelect, selectedId }: 
     <div className="space-y-3">
       {choices.map((choice) => {
         const isSelected = selectedId === choice.id;
+        const reveal = showFeedback && selectedId !== null;
+        const isCorrect = choice.is_correct;
+        const showAsCorrect = reveal && isCorrect;
+        const showAsIncorrectSelection = reveal && isSelected && !isCorrect;
+        const showAsCorrectSelection = reveal && isSelected && isCorrect;
         const isStruck = struck[choice.id];
         return (
           <button
@@ -75,18 +81,61 @@ export default function ChoiceList({ choices, disabled, onSelect, selectedId }: 
             }}
             className={classNames(
               "w-full rounded-md border border-neutral-200 bg-white p-4 text-left shadow-sm transition focus:outline-none focus:ring-2 focus:ring-brand-500",
-              isSelected && "border-brand-500 ring-2 ring-brand-500",
+              isSelected && !reveal && "border-brand-500 ring-2 ring-brand-500",
+              showAsCorrectSelection &&
+                "border-emerald-500 bg-emerald-50 text-emerald-900 ring-2 ring-emerald-300",
+              showAsIncorrectSelection &&
+                "border-rose-500 bg-rose-50 text-rose-900 ring-2 ring-rose-300",
+              showAsCorrect && !isSelected && "border-emerald-400 bg-emerald-50 text-emerald-900",
               isStruck && "line-through text-neutral-400"
             )}
+            data-state={
+              !reveal
+                ? isSelected
+                  ? "selected"
+                  : "idle"
+                : showAsCorrectSelection
+                  ? "correct"
+                  : showAsIncorrectSelection
+                    ? "incorrect"
+                    : showAsCorrect
+                      ? "correct-answer"
+                      : "revealed"
+            }
           >
-            <span className="mr-2 font-semibold">{choice.label}.</span>
-            <ReactMarkdown
-              remarkPlugins={markdownRemarkPlugins}
-              rehypePlugins={markdownRehypePlugins}
-              className="inline prose prose-sm max-w-none"
-            >
-              {choice.text_md}
-            </ReactMarkdown>
+            <div className="flex items-start gap-3">
+              <span className="font-semibold">{choice.label}.</span>
+              <div className="flex-1 space-y-1">
+                <ReactMarkdown
+                  remarkPlugins={markdownRemarkPlugins}
+                  rehypePlugins={markdownRehypePlugins}
+                  className="prose prose-sm max-w-none"
+                >
+                  {choice.text_md}
+                </ReactMarkdown>
+                {reveal ? (
+                  <p
+                    className={classNames(
+                      "text-sm font-medium",
+                      showAsCorrectSelection || (showAsCorrect && !isSelected)
+                        ? "text-emerald-700"
+                        : showAsIncorrectSelection
+                          ? "text-rose-700"
+                          : "text-neutral-500"
+                    )}
+                    role={isSelected ? "status" : undefined}
+                  >
+                    {showAsCorrectSelection
+                      ? "Correct answer"
+                      : showAsIncorrectSelection
+                        ? "Your answer — incorrect"
+                        : showAsCorrect
+                          ? "Correct answer"
+                          : null}
+                  </p>
+                ) : null}
+              </div>
+            </div>
           </button>
         );
       })}

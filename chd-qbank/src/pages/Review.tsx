@@ -1,20 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import ReactMarkdown from "react-markdown";
 import { supabase } from "../lib/supabaseClient";
 import { useSessionStore } from "../lib/auth";
-import { markdownRemarkPlugins, markdownRehypePlugins } from "../lib/markdown";
+import { normalizeQuestionRows, type QuestionQueryRow } from "../lib/practice";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
+import ReviewQuestionCard, { type ReviewFlag } from "../components/ReviewQuestionCard";
 
-type FlaggedResponse = {
+type FlaggedResponseRow = {
   id: string;
   created_at: string;
-  questions: { stem_md: string; lead_in: string | null } | null;
+  questions: QuestionQueryRow | null;
 };
 
 export default function Review() {
   const { session } = useSessionStore();
-  const [flags, setFlags] = useState<FlaggedResponse[]>([]);
+  const [flags, setFlags] = useState<ReviewFlag[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -27,7 +27,22 @@ export default function Review() {
     setFetchError(null);
     const { data, error } = await supabase
       .from("responses")
-      .select("id, created_at, questions(stem_md, lead_in)")
+      .select(
+        `id, created_at, questions(
+          id,
+          slug,
+          stem_md,
+          lead_in,
+          explanation_brief_md,
+          explanation_deep_md,
+          topic,
+          subtopic,
+          lesion,
+          context_panels,
+          media_bundle:media_bundles(id, murmur_url, cxr_url, ekg_url, diagram_url, alt_text),
+          choices(id,label,text_md,is_correct)
+        )`
+      )
       .eq("user_id", session.user.id)
       .eq("flagged", true)
       .order("created_at", { ascending: false });
@@ -36,7 +51,16 @@ export default function Review() {
       setFetchError(error.message);
       setFlags([]);
     } else {
-      setFlags((data ?? []) as FlaggedResponse[]);
+      const typed = (data ?? []) as FlaggedResponseRow[];
+      const mapped: ReviewFlag[] = typed
+        .map((row) => {
+          if (!row.questions) return null;
+          const [question] = normalizeQuestionRows([row.questions]);
+          if (!question) return null;
+          return { id: row.id, created_at: row.created_at, question } satisfies ReviewFlag;
+        })
+        .filter((item): item is ReviewFlag => item !== null);
+      setFlags(mapped);
     }
 
     setLoading(false);
@@ -115,31 +139,12 @@ export default function Review() {
 
       <div className="space-y-4">
         {flags.map((flag) => (
-          <Card key={flag.id}>
-            <CardHeader>
-              <CardTitle className="text-base">{flag.questions?.lead_in ?? "Practice question"}</CardTitle>
-              <CardDescription className="text-xs">
-                Added to review on {new Date(flag.created_at).toLocaleString()}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm text-neutral-700">
-              <ReactMarkdown
-                remarkPlugins={markdownRemarkPlugins}
-                rehypePlugins={markdownRehypePlugins}
-                className="prose prose-sm max-w-none text-neutral-800"
-              >
-                {flag.questions?.stem_md ?? ""}
-              </ReactMarkdown>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => void handleUnflag(flag.id)}
-                disabled={processingId === flag.id}
-              >
-                {processingId === flag.id ? "Saving…" : "Mark as reviewed"}
-              </Button>
-            </CardContent>
-          </Card>
+          <ReviewQuestionCard
+            key={flag.id}
+            flag={flag}
+            onMarkReviewed={() => handleUnflag(flag.id)}
+            processing={processingId === flag.id}
+          />
         ))}
       </div>
 
