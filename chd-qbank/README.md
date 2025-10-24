@@ -67,6 +67,15 @@ Provision both development and production Supabase projects:
 
 The seed utilities read from `data/templates/` and enforce idempotency, so re-running them updates existing rows safely.
 
+### Default admin & starter content
+
+Running `npm run seed:full` now creates a ready-to-use administrator and loads a focused study set:
+
+- **Admin credentials:** `admin@example.com` with password `Admin123!` (override via `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, and `SEED_ADMIN_ALIAS`). Sign in at [http://localhost:5173](http://localhost:5173) immediately after seeding, then rotate the password in Supabase Auth once your deployment is stable.
+- **Sample questions and media:** the seed synchronizes congenital heart disease scenarios covering cyanotic lesions, murmurs, arrhythmias, and image interpretation, complete with linked media bundles (radiographs, diagrams, murmurs) so dashboards and drills render rich content on first launch.【F:chd-qbank/scripts/seed/seedData.ts†L38-L214】
+
+These defaults ensure fresh environments are navigable without additional setup. Invite real users only after rotating the admin credentials and updating seeded aliases to suit your team.
+
 ## Available scripts
 
 | Command | Purpose |
