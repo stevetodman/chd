@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { AppRoutes } from "./routes";
 import { getSession, useSessionStore } from "./lib/auth";
 import { useServiceWorkerUpdates } from "./hooks/useServiceWorkerUpdates";
+import { PageState } from "./components/PageState";
 
 export default function App() {
   const location = useLocation();
@@ -24,7 +25,15 @@ export default function App() {
 
   return (
     <>
-      <Suspense fallback={<div className="p-6">Loading…</div>}>
+      <Suspense
+        fallback={
+          <PageState
+            status="loading"
+            title="Loading the QBank"
+            description="We&rsquo;re preparing your study data and personalized dashboard."
+          />
+        }
+      >
         <AppRoutes />
       </Suspense>
       {updateVersion && (

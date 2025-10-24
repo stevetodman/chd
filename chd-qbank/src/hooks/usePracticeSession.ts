@@ -46,6 +46,8 @@ export type PracticeSessionStats = {
   accuracy: number | null;
   averageMs: number | null;
   flagged: number;
+  currentStreak: number;
+  longestStreak: number;
 };
 
 export function usePracticeSession() {
@@ -62,6 +64,8 @@ export function usePracticeSession() {
   const [responses, setResponses] = useState<ResponseMap>({});
   const responsesRef = useRef<ResponseMap>({});
   const filterVersionRef = useRef(0);
+  const [answerOrder, setAnswerOrder] = useState<string[]>([]);
+  const answerOrderRef = useRef<string[]>([]);
   const { session } = useSessionStore();
 
   useEffect(() => {
@@ -80,6 +84,8 @@ export function usePracticeSession() {
       const requestVersion = replace ? filterVersionRef.current + 1 : filterVersionRef.current;
       if (replace) {
         filterVersionRef.current = requestVersion;
+        answerOrderRef.current = [];
+        setAnswerOrder([]);
       }
 
       inFlightRequests.current += 1;
@@ -262,10 +268,17 @@ export function usePracticeSession() {
         saved = mapResponse(data);
       }
 
-      setResponses((prev) => ({
-        ...prev,
-        [current.id]: saved
-      }));
+        setResponses((prev) => ({
+          ...prev,
+          [current.id]: saved
+        }));
+
+        setAnswerOrder((prev) => {
+          const next = prev.filter((id) => id !== current.id);
+          next.push(current.id);
+          answerOrderRef.current = next;
+          return next;
+        });
 
       if (saved?.is_correct && !wasCorrect) {
         const { error: rpcError } = await supabase.rpc("increment_points", {
@@ -408,14 +421,32 @@ export function usePracticeSession() {
       { totalAnswered: 0, totalCorrect: 0, flagged: 0, totalMs: 0, timedCount: 0 }
     );
 
+    let currentStreak = 0;
+    let longestStreak = 0;
+
+    for (const id of answerOrder) {
+      const response = responses[id];
+      if (!response || !response.choice_id) continue;
+      if (response.is_correct) {
+        currentStreak += 1;
+        if (currentStreak > longestStreak) {
+          longestStreak = currentStreak;
+        }
+      } else {
+        currentStreak = 0;
+      }
+    }
+
     return {
       totalAnswered: base.totalAnswered,
       totalCorrect: base.totalCorrect,
       accuracy: base.totalAnswered ? base.totalCorrect / base.totalAnswered : null,
       averageMs: base.timedCount ? Math.round(base.totalMs / base.timedCount) : null,
-      flagged: base.flagged
+      flagged: base.flagged,
+      currentStreak,
+      longestStreak
     } satisfies PracticeSessionStats;
-  }, [responses]);
+  }, [answerOrder, responses]);
 
   const sessionComplete = useMemo(
     () => !hasMore && questions.length > 0 && index >= questions.length - 1 && sessionStats.totalAnswered > 0,
