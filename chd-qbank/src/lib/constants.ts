@@ -62,7 +62,7 @@ export type Question = {
   lesion?: string | null;
   media_bundle?: MediaBundle | null;
   choices: Choice[];
-  context_panels?: ContextPanel[] | null;
+  context_panels: ContextPanel[];
 };
 
 export type Response = {
