@@ -4,6 +4,7 @@ import { Link, NavLink } from "react-router-dom";
 import { APP_NAME } from "../lib/constants";
 import { signOut, useSessionStore } from "../lib/auth";
 import { useSettingsStore } from "../lib/settings";
+import { useFeatureFlagsStore } from "../store/featureFlags";
 
 export default function Navbar() {
   const { session } = useSessionStore();
@@ -11,13 +12,28 @@ export default function Navbar() {
     leaderboardEnabled: state.leaderboardEnabled,
     loaded: state.loaded
   }));
+  const {
+    darkModeEnabled,
+    toggleDarkMode,
+    tutorModeEnabled,
+    learningGamesEnabled
+  } = useFeatureFlagsStore((state) => ({
+    darkModeEnabled: state.darkModeEnabled,
+    toggleDarkMode: state.toggleDarkMode,
+    tutorModeEnabled: state.tutorModeEnabled,
+    learningGamesEnabled: state.learningGamesEnabled
+  }));
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const primaryLinks = [
-    { to: "/practice", label: "Practice" },
+    ...(tutorModeEnabled ? [{ to: "/practice", label: "Practice" }] : []),
     { to: "/review", label: "Review" },
-    { to: "/games/murmurs", label: "Murmurs" },
-    { to: "/games/cxr", label: "CXR Match" }
+    ...(learningGamesEnabled
+      ? [
+          { to: "/games/murmurs", label: "Murmurs" },
+          { to: "/games/cxr", label: "CXR Match" }
+        ]
+      : [])
   ];
 
   if (leaderboardEnabled && settingsLoaded) {
@@ -33,22 +49,50 @@ export default function Navbar() {
 
   const linkClasses = ({ isActive }: { isActive: boolean }) =>
     classNames(
-      "block rounded px-3 py-2 text-sm font-medium transition-colors hover:bg-neutral-50 hover:text-neutral-900 md:rounded-none md:px-0 md:py-0 md:text-sm md:hover:bg-transparent md:border-b-2 md:border-transparent",
-      isActive ? "text-neutral-900 md:border-brand-500" : "text-neutral-600"
+      "block rounded px-3 py-2 text-sm font-medium transition-colors md:rounded-none md:px-0 md:py-0 md:text-sm md:hover:bg-transparent md:border-b-2 md:border-transparent",
+      darkModeEnabled
+        ? "hover:bg-neutral-800 hover:text-neutral-100"
+        : "hover:bg-neutral-50 hover:text-neutral-900",
+      isActive
+        ? darkModeEnabled
+          ? "text-white md:border-brand-400"
+          : "text-neutral-900 md:border-brand-500"
+        : darkModeEnabled
+          ? "text-neutral-300"
+          : "text-neutral-600"
     );
 
   const secondaryLinkClasses = ({ isActive }: { isActive: boolean }) =>
     classNames(
-      "text-sm font-medium transition-colors hover:text-neutral-900",
-      isActive ? "text-neutral-900" : "text-neutral-600"
+      "text-sm font-medium transition-colors",
+      darkModeEnabled ? "hover:text-white" : "hover:text-neutral-900",
+      isActive
+        ? darkModeEnabled
+          ? "text-white"
+          : "text-neutral-900"
+        : darkModeEnabled
+          ? "text-neutral-300"
+          : "text-neutral-600"
     );
 
   const handleNavLinkClick = () => {
     setMobileOpen(false);
   };
 
+  const headerClasses = classNames(
+    "border-b",
+    darkModeEnabled ? "border-neutral-800 bg-neutral-900 text-neutral-100" : "border-neutral-200 bg-white"
+  );
+
+  const toggleButtonClasses = classNames(
+    "inline-flex items-center justify-center rounded-md border px-2 py-2 text-sm font-medium transition-colors",
+    darkModeEnabled
+      ? "border-neutral-700 bg-neutral-800 text-neutral-200 hover:bg-neutral-700"
+      : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
+  );
+
   return (
-    <header className="border-b border-neutral-200 bg-white">
+    <header className={headerClasses}>
       <div className="mx-auto max-w-6xl px-4 py-4">
         <div className="flex items-center justify-between gap-4">
           <Link to="/dashboard" className="text-lg font-semibold text-brand-600">
@@ -90,7 +134,20 @@ export default function Navbar() {
             )}
             <button
               type="button"
-              className="inline-flex items-center justify-center rounded-md border border-neutral-200 px-2 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 md:hidden"
+              onClick={toggleDarkMode}
+              aria-pressed={darkModeEnabled}
+              className={toggleButtonClasses}
+            >
+              {darkModeEnabled ? "Light mode" : "Dark mode"}
+            </button>
+            <button
+              type="button"
+              className={classNames(
+                "inline-flex items-center justify-center rounded-md border px-2 py-2 text-sm font-medium transition-colors md:hidden",
+                darkModeEnabled
+                  ? "border-neutral-700 bg-neutral-800 text-neutral-200 hover:bg-neutral-700"
+                  : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
+              )}
               aria-expanded={mobileOpen}
               aria-label="Toggle navigation menu"
               onClick={() => setMobileOpen((open) => !open)}
@@ -114,7 +171,12 @@ export default function Navbar() {
           </div>
         </div>
         {mobileOpen ? (
-          <div className="mt-4 space-y-6 border-t border-neutral-200 pt-4 md:hidden">
+          <div
+            className={classNames(
+              "mt-4 space-y-6 border-t pt-4 md:hidden",
+              darkModeEnabled ? "border-neutral-800" : "border-neutral-200"
+            )}
+          >
             {session ? (
               <nav className="space-y-1">
                 {primaryLinks.map((link) => (
@@ -124,7 +186,12 @@ export default function Navbar() {
                 ))}
               </nav>
             ) : null}
-            <div className="space-y-1 border-t border-neutral-100 pt-4">
+            <div
+              className={classNames(
+                "space-y-1 border-t pt-4",
+                darkModeEnabled ? "border-neutral-800" : "border-neutral-100"
+              )}
+            >
               {accountLinks.map((link) => (
                 <NavLink key={link.to} to={link.to} className={linkClasses} onClick={handleNavLinkClick}>
                   {link.label}
@@ -137,7 +204,12 @@ export default function Navbar() {
                     setMobileOpen(false);
                     void signOut();
                   }}
-                  className="w-full rounded bg-neutral-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-700"
+                  className={classNames(
+                    "w-full rounded px-3 py-2 text-sm font-medium transition-colors",
+                    darkModeEnabled
+                      ? "bg-neutral-100 text-neutral-900 hover:bg-white"
+                      : "bg-neutral-900 text-white hover:bg-neutral-700"
+                  )}
                 >
                   Sign out
                 </button>

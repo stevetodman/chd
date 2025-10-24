@@ -14,8 +14,10 @@ import {
   usePracticeSession
 } from "../hooks/usePracticeSession";
 import { useI18n } from "../i18n";
+import { useFeatureFlagsStore } from "../store/featureFlags";
 
 export default function Practice() {
+  const tutorModeEnabled = useFeatureFlagsStore((state) => state.tutorModeEnabled);
   const {
     questions,
     currentQuestion,
@@ -36,6 +38,23 @@ export default function Practice() {
     filterOptionsError
   } = usePracticeSession();
   const { formatMessage, formatNumber } = useI18n();
+
+  if (!tutorModeEnabled) {
+    return (
+      <div className="space-y-6">
+        <PageState
+          title="Tutor mode is currently unavailable"
+          description="Tutor-led practice is turned off right now. Check back later or explore other activities."
+          fullHeight
+        />
+        <div className="flex justify-center">
+          <Link to="/dashboard" className="text-sm font-medium text-brand-600 underline">
+            Return to dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
   const [sessionStart, setSessionStart] = useState(() => Date.now());
   const [elapsedMs, setElapsedMs] = useState(0);
   const [pendingFilters, setPendingFilters] = useState<PracticeFilters>({ ...filters });
