@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Practice from "../pages/Practice";
 import { useSessionStore } from "../lib/auth";
-import type { QuestionQueryRow } from "../lib/practice";
+import { SLOW_RESPONSE_THRESHOLD_MS, type QuestionQueryRow } from "../lib/practice";
 import { createMockSession } from "./test-helpers";
 import { syntheticPracticeQuestions } from "./fixtures/syntheticData";
 
@@ -185,6 +185,65 @@ describe("practice flow", () => {
     await user.click(screen.getByRole("button", { name: /next question/i }));
     await screen.findByText("Which intervention improves systemic oxygenation immediately?");
 
+    randomSpy.mockRestore();
+  });
+
+  it("shows a completion summary with slow responses and queues misses for review", async () => {
+    const user = userEvent.setup();
+    const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0.5);
+
+    const timeline = [
+      0,
+      0,
+      SLOW_RESPONSE_THRESHOLD_MS + 5_000,
+      0,
+      5_000,
+      5_000
+    ];
+    let callIndex = 0;
+    const nowSpy = vi.spyOn(performance, "now").mockImplementation(() => {
+      const value = timeline[callIndex] ?? timeline[timeline.length - 1];
+      callIndex += 1;
+      return value;
+    });
+
+    render(<Practice />);
+
+    const firstQuestion = await screen.findByText("What is the next best step in management?");
+    expect(firstQuestion).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /start beta-blocker therapy/i }));
+
+    await waitFor(() => expect(insertPayloads).toHaveLength(1));
+    expect(insertPayloads[0]).toMatchObject({
+      question_id: "practice-q1",
+      is_correct: false,
+      flagged: true
+    });
+
+    await user.click(screen.getByRole("button", { name: /next question/i }));
+    await screen.findByText("Which intervention improves systemic oxygenation immediately?");
+
+    await user.click(screen.getByRole("button", { name: /perform balloon atrial septostomy/i }));
+
+    await waitFor(() => expect(insertPayloads).toHaveLength(2));
+    expect(insertPayloads[1]).toMatchObject({
+      question_id: "practice-q2",
+      is_correct: true,
+      flagged: false
+    });
+
+    await waitFor(() => expect(rpcMock).toHaveBeenCalledWith("increment_points", { source: "practice_response", source_id: "response-2" }));
+
+    await user.click(screen.getByRole("button", { name: /next question/i }));
+
+    await screen.findByRole("heading", { name: /session complete/i });
+    expect(screen.getByText(/50%/i)).toBeInTheDocument();
+    expect(screen.getByText(/Automatically added to your review queue/i)).toBeInTheDocument();
+    expect(screen.getByText(/slow responses/i)).toBeInTheDocument();
+    expect(screen.getByText(/What is the next best step in management/i)).toBeInTheDocument();
+
+    nowSpy.mockRestore();
     randomSpy.mockRestore();
   });
 });

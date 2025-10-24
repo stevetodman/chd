@@ -18,6 +18,7 @@ export type QuestionQueryRow = {
 };
 
 export const PRACTICE_PAGE_SIZE = 10;
+export const SLOW_RESPONSE_THRESHOLD_MS = 45_000;
 
 export function normalizeQuestionRows(rows: QuestionQueryRow[]): QuestionRow[] {
   return rows.map((item) => ({

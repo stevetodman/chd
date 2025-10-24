@@ -10,7 +10,8 @@ import {
   type QuestionQueryRow,
   type QuestionRow,
   shuffleQuestions,
-  shouldLoadNextPage
+  shouldLoadNextPage,
+  SLOW_RESPONSE_THRESHOLD_MS
 } from "../lib/practice";
 
 export type PracticeResponse = {
@@ -22,6 +23,22 @@ export type PracticeResponse = {
 };
 
 type ResponseMap = Record<string, PracticeResponse | null>;
+
+export type PracticeSummaryEntry = {
+  question: QuestionRow;
+  response: PracticeResponse;
+};
+
+export type PracticeSessionSummary = {
+  totalQuestions: number;
+  answeredCount: number;
+  correctCount: number;
+  incorrectCount: number;
+  flaggedCount: number;
+  accuracy: number;
+  slowResponses: PracticeSummaryEntry[];
+  missedQuestions: PracticeSummaryEntry[];
+};
 
 const mapResponse = (data: {
   id: string;
@@ -49,6 +66,7 @@ export function usePracticeSession() {
   const loadedPages = useRef(new Set<number>());
   const [responses, setResponses] = useState<ResponseMap>({});
   const responsesRef = useRef<ResponseMap>({});
+  const [completed, setCompleted] = useState(false);
   const { session } = useSessionStore();
 
   useEffect(() => {
@@ -67,6 +85,9 @@ export function usePracticeSession() {
       loadingRef.current = true;
       setLoading(true);
       setError(null);
+      if (replace) {
+        setCompleted(false);
+      }
 
       const from = pageToLoad * PRACTICE_PAGE_SIZE;
       const to = from + PRACTICE_PAGE_SIZE - 1;
@@ -162,6 +183,7 @@ export function usePracticeSession() {
 
       let saved: PracticeResponse | null = null;
       const wasCorrect = existing?.is_correct ?? false;
+      const shouldFlag = flagged || !choice.is_correct;
 
       if (existing) {
         const { data, error } = await supabase
@@ -170,7 +192,7 @@ export function usePracticeSession() {
             choice_id: choice.id,
             is_correct: choice.is_correct,
             ms_to_answer: ms,
-            flagged
+            flagged: shouldFlag
           })
           .eq("id", existing.id)
           .select("id, flagged, choice_id, is_correct, ms_to_answer")
@@ -190,7 +212,7 @@ export function usePracticeSession() {
             choice_id: choice.id,
             is_correct: choice.is_correct,
             ms_to_answer: ms,
-            flagged
+            flagged: shouldFlag
           })
           .select("id, flagged, choice_id, is_correct, ms_to_answer")
           .single();
@@ -307,6 +329,11 @@ export function usePracticeSession() {
       return;
     }
 
+    if (!hasMore) {
+      setCompleted(true);
+      return;
+    }
+
     if (hasMore) {
       void loadPage(page + 1).then((loaded) => {
         if (loaded > 0) {
@@ -326,6 +353,50 @@ export function usePracticeSession() {
     return responses[currentQuestion.id] ?? null;
   }, [currentQuestion, responses]);
 
+  const answeredEntries = useMemo(() => {
+    return questions
+      .map((question) => {
+        const response = responses[question.id];
+        if (!response || !response.choice_id) return null;
+        return { question, response } as PracticeSummaryEntry;
+      })
+      .filter((entry): entry is PracticeSummaryEntry => entry !== null);
+  }, [questions, responses]);
+
+  const summary = useMemo<PracticeSessionSummary>(() => {
+    const answeredCount = answeredEntries.length;
+    const correctCount = answeredEntries.filter((entry) => entry.response.is_correct).length;
+    const incorrectCount = answeredCount - correctCount;
+    const flaggedCount = answeredEntries.filter((entry) => entry.response.flagged).length;
+    const accuracy = answeredCount === 0 ? 0 : Math.round((correctCount / answeredCount) * 100);
+    const slowResponses = answeredEntries.filter((entry) => {
+      const { ms_to_answer } = entry.response;
+      if (typeof ms_to_answer !== "number") return false;
+      return ms_to_answer >= SLOW_RESPONSE_THRESHOLD_MS;
+    });
+    const missedQuestions = answeredEntries.filter((entry) => !entry.response.is_correct);
+
+    return {
+      totalQuestions: questions.length,
+      answeredCount,
+      correctCount,
+      incorrectCount,
+      flaggedCount,
+      accuracy,
+      slowResponses,
+      missedQuestions
+    };
+  }, [answeredEntries, questions.length]);
+
+  const restart = useCallback(async () => {
+    setResponses({});
+    responsesRef.current = {};
+    setCompleted(false);
+    setIndex(0);
+    loadedPages.current = new Set();
+    await loadPage(0, true);
+  }, [loadPage]);
+
   return {
     questions,
     currentQuestion,
@@ -336,6 +407,9 @@ export function usePracticeSession() {
     hasMore,
     next,
     handleAnswer,
-    handleFlagChange
+    handleFlagChange,
+    completed,
+    summary,
+    restart
   } as const;
 }

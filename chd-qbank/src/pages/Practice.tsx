@@ -1,4 +1,5 @@
 import QuestionCard from "../components/QuestionCard";
+import PracticeCompletionSummary from "../components/PracticeCompletionSummary";
 import { Button } from "../components/ui/Button";
 import { usePracticeSession } from "../hooks/usePracticeSession";
 
@@ -10,10 +11,12 @@ export default function Practice() {
     index,
     loading,
     error,
-    hasMore,
     next,
     handleAnswer,
-    handleFlagChange
+    handleFlagChange,
+    completed,
+    summary,
+    restart
   } = usePracticeSession();
 
   if (loading && questions.length === 0) {
@@ -22,6 +25,10 @@ export default function Practice() {
 
   if (error && questions.length === 0) {
     return <div className="text-red-600">{error}</div>;
+  }
+
+  if (completed) {
+    return <PracticeCompletionSummary summary={summary} onRestart={() => void restart()} />;
   }
 
   if (!currentQuestion) return <div>No questions found.</div>;
@@ -42,7 +49,7 @@ export default function Practice() {
           type="button"
           onClick={next}
           aria-keyshortcuts="n"
-          disabled={(!hasMore && index >= questions.length - 1) || questions.length === 0}
+          disabled={questions.length === 0}
         >
           Next question
         </Button>
