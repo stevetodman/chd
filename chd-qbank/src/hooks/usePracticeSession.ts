@@ -48,6 +48,24 @@ export type PracticeSessionStats = {
   flagged: number;
 };
 
+export type PracticeFilters = {
+  topic: string | "all";
+  lesion: string | "all";
+  difficulty: number | "all";
+};
+
+export type PracticeFilterOptions = {
+  topics: string[];
+  lesions: string[];
+  difficulties: number[];
+};
+
+const DEFAULT_FILTERS: PracticeFilters = {
+  topic: "all",
+  lesion: "all",
+  difficulty: "all"
+};
+
 export function usePracticeSession() {
   const [questions, setQuestions] = useState<QuestionRow[]>([]);
   const [index, setIndex] = useState(0);
@@ -62,6 +80,14 @@ export function usePracticeSession() {
   const [responses, setResponses] = useState<ResponseMap>({});
   const responsesRef = useRef<ResponseMap>({});
   const filterVersionRef = useRef(0);
+  const [filters, setFiltersState] = useState<PracticeFilters>(() => ({ ...DEFAULT_FILTERS }));
+  const filtersRef = useRef<PracticeFilters>({ ...DEFAULT_FILTERS });
+  const [filterOptions, setFilterOptions] = useState<PracticeFilterOptions>({
+    topics: [],
+    lesions: [],
+    difficulties: []
+  });
+  const [filtersLoading, setFiltersLoading] = useState(true);
   const { session } = useSessionStore();
 
   useEffect(() => {
@@ -71,6 +97,77 @@ export function usePracticeSession() {
   useEffect(() => {
     responsesRef.current = responses;
   }, [responses]);
+
+  useEffect(() => {
+    filtersRef.current = filters;
+  }, [filters]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setFiltersLoading(true);
+
+    const loadOptions = async () => {
+      try {
+        const [topicsResult, lesionsResult, difficultiesResult] = await Promise.all([
+          supabase
+            .from("questions")
+            .select("topic", { distinct: true })
+            .not("topic", "is", null),
+          supabase
+            .from("questions")
+            .select("lesion", { distinct: true })
+            .not("lesion", "is", null),
+          supabase
+            .from("questions")
+            .select("difficulty_target", { distinct: true })
+            .not("difficulty_target", "is", null)
+        ]);
+
+        if (cancelled) return;
+
+        const nextOptions: PracticeFilterOptions = {
+          topics: [],
+          lesions: [],
+          difficulties: []
+        };
+
+        if (!topicsResult.error && topicsResult.data) {
+          nextOptions.topics = (topicsResult.data as Array<{ topic: string | null }>).
+            map((row) => row.topic).
+            filter((value): value is string => typeof value === "string" && value.trim().length > 0).
+            sort((a, b) => a.localeCompare(b));
+        }
+
+        if (!lesionsResult.error && lesionsResult.data) {
+          nextOptions.lesions = (lesionsResult.data as Array<{ lesion: string | null }>).
+            map((row) => row.lesion).
+            filter((value): value is string => typeof value === "string" && value.trim().length > 0).
+            sort((a, b) => a.localeCompare(b));
+        }
+
+        if (!difficultiesResult.error && difficultiesResult.data) {
+          nextOptions.difficulties = (difficultiesResult.data as Array<{ difficulty_target: number | null }>).
+            map((row) => row.difficulty_target).
+            filter((value): value is number => typeof value === "number").
+            sort((a, b) => a - b);
+        }
+
+        setFilterOptions(nextOptions);
+      } catch {
+        if (cancelled) return;
+        setFilterOptions({ topics: [], lesions: [], difficulties: [] });
+      } finally {
+        if (cancelled) return;
+        setFiltersLoading(false);
+      }
+    };
+
+    void loadOptions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const loadPage = useCallback(
     async (pageToLoad: number, replace = false) => {
@@ -91,15 +188,31 @@ export function usePracticeSession() {
       const to = from + PRACTICE_PAGE_SIZE - 1;
 
       try {
-        const { data, error: fetchError, count } = await supabase
+        const activeFilters = filtersRef.current;
+
+        let query = supabase
           .from("questions")
           .select(
-            "id, slug, stem_md, lead_in, explanation_brief_md, explanation_deep_md, topic, subtopic, lesion, context_panels, media_bundle:media_bundles(id, murmur_url, cxr_url, ekg_url, diagram_url, alt_text), choices(id,label,text_md,is_correct)",
+            "id, slug, stem_md, lead_in, explanation_brief_md, explanation_deep_md, topic, subtopic, lesion, difficulty_target, context_panels, media_bundle:media_bundles(id, murmur_url, cxr_url, ekg_url, diagram_url, alt_text), choices(id,label,text_md,is_correct)",
             { count: "exact" }
           )
           .eq("status", "published")
           .order("id", { ascending: true })
           .range(from, to);
+
+        if (activeFilters.topic !== "all") {
+          query = query.eq("topic", activeFilters.topic);
+        }
+
+        if (activeFilters.lesion !== "all") {
+          query = query.eq("lesion", activeFilters.lesion);
+        }
+
+        if (activeFilters.difficulty !== "all") {
+          query = query.eq("difficulty_target", activeFilters.difficulty);
+        }
+
+        const { data, error: fetchError, count } = await query;
 
         if (requestVersion !== filterVersionRef.current) {
           return 0;
@@ -422,6 +535,41 @@ export function usePracticeSession() {
     [hasMore, index, questions.length, sessionStats.totalAnswered]
   );
 
+  const updateFilters = useCallback(
+    (updates: Partial<PracticeFilters>) => {
+      setFiltersState((prev) => {
+        const next = { ...prev, ...updates };
+        filtersRef.current = next;
+        return next;
+      });
+      setError(null);
+      void loadPage(0, true);
+    },
+    [loadPage]
+  );
+
+  const resetFilters = useCallback(() => {
+    setFiltersState(() => {
+      const next = { ...DEFAULT_FILTERS };
+      filtersRef.current = next;
+      return next;
+    });
+    setError(null);
+    void loadPage(0, true);
+  }, [loadPage]);
+
+  const restart = useCallback(() => {
+    setQuestions([]);
+    questionsRef.current = [];
+    setResponses({});
+    responsesRef.current = {};
+    setHasMore(true);
+    loadedPages.current = new Set();
+    setIndex(0);
+    setError(null);
+    void loadPage(0, true);
+  }, [loadPage]);
+
   return {
     questions,
     currentQuestion,
@@ -434,6 +582,12 @@ export function usePracticeSession() {
     handleAnswer,
     handleFlagChange,
     sessionStats,
-    sessionComplete
+    sessionComplete,
+    filters,
+    setFilters: updateFilters,
+    resetFilters,
+    filterOptions,
+    filtersLoading,
+    restart
   } as const;
 }

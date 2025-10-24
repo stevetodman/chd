@@ -12,6 +12,7 @@ export type QuestionQueryRow = {
   topic: string | null;
   subtopic: string | null;
   lesion: string | null;
+  difficulty_target: number | null;
   media_bundle: Question["media_bundle"];
   context_panels: ContextPanel[] | null;
   choices: Choice[] | null;
@@ -30,6 +31,7 @@ export function normalizeQuestionRows(rows: QuestionQueryRow[]): QuestionRow[] {
     topic: item.topic,
     subtopic: item.subtopic,
     lesion: item.lesion,
+    difficulty_target: item.difficulty_target,
     media_bundle: item.media_bundle ?? null,
     context_panels: item.context_panels ?? null,
     choices: (item.choices ?? [])

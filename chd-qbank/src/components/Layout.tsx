@@ -56,9 +56,15 @@ export default function Layout() {
   const showMaintenance = !!session && maintenanceMode && !isAdmin;
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="relative min-h-screen bg-neutral-50">
+      <a
+        href="#main-content"
+        className="absolute left-4 top-4 z-50 -translate-y-32 transform rounded-md bg-white px-4 py-2 text-sm font-medium text-neutral-900 shadow transition focus:translate-y-0 focus:outline-none focus:ring-2 focus:ring-brand-500"
+      >
+        Skip to main content
+      </a>
       <Navbar />
-      <main className="mx-auto max-w-6xl px-4 py-6">
+      <main id="main-content" className="mx-auto max-w-6xl px-4 py-6" tabIndex={-1}>
         {showMaintenance ? (
           <div className="flex min-h-[60vh] items-center justify-center">
             <div className="max-w-lg rounded-xl border border-neutral-200 bg-white p-6 text-center shadow-sm">
