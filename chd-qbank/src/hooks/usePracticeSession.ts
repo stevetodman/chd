@@ -21,15 +21,18 @@ export type PracticeResponse = {
   ms_to_answer: number | null;
 };
 
-type ResponseMap = Record<string, PracticeResponse | null>;
-
-const mapResponse = (data: {
+type ResponseRow = {
   id: string;
+  question_id?: string;
   flagged: boolean;
   choice_id: string | null;
   is_correct: boolean;
   ms_to_answer: number | null;
-}): PracticeResponse => ({
+};
+
+type ResponseMap = Record<string, PracticeResponse | null>;
+
+const mapResponse = (data: ResponseRow): PracticeResponse => ({
   id: data.id,
   flagged: data.flagged,
   choice_id: data.choice_id,
@@ -113,11 +116,59 @@ export function usePracticeSession() {
       setPage(pageToLoad);
       setHasMore(determineHasMore(count, nextQuestions.length, normalized.length));
 
+      if (session) {
+        const questionIds = randomized.map((question) => question.id);
+        if (replace && questionIds.length === 0) {
+          setResponses({});
+          responsesRef.current = {};
+        }
+
+        if (questionIds.length > 0) {
+          setResponses((prev) => {
+            const base: ResponseMap = replace ? {} : { ...prev };
+            for (const id of questionIds) {
+              if (!(id in base)) {
+                base[id] = null;
+              }
+            }
+
+            responsesRef.current = base;
+            return base;
+          });
+
+          const { data: responseRows, error: responsesError } = await supabase
+            .from("responses")
+            .select("id, flagged, choice_id, is_correct, ms_to_answer, question_id")
+            .eq("user_id", session.user.id)
+            .in("question_id", questionIds);
+
+          if (!responsesError) {
+            const typedRows = (responseRows ?? []) as ResponseRow[];
+            if (typedRows.length > 0) {
+              setResponses((prev) => {
+                const base: ResponseMap = { ...prev };
+
+                for (const row of typedRows) {
+                  if (!row.question_id) continue;
+                  base[row.question_id] = mapResponse(row);
+                }
+
+                responsesRef.current = base;
+                return base;
+              });
+            }
+          }
+        }
+      } else if (replace) {
+        setResponses({});
+        responsesRef.current = {};
+      }
+
       setLoading(false);
       loadingRef.current = false;
       return randomized.length;
     },
-    []
+    [session]
   );
 
   useEffect(() => {
@@ -144,30 +195,7 @@ export function usePracticeSession() {
         throw new Error(message);
       };
 
-      let existing = responsesRef.current[current.id];
-      if (!existing) {
-        const { data, error } = await supabase
-          .from("responses")
-          .select("id, flagged, choice_id, is_correct, ms_to_answer")
-          .eq("user_id", session.user.id)
-          .eq("question_id", current.id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (error) {
-          fail("We couldn't load your previous response. Check your connection and try again.");
-        }
-
-        if (data) {
-          existing = mapResponse(data);
-          setResponses((prev) => ({
-            ...prev,
-            [current.id]: existing
-          }));
-        }
-      }
-
+      const existing = responsesRef.current[current.id] ?? null;
       let saved: PracticeResponse | null = null;
       const wasCorrect = existing?.is_correct ?? false;
 
