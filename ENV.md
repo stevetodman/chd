@@ -8,7 +8,7 @@
 ## Local-only for scripts (NOT on Vercel)
 - `SUPABASE_URL`: same as above
 - `SUPABASE_SERVICE_ROLE_KEY`: Admin key (never expose in frontend)
-- `INVITE_CODE`: Current invite code (used by `npm run seed:invite`)
+- `INVITE_CODE`: Current invite code (used by `npm run seed:invite`; supply at runtime rather than committing it to disk)
 - `INVITE_EXPIRES`: YYYY-MM-DD expiration date for the invite code
 
 ## Optional
@@ -19,6 +19,18 @@
 - Local dev: `.env`, `.env.staging`, `.env.production` in `chd-qbank/`
 - Vercel: Project → Settings → Environment Variables (VITE_* only)
 - Supabase Function secrets: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+
+## Invite code provisioning workflow
+
+- Copy `.env.example` and leave the invite placeholders untouched; actual codes are injected when you run `npm run seed:invite`.
+- Supply credentials inline when seeding (example):
+
+  ```bash
+  INVITE_CODE="<secure-value>" INVITE_EXPIRES="2025-12-31" APP_ENV=production npm run seed:invite
+  ```
+
+- Store production values in your secret manager (Vercel, Supabase, 1Password, etc.) and export them into the shell just before running the script.
+- Rotate invite codes immediately if they are ever exposed (e.g., leaked logs or accidental commits) and rerun the seeding command with the new values.
 
 ## Selecting environment files
 

@@ -31,9 +31,9 @@ The CHD QBank is a static-first React application that delivers a congenital hea
    # Optional: enable automation helpers that use service-role access
    SUPABASE_URL=<your-supabase-url>
    SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
-   INVITE_CODE=<optional-invite-code>
-   INVITE_EXPIRES=<optional-iso-date>
    ```
+
+   The example file already includes invite placeholders—inject real values only when executing `npm run seed:invite` (e.g. `INVITE_CODE="<secure-value>" INVITE_EXPIRES="2025-12-31" npm run seed:invite`).
 
 3. Start the Vite development server:
 
@@ -57,13 +57,13 @@ Provision both development and production Supabase projects:
    npm run seed:full
    ```
 
-6. Keep invite codes synchronized across environments:
+6. Keep invite codes synchronized across environments by exporting the values inline when running the seeding script:
 
    ```bash
-   npm run seed:invite
+   INVITE_CODE="<secure-value>" INVITE_EXPIRES="2025-12-31" npm run seed:invite
    ```
 
-   The script stores the active invite code and expiry in Supabase—keep these values out of the Vite (`VITE_*`) environment.
+   The script stores the active invite code and expiry in Supabase—keep these values out of the Vite (`VITE_*`) environment and secret stores scoped to runtime automation only.
 
 The seed utilities read from `data/templates/` and enforce idempotency, so re-running them updates existing rows safely.
 

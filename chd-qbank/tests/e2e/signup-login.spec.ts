@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-const INVITE_CODE = process.env.INVITE_CODE || 'CHD2025FALL-STAGING';
+// Tests rely on a dummy invite code by default; real values must be supplied via INVITE_CODE at runtime.
+const INVITE_CODE = process.env.INVITE_CODE || 'TEST_INVITE_CODE';
 
 function uniqueEmail(prefix = 'e2e') {
   const ts = Date.now();
