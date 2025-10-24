@@ -90,6 +90,7 @@ All commands below run from `chd-qbank/`:
 | `npm run lint` | Run ESLint on the TypeScript/React source tree. |
 | `npm run test` | Execute the Vitest suite (unit tests plus utilities). |
 | `npm run build:scripts` | Compile TypeScript automation utilities located in `scripts/`. |
+| `npm run notice` | Regenerate the `NOTICE` file and JSON license inventory from installed dependencies. |
 | `npm run check:migration-safety` | Scan `supabase/migrations` for unsafe operations (non-concurrent indexes, destructive drops, etc.). |
 | `npm run seed:invite` | Upsert invite-code configuration in `app_settings` using service-role credentials. |
 | `npm run seed:full` | Synchronize questions, games, and media bundles from `data/templates` into Supabase. |
@@ -140,6 +141,7 @@ The automation helpers load `.env` automatically. Invite codes are only written 
 - Sensitive migrations (auth, RLS, analytics) require an additional reviewer and may necessitate credential rotation. Consult [`SECURITY.md`](./SECURITY.md) for disclosure contacts and processes.
 - Admin access is granted via the `app_roles` table. For detailed grant/revoke/audit procedures see [`docs/security/admin-roles.md`](./docs/security/admin-roles.md).
 - Event retention automation and service worker operations are documented in [`docs/ops/event-retention.md`](./docs/ops/event-retention.md) and [`docs/runtime/service-worker.md`](./docs/runtime/service-worker.md).
+- License inventory and the root `NOTICE` file are regenerated automatically in CI using `npm run notice`; commit updated artifacts when dependencies change.
 
 ## Additional documentation
 
