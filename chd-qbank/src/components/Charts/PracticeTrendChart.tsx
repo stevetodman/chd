@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -27,6 +27,7 @@ type Props = {
 };
 
 export default function PracticeTrendChart({ data, loading, error }: Props) {
+  const [showTable, setShowTable] = useState(false);
   const chartData = useMemo(() => {
     const labels = data.map((point) => point.label);
     const attemptValues = data.map((point) => point.attempts);
@@ -114,6 +115,49 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
     return "Great job getting back into practice this week.";
   }, [attemptValues.length, currentStreak]);
 
+  const accessibleSummary = useMemo(() => {
+    if (!labels.length) {
+      return "No practice activity recorded yet.";
+    }
+    const latestAttempts = attemptValues[mostRecentIndex] ?? 0;
+    const previousAttempts = mostRecentIndex > 0 ? attemptValues[mostRecentIndex - 1] ?? 0 : null;
+    const latestAccuracy = accuracyValues[mostRecentIndex];
+    const previousAccuracy = mostRecentIndex > 0 ? accuracyValues[mostRecentIndex - 1] ?? null : null;
+
+    const attemptPart = (() => {
+      if (previousAttempts === null) {
+        return `This week logged ${numberFormatter.format(latestAttempts)} attempts.`;
+      }
+      const delta = latestAttempts - previousAttempts;
+      if (delta === 0) {
+        return `This week matched last week's ${numberFormatter.format(latestAttempts)} attempts.`;
+      }
+      const direction = delta > 0 ? "up" : "down";
+      return `This week logged ${numberFormatter.format(latestAttempts)} attempts, ${direction} ${numberFormatter.format(Math.abs(delta))} from last week.`;
+    })();
+
+    const accuracyPart = (() => {
+      if (latestAccuracy === null) {
+        return "Accuracy is not yet available for this period.";
+      }
+      if (previousAccuracy === null) {
+        return `Accuracy landed at ${latestAccuracy.toFixed(1)}%.`;
+      }
+      const delta = latestAccuracy - previousAccuracy;
+      if (delta === 0) {
+        return `Accuracy held steady at ${latestAccuracy.toFixed(1)}%.`;
+      }
+      const direction = delta > 0 ? "improved" : "slipped";
+      return `Accuracy ${direction} to ${latestAccuracy.toFixed(1)}%, ${Math.abs(delta).toFixed(1)} points ${delta > 0 ? "higher" : "lower"} than last week.`;
+    })();
+
+    return `${attemptPart} ${accuracyPart}`;
+  }, [accuracyValues, attemptValues, labels.length, mostRecentIndex, numberFormatter]);
+
+  const toggleTable = () => {
+    setShowTable((value) => !value);
+  };
+
   if (error) {
     return (
       <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
@@ -132,7 +176,21 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="h-64">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-neutral-600" id="practice-trend-summary">
+          {accessibleSummary}
+        </p>
+        <button
+          type="button"
+          onClick={toggleTable}
+          className="self-start rounded-full border border-neutral-300 bg-white px-3 py-1 text-xs font-medium text-neutral-700 transition hover:border-brand-300 hover:text-brand-600"
+          aria-pressed={showTable}
+          aria-controls="practice-trend-table"
+        >
+          {showTable ? "Hide data table" : "Show data table"}
+        </button>
+      </div>
+      <div className="h-64" aria-describedby="practice-trend-summary">
         <Chart
           type="bar"
           data={{
@@ -263,6 +321,45 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
         />
       </div>
       {streakMessage ? <p className="text-xs text-neutral-600">{streakMessage}</p> : null}
+      <div
+        id="practice-trend-table"
+        className={`${showTable ? "block" : "hidden"} overflow-x-auto rounded-lg border border-neutral-200 bg-white text-sm`}
+      >
+        <table className="min-w-full divide-y divide-neutral-200 text-left">
+          <caption className="px-4 py-2 text-left text-xs text-neutral-500">
+            Tabular summary of weekly attempts and accuracy for screen readers and printable reports.
+          </caption>
+          <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
+            <tr>
+              <th scope="col" className="px-4 py-2">
+                Week
+              </th>
+              <th scope="col" className="px-4 py-2">
+                Attempts
+              </th>
+              <th scope="col" className="px-4 py-2">
+                Accuracy (%)
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-neutral-200 text-sm text-neutral-700">
+            {labels.map((label, index) => {
+              const accuracyValue = accuracyValues[index];
+              return (
+                <tr key={label}>
+                  <th scope="row" className="px-4 py-2 font-medium text-neutral-900">
+                    {label}
+                  </th>
+                  <td className="px-4 py-2">{numberFormatter.format(attemptValues[index] ?? 0)}</td>
+                  <td className="px-4 py-2">
+                    {typeof accuracyValue === "number" ? accuracyValue.toFixed(1) : "–"}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
@@ -48,6 +48,7 @@ export default function Dashboard() {
   const [topicInsights, setTopicInsights] = useState<TopicInsight[]>([]);
   const [topicLoading, setTopicLoading] = useState(false);
   const [topicError, setTopicError] = useState<string | null>(null);
+  const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session) return;
@@ -281,6 +282,16 @@ export default function Dashboard() {
     };
   }, [session, metricsReloadKey]);
 
+  useEffect(() => {
+    if (!copyFeedback) return;
+    const timer = setTimeout(() => {
+      setCopyFeedback(null);
+    }, 4000);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [copyFeedback]);
+
   const accuracy = metrics.total_attempts > 0 ? Math.round((metrics.correct_attempts / metrics.total_attempts) * 100) : 0;
 
   const userMetadata = session?.user?.user_metadata as Record<string, unknown> | undefined;
@@ -330,6 +341,100 @@ export default function Dashboard() {
       ? `Only ${Math.max(0, nextMilestone - metrics.total_attempts)} more to reach ${nextMilestone}.`
       : "You've completed every milestone we track. Keep leading the pack!";
 
+  const previousTrendPoint = trendData.length > 1 ? trendData[trendData.length - 2] : null;
+  const attemptDelta = previousTrendPoint ? weeklyAttempts - previousTrendPoint.attempts : null;
+  const attemptDeltaDescription = (() => {
+    if (!previousTrendPoint) {
+      return "Baseline week captured—future sessions will show weekly change.";
+    }
+    if (!attemptDelta) {
+      return "Matching last week's pace so far.";
+    }
+    const label = Math.abs(attemptDelta) === 1 ? "attempt" : "attempts";
+    const direction = attemptDelta > 0 ? "more" : "fewer";
+    return `${Math.abs(attemptDelta)} ${label} ${direction} than last week.`;
+  })();
+
+  const latestAccuracyPoint = typeof latestTrendPoint?.accuracy === "number" ? Number(latestTrendPoint.accuracy.toFixed(1)) : null;
+  const previousAccuracyPoint = typeof previousTrendPoint?.accuracy === "number"
+    ? Number(previousTrendPoint.accuracy.toFixed(1))
+    : null;
+  const accuracyDelta =
+    latestAccuracyPoint !== null && previousAccuracyPoint !== null
+      ? Number((latestAccuracyPoint - previousAccuracyPoint).toFixed(1))
+      : null;
+  const accuracyTrendDescription = (() => {
+    if (latestAccuracyPoint === null) {
+      return `Lifetime accuracy ${accuracy}%. Log another week to unlock weekly accuracy tracking.`;
+    }
+    if (accuracyDelta === null) {
+      return `Weekly accuracy at ${latestAccuracyPoint.toFixed(1)}%.`;
+    }
+    if (accuracyDelta === 0) {
+      return `Accuracy held steady at ${latestAccuracyPoint.toFixed(1)}%.`;
+    }
+    const direction = accuracyDelta > 0 ? "up" : "down";
+    return `Accuracy ${direction} ${Math.abs(accuracyDelta).toFixed(1)} points versus last week.`;
+  })();
+
+  const streakWeeks = (() => {
+    let streak = 0;
+    for (let index = trendData.length - 1; index >= 0; index -= 1) {
+      if (trendData[index]?.attempts > 0) {
+        streak += 1;
+      } else {
+        break;
+      }
+    }
+    return streak;
+  })();
+
+  const momentumDescription = streakWeeks > 0
+    ? streakWeeks >= 3
+      ? `You're on a ${streakWeeks}-week streak—keep it alive with a short session.`
+      : `${streakWeeks}-week streak in progress. Schedule your next quiz to extend it.`
+    : "Start a fresh streak with a quick 10-question session.";
+
+  const narrativeSnapshots = useMemo(
+    () => [
+      {
+        title: "This week vs. goal",
+        headline: `${weeklyAttempts} / ${weeklyGoalAttempts} attempts`,
+        description: `${goalProgressPercent}% of your goal logged. ${attemptDeltaDescription} ${goalStatusMessage}`.trim()
+      },
+      {
+        title: "Accuracy trend",
+        headline: `${latestAccuracyPoint !== null ? latestAccuracyPoint.toFixed(1) : accuracy}%`,
+        description: `${accuracyTrendDescription} ${readinessMessage}`.trim()
+      },
+      {
+        title: "Milestone focus",
+        headline:
+          completedMilestone !== undefined && completedMilestone !== null
+            ? `${completedMilestone}+ questions`
+            : nextMilestone !== null
+              ? `Next: ${nextMilestone}`
+              : `${metrics.total_attempts} questions`,
+        description: `${milestoneMessage} ${milestoneNextMessage}`.trim()
+      }
+    ],
+    [
+      accuracy,
+      accuracyTrendDescription,
+      attemptDeltaDescription,
+      completedMilestone,
+      goalProgressPercent,
+      goalStatusMessage,
+      latestAccuracyPoint,
+      milestoneMessage,
+      milestoneNextMessage,
+      nextMilestone,
+      readinessMessage,
+      weeklyAttempts,
+      weeklyGoalAttempts
+    ]
+  );
+
   const strengths = topicInsights
     .filter((topic) => topic.attempts >= 3 && topic.accuracy >= 80)
     .slice(0, 2);
@@ -337,6 +442,84 @@ export default function Dashboard() {
     .filter((topic) => topic.attempts >= 2 && topic.accuracy < 70)
     .slice(0, 2);
   const recentTopics = topicInsights.slice(0, 3);
+
+  const reportSummary = useMemo(() => {
+    const lines: string[] = [];
+    lines.push(
+      `Weekly practice: ${weeklyAttempts} of ${weeklyGoalAttempts} attempts (${goalProgressPercent}% of goal). ${attemptDeltaDescription}`.trim()
+    );
+    lines.push(`${accuracyTrendDescription} ${readinessMessage}`.trim());
+    lines.push(`${milestoneMessage} ${milestoneNextMessage}`.trim());
+    lines.push(momentumDescription);
+    if (strengths.length > 0) {
+      const strengthsList = strengths
+        .map((topic) => `${topic.topic} (${topic.accuracy}% accuracy)`)
+        .join(", ");
+      lines.push(`Strength highlights: ${strengthsList}.`);
+    }
+    if (growthAreas.length > 0) {
+      const growthList = growthAreas
+        .map((topic) => `${topic.topic} (${topic.accuracy}% accuracy)`)
+        .join(", ");
+      lines.push(`Focus next: ${growthList}.`);
+    }
+    lines.push(`Next action: ${cta.label} — ${cta.description}`);
+    return lines.join("\n");
+  }, [
+    accuracyTrendDescription,
+    attemptDeltaDescription,
+    cta.description,
+    cta.label,
+    goalProgressPercent,
+    growthAreas,
+    milestoneMessage,
+    milestoneNextMessage,
+    momentumDescription,
+    readinessMessage,
+    strengths,
+    weeklyAttempts,
+    weeklyGoalAttempts
+  ]);
+
+  const reportSummaryParagraphs = useMemo(() => reportSummary.split("\n"), [reportSummary]);
+
+  const canUseNativeShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+
+  const handleCopyReport = async () => {
+    if (!reportSummary) return;
+    try {
+      if (typeof navigator === "undefined" || !navigator.clipboard) {
+        throw new Error("Clipboard unavailable");
+      }
+      await navigator.clipboard.writeText(reportSummary);
+      setCopyFeedback("Shareable summary copied to clipboard.");
+    } catch (error) {
+      setCopyFeedback("Copy not supported in this browser. Try printing instead.");
+    }
+  };
+
+  const handleShareReport = async () => {
+    if (!reportSummary) return;
+    if (!canUseNativeShare) {
+      await handleCopyReport();
+      return;
+    }
+    try {
+      await navigator.share({ title: "CHD progress update", text: reportSummary });
+      setCopyFeedback("Progress report ready to send.");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
+      }
+      setCopyFeedback("Unable to share. Try copying instead.");
+    }
+  };
+
+  const handlePrintReport = () => {
+    if (typeof window === "undefined") return;
+    window.print();
+    setCopyFeedback("Opened print preview for your report.");
+  };
 
   const readinessMessage = (() => {
     if (accuracy >= 85 && goalProgress >= 1) {
@@ -449,6 +632,27 @@ export default function Dashboard() {
             <p className="text-sm text-neutral-500">Loading progress…</p>
           ) : (
             <>
+              <section className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-700">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <h3 className="text-sm font-semibold text-neutral-800">Narrative snapshots</h3>
+                  <p className="text-xs text-neutral-500">Quick headlines for this week's progress.</p>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  {narrativeSnapshots.map((snapshot) => (
+                    <article
+                      key={snapshot.title}
+                      className="rounded-xl border border-white/60 bg-white p-3 shadow-sm"
+                      aria-label={snapshot.title}
+                    >
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                        {snapshot.title}
+                      </h4>
+                      <p className="text-lg font-semibold text-neutral-900">{snapshot.headline}</p>
+                      <p className="text-xs text-neutral-600">{snapshot.description}</p>
+                    </article>
+                  ))}
+                </div>
+              </section>
               <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <Card elevation="flat" interactive status="default" className="p-0">
                   <CardContent className="space-y-2">
@@ -499,8 +703,47 @@ export default function Dashboard() {
           <Button type="button" variant="secondary" onClick={refreshMetrics} disabled={metricsLoading}>
             {metricsLoading ? "Refreshing…" : "Refresh stats"}
           </Button>
-        </CardFooter>
-      </Card>
+      </CardFooter>
+    </Card>
+    <Card className="md:col-span-2 print:border print:border-transparent print:bg-white print:shadow-none">
+      <CardHeader>
+        <CardTitle>Shareable progress report</CardTitle>
+        <p className="text-sm text-neutral-600">Create an assistive summary to share with mentors or print for study check-ins.</p>
+      </CardHeader>
+      <CardContent className="space-y-4 text-sm text-neutral-700">
+        <section className="space-y-2 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Summary preview</h3>
+          <div className="space-y-2">
+            {reportSummaryParagraphs.map((paragraph, index) => (
+              <p key={index} className="text-sm text-neutral-700">
+                {paragraph}
+              </p>
+            ))}
+          </div>
+        </section>
+        <p className="text-xs text-neutral-500">
+          This preview mirrors what is copied, shared, or printed so screen readers and collaborators receive the same context.
+        </p>
+      </CardContent>
+      <CardFooter className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" onClick={handlePrintReport}>
+            Print progress report
+          </Button>
+          <Button type="button" variant="secondary" onClick={handleCopyReport}>
+            Copy summary
+          </Button>
+          {canUseNativeShare ? (
+            <Button type="button" variant="ghost" onClick={handleShareReport}>
+              Share report
+            </Button>
+          ) : null}
+        </div>
+        <p className="min-h-[1rem] text-xs text-neutral-500" aria-live="polite" role="status">
+          {copyFeedback ?? ""}
+        </p>
+      </CardFooter>
+    </Card>
       <Card className="md:col-span-2">
         <CardHeader>
           <CardTitle>Personalized insights</CardTitle>
