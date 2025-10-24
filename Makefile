@@ -1,4 +1,4 @@
-.PHONY: help dev build preview test lint lint-fix typecheck seed-invite seed-full migrate migrate-dry verify-analytics docs
+.PHONY: help dev build preview test lint lint-fix typecheck seed-invite seed-full migrate migrate-dry verify-analytics
 
 help:
 	@echo "Available commands:"
@@ -14,7 +14,6 @@ help:
 	@echo "  make migrate            Run database migrations"
 	@echo "  make migrate-dry        Run migrations in dry-run mode"
 	@echo "  make verify-analytics   Verify analytics setup"
-	@echo "  make docs               Build documentation"
 
 dev:
 	npm run --prefix chd-qbank dev
@@ -32,7 +31,7 @@ lint:
 	npm run --prefix chd-qbank lint
 
 lint-fix:
-	npm run --prefix chd-qbank lint-fix
+	npm run --prefix chd-qbank lint -- --fix
 
 typecheck:
 	npm run --prefix chd-qbank typecheck
@@ -44,14 +43,11 @@ seed-full:
 	npm run --prefix chd-qbank seed:full
 
 migrate:
-	npm run --prefix chd-qbank migrate
+	npm run --prefix chd-qbank migrate:qbank
 
 migrate-dry:
-	npm run --prefix chd-qbank migrate:dry
+	npm run --prefix chd-qbank migrate:qbank:dry
 
 verify-analytics:
-	npm run --prefix chd-qbank verify:analytics
-
-docs:
-	npm run --prefix chd-qbank docs
+	npm run --prefix chd-qbank verify:analytics:heatmap
 
