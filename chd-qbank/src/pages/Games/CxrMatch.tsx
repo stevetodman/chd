@@ -15,6 +15,8 @@ import {
   hitTolerance
 } from "../../games/cxr/geom";
 
+const DEFAULT_CXR_ALT_TEXT = "Chest radiograph for the congenital heart disease lesion matching game.";
+
 interface Label {
   id: string;
   label: string;
@@ -26,6 +28,7 @@ interface CxrItem {
   id: string;
   image_url: string;
   caption_md?: string | null;
+  lesion?: string | null;
   labels: Label[];
 }
 
@@ -52,6 +55,7 @@ type CxrItemRow = {
   id: string;
   image_url: string;
   caption_md: string | null;
+  lesion: string | null;
   cxr_labels: CxrLabelRow[] | null;
 };
 
@@ -74,7 +78,7 @@ export default function CxrMatch() {
     setError(null);
     supabase
       .from("cxr_items")
-      .select("id, image_url, caption_md, cxr_labels(id,label,is_correct,x,y,w,h)")
+      .select("id, image_url, caption_md, lesion, cxr_labels(id,label,is_correct,x,y,w,h)")
       .eq("status", "published")
       .limit(20)
       .then(({ data, error: fetchError }) => {
@@ -87,6 +91,7 @@ export default function CxrMatch() {
           id: item.id,
           image_url: item.image_url,
           caption_md: item.caption_md,
+          lesion: item.lesion,
           labels: shuffle((item.cxr_labels ?? []).map((label) => ({
             id: label.id,
             label: label.label,
@@ -102,6 +107,30 @@ export default function CxrMatch() {
 
   const current = items[index];
   const correctLabel = useMemo(() => current?.labels.find((label) => label.is_correct) ?? null, [current]);
+
+  const cxrAltText = useMemo(() => {
+    if (!current) {
+      return DEFAULT_CXR_ALT_TEXT;
+    }
+    if (correctLabel) {
+      return `Chest x-ray showing ${correctLabel.label}`;
+    }
+    if (current.lesion) {
+      return `Chest x-ray associated with ${current.lesion}`;
+    }
+    if (current.caption_md) {
+      const plainCaption = current.caption_md
+        .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+        .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+        .replace(/[\*_`>#~|-]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (plainCaption) {
+        return `Chest radiograph: ${plainCaption}`;
+      }
+    }
+    return DEFAULT_CXR_ALT_TEXT;
+  }, [correctLabel, current]);
 
   const submit = async (label: Label) => {
     if (selected) return;
@@ -310,7 +339,7 @@ export default function CxrMatch() {
             tabIndex={0}
             aria-label="Drop a lesion label on the matching region"
           >
-            <img src={current.image_url} alt="CXR" className="block h-auto w-full" onLoad={handleImageLoad} />
+            <img src={current.image_url} alt={cxrAltText} className="block h-auto w-full" onLoad={handleImageLoad} />
             {!selectedLabel ? (
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
                 <span className="rounded bg-neutral-900/80 px-3 py-1 text-sm font-medium text-white">
