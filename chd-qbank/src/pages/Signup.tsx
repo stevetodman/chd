@@ -3,9 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { Button } from "../components/ui/Button";
 import { getErrorMessage } from "../lib/utils";
+import { APP_NAME } from "../lib/constants";
+import { useI18n } from "../i18n";
 
 export default function Signup() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [form, setForm] = useState({ email: "", password: "", invite_code: "", desired_alias: "" });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -22,11 +25,15 @@ export default function Signup() {
         headers: { "Idempotency-Key": idempotencyKey }
       });
       if (fnError) throw fnError;
-      if (!data?.ok) throw new Error(data?.error ?? "Failed to create account");
-      setSuccess("Account created. Check your email to confirm before signing in.");
+      if (!data?.ok) throw new Error(data?.error ?? t("auth.signup.createError", { defaultValue: "Failed to create account" }));
+      setSuccess(
+        t("auth.signup.success", {
+          defaultValue: "Account created. Check your email to confirm before signing in."
+        })
+      );
       setTimeout(() => navigate("/login"), 800);
     } catch (err) {
-      setError(getErrorMessage(err, "Unable to sign up"));
+      setError(getErrorMessage(err, t("auth.signup.submitError", { defaultValue: "Unable to sign up" })));
     } finally {
       setIdempotencyKey(crypto.randomUUID());
     }
@@ -34,10 +41,12 @@ export default function Signup() {
 
   return (
     <div className="mx-auto max-w-md rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-      <h1 className="mb-4 text-xl font-semibold">Join CHD QBank</h1>
+      <h1 className="mb-4 text-xl font-semibold">
+        {t("auth.signup.title", { defaultValue: "Join {app}", app: APP_NAME })}
+      </h1>
       <form className="space-y-4" onSubmit={handleSubmit}>
         <label className="block text-sm font-medium">
-          Email
+          {t("auth.shared.email", { defaultValue: "Email" })}
           <input
             type="email"
             className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
@@ -48,7 +57,7 @@ export default function Signup() {
           />
         </label>
         <label className="block text-sm font-medium">
-          Password
+          {t("auth.shared.password", { defaultValue: "Password" })}
           <input
             type="password"
             className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
@@ -59,7 +68,7 @@ export default function Signup() {
           />
         </label>
         <label className="block text-sm font-medium">
-          Invite code
+          {t("auth.signup.inviteCode", { defaultValue: "Invite code" })}
           <input
             type="text"
             className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 uppercase tracking-widest"
@@ -70,13 +79,13 @@ export default function Signup() {
           />
         </label>
         <label className="block text-sm font-medium">
-          Preferred alias (optional)
+          {t("auth.signup.aliasLabel", { defaultValue: "Preferred alias (optional)" })}
           <input
             type="text"
             className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
             value={form.desired_alias}
             onChange={(e) => setForm({ ...form, desired_alias: e.target.value })}
-            placeholder="Brisk-Sparrow-417"
+            placeholder={t("auth.signup.aliasPlaceholder", { defaultValue: "Brisk-Sparrow-417" })}
             maxLength={40}
             autoComplete="nickname"
           />
@@ -84,11 +93,14 @@ export default function Signup() {
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
         {success ? <p className="text-sm text-emerald-600">{success}</p> : null}
         <Button type="submit" className="w-full">
-          Request access
+          {t("auth.signup.submit", { defaultValue: "Request access" })}
         </Button>
       </form>
       <p className="mt-4 text-sm text-neutral-600">
-        Already have an account? <Link to="/login" className="underline">Sign in</Link>
+        {t("auth.signup.hasAccount", { defaultValue: "Already have an account?" })}{" "}
+        <Link to="/login" className="underline">
+          {t("auth.signup.signInLink", { defaultValue: "Sign in" })}
+        </Link>
       </p>
     </div>
   );
