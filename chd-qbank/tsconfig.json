@@ -13,6 +13,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
+    "noImplicitOverride": true,
     "jsx": "react-jsx",
     "types": ["vite/client"]
   },
