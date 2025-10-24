@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import QuestionCard from "../components/QuestionCard";
 import { Button } from "../components/ui/Button";
@@ -30,6 +31,35 @@ export default function Practice() {
 
   if (!currentQuestion) return <div>No questions found.</div>;
 
+  const canAdvance = !(
+    (!hasMore && index >= questions.length - 1) || questions.length === 0
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (event.key?.toLowerCase() !== "n") return;
+      if (!canAdvance) return;
+
+      const activeElement = document.activeElement;
+      if (
+        activeElement &&
+        (activeElement instanceof HTMLInputElement ||
+          activeElement instanceof HTMLTextAreaElement ||
+          activeElement instanceof HTMLSelectElement ||
+          activeElement.isContentEditable)
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      next();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [canAdvance, next]);
+
   return (
     <div className="space-y-6">
       <QuestionCard
@@ -42,12 +72,7 @@ export default function Practice() {
         <div>
           Q {index + 1} of {questions.length}
         </div>
-        <Button
-          type="button"
-          onClick={next}
-          aria-keyshortcuts="n"
-          disabled={(!hasMore && index >= questions.length - 1) || questions.length === 0}
-        >
+        <Button type="button" onClick={next} aria-keyshortcuts="n" disabled={!canAdvance}>
           Next question
         </Button>
       </div>
