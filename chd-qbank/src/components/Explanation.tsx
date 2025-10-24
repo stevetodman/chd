@@ -1,5 +1,6 @@
 import { forwardRef, useState } from "react";
 import type { ComponentPropsWithoutRef } from "react";
+import { classNames } from "../lib/utils";
 import ReactMarkdown from "react-markdown";
 import { markdownRemarkPlugins, markdownRehypePlugins } from "../lib/markdown";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/Card";
@@ -8,26 +9,46 @@ import { Button } from "./ui/Button";
 type Props = {
   brief: string;
   deep?: string | null;
+  showHeader?: boolean;
+  labelId?: string;
 };
 
 type ExplanationProps = Props & ComponentPropsWithoutRef<typeof Card>;
 
 const Explanation = forwardRef<HTMLDivElement, ExplanationProps>(function Explanation(
-  { brief, deep, ...cardProps },
+  { brief, deep, showHeader = true, labelId, className, ...cardProps },
   ref
 ) {
   const [open, setOpen] = useState(false);
+  const toggleLabel = open ? "Hide deep dive" : "Show deep dive";
+  const handleToggle = () => setOpen((prev) => !prev);
   return (
-    <Card ref={ref} {...cardProps}>
-      <CardHeader className="flex items-center justify-between">
-        <CardTitle>Explanation</CardTitle>
-        {deep ? (
-          <Button type="button" variant="ghost" onClick={() => setOpen((prev) => !prev)}>
-            {open ? "Hide deep dive" : "Show deep dive"}
-          </Button>
+    <Card
+      ref={ref}
+      aria-labelledby={labelId}
+      className={classNames(showHeader ? undefined : "border-0 bg-transparent p-0 shadow-none", className)}
+      {...cardProps}
+    >
+      {showHeader ? (
+        <CardHeader className="flex items-center justify-between">
+          <CardTitle>Explanation</CardTitle>
+          {deep ? (
+            <Button type="button" variant="ghost" onClick={handleToggle}>
+              {toggleLabel}
+            </Button>
+          ) : null}
+        </CardHeader>
+      ) : null}
+      <CardContent
+        className={classNames("space-y-3 text-sm text-neutral-700", showHeader ? undefined : "p-0")}
+      >
+        {!showHeader && deep ? (
+          <div className="flex justify-end">
+            <Button type="button" variant="ghost" onClick={handleToggle}>
+              {toggleLabel}
+            </Button>
+          </div>
         ) : null}
-      </CardHeader>
-      <CardContent className="space-y-3 text-sm text-neutral-700">
         <ReactMarkdown
           remarkPlugins={markdownRemarkPlugins}
           rehypePlugins={markdownRehypePlugins}

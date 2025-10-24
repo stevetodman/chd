@@ -1,6 +1,7 @@
 import { useId } from "react";
 import ReactMarkdown from "react-markdown";
 import type { FormulaReference } from "../lib/constants";
+import { classNames } from "../lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/Card";
 import { markdownRemarkPlugins, markdownRehypePlugins } from "../lib/markdown";
 
@@ -8,6 +9,8 @@ type Props = {
   title?: string | null;
   formulas?: FormulaReference[] | null;
   bodyMd?: string | null;
+  labelId?: string;
+  showTitle?: boolean;
 };
 
 const hasContent = (items?: FormulaReference[] | null, bodyMd?: string | null) => {
@@ -16,7 +19,13 @@ const hasContent = (items?: FormulaReference[] | null, bodyMd?: string | null) =
   return hasItems || hasBody;
 };
 
-export default function FormulaPanel({ title = "Formula Quick Ref", formulas, bodyMd }: Props) {
+export default function FormulaPanel({
+  title = "Formula Quick Ref",
+  formulas,
+  bodyMd,
+  labelId,
+  showTitle = true
+}: Props) {
   if (!hasContent(formulas, bodyMd)) {
     return null;
   }
@@ -27,16 +36,17 @@ export default function FormulaPanel({ title = "Formula Quick Ref", formulas, bo
   return (
     <section
       role="complementary"
-      aria-labelledby={title ? headingId : undefined}
-      aria-label={title ? undefined : "Formula reference"}
+      aria-labelledby={showTitle && title ? headingId : labelId}
+      aria-label={showTitle && title ? undefined : "Formula reference"}
     >
-      <Card>
-        {title ? (
+      <Card className={showTitle ? undefined : "border-0 bg-transparent shadow-none"}>
+        {showTitle && title ? (
           <CardHeader>
             <CardTitle id={headingId}>{title}</CardTitle>
           </CardHeader>
         ) : null}
-        <CardContent className="space-y-3 text-sm">
+        <CardContent className={classNames("space-y-3 text-sm", showTitle ? undefined : "p-0")}
+        >
           {Array.isArray(formulas) && formulas.length > 0 ? (
             <ul className="space-y-2">
               {formulas.map((formula) => (
