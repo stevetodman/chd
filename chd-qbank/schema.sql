@@ -93,12 +93,6 @@ create table if not exists app_settings (
   value text not null
 );
 insert into app_settings(key, value)
-  values ('invite_code','CHD2025FALL')
-on conflict (key) do nothing;
-insert into app_settings(key, value)
-  values ('invite_expires','2025-11-30')
-on conflict (key) do nothing;
-insert into app_settings(key, value)
   values ('leaderboard_enabled','true')
 on conflict (key) do nothing;
 
@@ -366,9 +360,10 @@ for update using (auth.uid() = id) with check (auth.uid() = id);
 
 create policy "settings read admin" on app_settings
 for select using (is_admin());
-create policy "settings read leaderboard" on app_settings
+create policy "settings read toggles" on app_settings
 for select using (
-  key = 'leaderboard_enabled' and auth.role() = 'authenticated'
+  auth.role() = 'authenticated'
+  and key in ('leaderboard_enabled', 'maintenance_mode')
 );
 create policy "settings update admin" on app_settings
 for update using (is_admin());
