@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run --reporter=verbose",
+    "test": "vitest run --reporter=verbose --coverage",
     "test:watch": "vitest",
     "lint": "eslint --ext .ts,.tsx src",
     "typecheck": "tsc --noEmit",
