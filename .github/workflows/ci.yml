@@ -13,7 +13,7 @@ jobs:
       run:
         working-directory: chd-qbank
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -44,7 +44,7 @@ jobs:
       run:
         working-directory: chd-qbank/supabase/functions/signup-with-code
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: denoland/setup-deno@v1
         with:
           deno-version: v1.x
