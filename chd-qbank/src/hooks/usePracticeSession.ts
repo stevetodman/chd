@@ -66,7 +66,7 @@ export const DEFAULT_PRACTICE_FILTERS: PracticeFilters = {
   sessionLength: PRACTICE_PAGE_SIZE
 };
 
-type FilterOptions = {
+export type PracticeFilterOptions = {
   topics: string[];
   lesions: string[];
 };
@@ -101,7 +101,7 @@ export function usePracticeSession() {
     lesion: DEFAULT_PRACTICE_FILTERS.lesion,
     sessionLength: DEFAULT_PRACTICE_FILTERS.sessionLength
   });
-  const [filterOptions, setFilterOptions] = useState<FilterOptions>({ topics: [], lesions: [] });
+  const [filterOptions, setFilterOptions] = useState<PracticeFilterOptions>({ topics: [], lesions: [] });
   const [filterOptionsLoading, setFilterOptionsLoading] = useState(false);
   const [filterOptionsError, setFilterOptionsError] = useState<string | null>(null);
   const flaggedIdsRef = useRef<Set<string>>(new Set());
