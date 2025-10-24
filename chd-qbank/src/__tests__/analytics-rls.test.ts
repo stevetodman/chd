@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { describe, expect, test } from "vitest";
+import config from "../config";
 
 /**
  * This test ensures that Supabase row-level security (RLS) prevents anonymous
@@ -12,8 +13,7 @@ import { describe, expect, test } from "vitest";
  * SUPABASE_URL="https://<project>.supabase.co"
  * SUPABASE_ANON_KEY="<anon-public-key>"
  */
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+const { url: supabaseUrl, anonKey: supabaseAnonKey } = config.optionalSupabase;
 
 const describeOrSkip =
   supabaseUrl && supabaseAnonKey ? describe : describe.skip;

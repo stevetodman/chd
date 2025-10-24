@@ -1,4 +1,6 @@
-export const APP_NAME = import.meta.env.VITE_APP_NAME ?? "CHD QBank";
+import config from "../config";
+
+export const APP_NAME = config.appName;
 
 export type UserAlias = {
   user_id: string;
