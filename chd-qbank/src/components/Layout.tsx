@@ -15,23 +15,42 @@ export default function Layout() {
   const [checkedAdminFor, setCheckedAdminFor] = useState<string | null>(null);
 
   useEffect(() => {
-    if (sessionLoading || !initialized || !session) return;
+    if (sessionLoading || !initialized || !session) {
+      return;
+    }
     void loadSettings();
   }, [loadSettings, session, sessionLoading, initialized]);
 
   useEffect(() => {
-    if (!session) { setIsAdmin(false); setCheckedAdminFor(null); return; }
-    if (checkedAdminFor === session.user.id) return;
-    (async () => {
-      try {
-        const ok = await requireAdmin();
+    if (!session) {
+      setIsAdmin(false);
+      setCheckedAdminFor(null);
+      return;
+    }
+
+    if (checkedAdminFor === session.user.id) {
+      return;
+    }
+
+    let cancelled = false;
+
+    requireAdmin()
+      .then((ok) => {
+        if (cancelled) return;
         setIsAdmin(ok);
-        setCheckedAdminFor(session.user.id);
-      } catch {
+      })
+      .catch(() => {
+        if (cancelled) return;
         setIsAdmin(false);
+      })
+      .finally(() => {
+        if (cancelled) return;
         setCheckedAdminFor(session.user.id);
-      }
-    })();
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [session, checkedAdminFor]);
 
   const showMaintenance = !!session && maintenanceMode && !isAdmin;

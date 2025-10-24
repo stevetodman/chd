@@ -20,10 +20,14 @@ function colorFor(rate: number) {
 export default function Heatmap() {
   const [cells, setCells] = useState<Cell[]>([]);
   const [rawRows, setRawRows] = useState<HeatmapAggregateRow[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     fetchAdminHeatmap()
       .then((rows) => {
+        if (cancelled) return;
         setRawRows(rows);
         const aggregates = new Map<string, { lesion: string; topic: string; attempts: number; correct: number }>();
         for (const row of rows) {
@@ -44,12 +48,30 @@ export default function Heatmap() {
           }))
           .sort((a, b) => a.lesion.localeCompare(b.lesion) || a.topic.localeCompare(b.topic));
         setCells(nextCells);
+        setError(null);
       })
-      .catch((err) => console.error(err));
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("Failed to load heatmap", err);
+        const message = err instanceof Error ? err.message : "Failed to load heatmap data.";
+        setError(message);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const lesions = useMemo(() => Array.from(new Set(cells.map((c) => c.lesion))).sort(), [cells]);
   const topics = useMemo(() => Array.from(new Set(cells.map((c) => c.topic))).sort(), [cells]);
+
+  const cellMap = useMemo(() => {
+    const map = new Map<string, Cell>();
+    for (const cell of cells) {
+      map.set(`${cell.lesion}__${cell.topic}`, cell);
+    }
+    return map;
+  }, [cells]);
 
   const weeklySpan = useMemo(() => {
     if (rawRows.length === 0) return null;
@@ -60,6 +82,11 @@ export default function Heatmap() {
   return (
     <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white p-4 shadow-sm">
       <h3 className="mb-4 text-sm font-semibold text-neutral-700">Performance heatmap</h3>
+      {error ? (
+        <p className="mb-3 text-xs text-red-600" role="alert">
+          Failed to load heatmap data: {error}
+        </p>
+      ) : null}
       {weeklySpan ? (
         <p className="mb-3 text-xs text-neutral-500">
           Aggregated across {weeklySpan} weekly buckets with {rawRows.length} question-week rows.
@@ -81,7 +108,7 @@ export default function Heatmap() {
             <tr key={lesion}>
               <th className="px-2 py-1 text-left font-semibold">{lesion}</th>
               {topics.map((topic) => {
-                const cell = cells.find((c) => c.lesion === lesion && c.topic === topic);
+                const cell = cellMap.get(`${lesion}__${topic}`);
                 const rate = cell?.correct_rate ?? 0;
                 return (
                   <td
