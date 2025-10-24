@@ -45,3 +45,7 @@ $$;
 
 select cron.schedule('refresh_stats_nightly', '30 2 * * *', $$select refresh_item_stats();$$);
 select cron.schedule('refresh_reliability_nightly', '45 2 * * *', $$select refresh_assessment_reliability();$$);
+select cron.schedule('cleanup_idempotency_keys_nightly', '0 3 * * *', $$
+  delete from idempotency_keys
+  where created_at < now() - interval '10 minutes';
+$$);
