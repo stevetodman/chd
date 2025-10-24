@@ -15,6 +15,13 @@ Thanks for your interest in contributing! We want to make the process as smooth 
 4. Run the relevant tests and linters locally before submitting your pull request. Please include the commands you ran in the PR description using the [template](.github/PULL_REQUEST_TEMPLATE.md).
 5. Push your branch and open a draft PR if you want early feedback before the work is complete.
 
+## Authoring new QBank content
+
+- Use the [QBank Content Authoring Guide](docs/qbank/content-authoring.md) for a deep dive into JSON fields, media bundles, and validation commands.
+- Store new questions in `chd-qbank/data/templates/questions.full.template.json`. Keep Markdown concise, include `alt_text` for every media asset, and ensure each `slug` is unique.
+- Run `npm run seed:full` to sync the templates with Supabase and `npm run verify:seed` to confirm there are no drifts between the database and source control before requesting review.
+- When introducing murmur or chest X-ray drills, update the corresponding seed arrays in `chd-qbank/scripts/seed/seedData.ts` and test them in the UI (`npm run dev`).
+
 ## Pull Requests
 - Keep pull requests focused on a single topic. Large or unrelated changes should be split into multiple PRs.
 - Ensure that CI passes before requesting a review.
