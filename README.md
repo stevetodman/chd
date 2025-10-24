@@ -1,49 +1,6 @@
 # CHD – Congenital Heart Disease Tutor Platform
 
-This monorepo packages everything required to operate the **CHD QBank**: a congenital heart disease learning platform that combines a Step 1–style question bank, imaging and auscultation games, scheduled jobs, and accompanying automation. The primary web client is a Vite + React single-page application backed by Supabase for authentication, data storage, role-based access, and analytics. SQL migrations, operational scripts, documentation, and instructional design prompts live alongside the app so new contributors can bootstrap the full environment quickly.
-
-## Table of contents
-
-- [Repository layout](#repository-layout)
-- [Key capabilities](#key-capabilities)
-- [Prerequisites](#prerequisites)
-- [Quick start](#quick-start)
-- [Supabase & data model](#supabase--data-model)
-- [Automation scripts](#automation-scripts)
-- [Environment variables](#environment-variables)
-- [Testing expectations](#testing-expectations)
-- [Development workflow](#development-workflow)
-- [Deployment](#deployment)
-- [Security & compliance](#security--compliance)
-- [Additional documentation](#additional-documentation)
-- [License](#license)
-
-## Repository layout
-
-| Path | Description |
-| --- | --- |
-| `chd-qbank/` | Frontend source, Supabase assets, automation scripts, and test suites. |
-| `chd-qbank/schema.sql`, `storage-policies.sql`, `cron.sql` | Canonical SQL definitions for core tables, Row Level Security, and scheduled jobs executed during bootstrap. |
-| `chd-qbank/data/` | Seed templates, including question and media fixtures consumed by automation scripts. |
-| `chd-qbank/supabase/` | Edge Functions and migration helpers that run inside Supabase. |
-| `docs/` | Operational runbooks spanning analytics, runtime behavior, security, and retention. |
-| `prompts/` | Prompt scaffolds used when authoring new clinical content. |
-| `README.md`, `CONTRIBUTING.md`, `SECURITY.md` | Contributor onboarding, reporting guidance, and high-level overview documents. |
-
-## Key capabilities
-
-- **Invite-only access** enforced through the `signup-with-code` Edge Function and `app_settings` configuration.
-- **RLS-first schema** that stores question bank content, player telemetry, and media bundles while guarding sensitive data with Supabase Row Level Security policies.
-- **Practice analytics** powered by materialized views (`analytics_heatmap_agg`) and verification scripts for proactive performance checks.
-- **Learning games** (CXR bounding box drills and murmur classification) that reuse the shared content library and aggregate gameplay results for leaderboards.
-- **Automation suite** covering migration safety, bulk seeding, verification tasks, and synthetic data refreshes to keep environments aligned.
-
-## Prerequisites
-
-- **Node.js 18+**
-- **npm 9+**
-- Access to a **Supabase** project (separate development and production projects are recommended)
-- Service-role credentials for automation tasks (kept out of version control)
+This monorepo packages everything required to operate the **CHD QBank**: a congenital heart disease learning platform that combines a Step 1–style question bank, imaging and auscultation games, scheduled jobs, and automation. The primary web client is a Vite + React single-page application backed by Supabase for authentication, storage, and analytics. SQL migrations, operational scripts, and documentation live alongside the app so new contributors can bootstrap the environment quickly.
 
 ## Quick start
 
@@ -55,7 +12,7 @@ This monorepo packages everything required to operate the **CHD QBank**: a conge
    npm install
    ```
 
-2. Copy `.env.example` to `.env` and populate Supabase credentials (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`). If you plan to run automation scripts locally, also set service-role variables (see [Environment variables](#environment-variables)).
+2. Copy `.env.example` to `.env` and populate Supabase credentials (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`). Automation helpers require the additional service-role variables documented in [`ENV.md`](./ENV.md).
 
 3. Start the development server:
 
@@ -63,92 +20,44 @@ This monorepo packages everything required to operate the **CHD QBank**: a conge
    npm run dev
    ```
 
-4. Visit [http://localhost:5173](http://localhost:5173) and sign in with an invited account. Initial content can be loaded by running the seeding scripts after your database is provisioned.
+4. Visit [http://localhost:5173](http://localhost:5173) and sign in with an invited account. Seed content and invite codes using the scripts referenced in the [release & operations guide](./docs/ops/release-operations.md).
 
-## Supabase & data model
+## Repository highlights
 
-The application relies on a Postgres schema defined in [`chd-qbank/schema.sql`](./chd-qbank/schema.sql). Key tables include:
-
-- `app.app_settings` – singleton configuration row controlling retention windows and operational toggles.
-- `app_users` / `auth.users` – profile mirror storing learner role assignments, display preferences, and moderation flags.
-- `questions`, `choices`, `media_bundles` – question bank content with optional rich media attachments and Markdown explanations.
-- `responses`, `practice_sessions`, `answer_events` – gameplay telemetry and session metadata powering analytics and leaderboards.
-- `murmur_items`, `murmur_options`, `cxr_items`, `cxr_labels` – assets for the teaching games bundled with the platform.
-- `analytics_heatmap_agg` materialized view plus helper functions documented in [docs/analytics/heatmap.md](./docs/analytics/heatmap.md).
-
-Bootstrap a new project by running the schema, storage policy, and cron SQL files inside the Supabase SQL editor (or through the CLI). Once the schema exists you can seed representative content with `npm run seed:full` and keep invite codes synchronized via `npm run seed:invite`.
-
-## Automation scripts
-
-All commands below run from `chd-qbank/`:
-
-| Command | Purpose |
+| Area | Key resources |
 | --- | --- |
-| `npm run dev` | Launch the Vite development server on [http://localhost:5173](http://localhost:5173). |
-| `npm run build` | Produce an optimized production bundle in `dist/`. |
-| `npm run preview` | Serve the built assets locally for smoke testing. |
-| `npm run lint` | Run ESLint on the TypeScript/React source tree. |
-| `npm run test` | Execute the Vitest suite (unit tests plus utilities). |
-| `npm run build:scripts` | Compile TypeScript automation utilities located in `scripts/`. |
-| `npm run notice` | Regenerate the `NOTICE` file and JSON license inventory from installed dependencies. |
-| `npm run check:migration-safety` | Scan `supabase/migrations` for unsafe operations (non-concurrent indexes, destructive drops, etc.). |
-| `npm run seed:invite` | Upsert invite-code configuration in `app_settings` using service-role credentials. |
-| `npm run seed:full` | Synchronize questions, games, and media bundles from `data/templates` into Supabase. |
-| `npm run verify:seed` | Validate that the current database matches seed expectations without mutating data. |
-| `npm run verify:analytics:heatmap` | Run the synthetic-data harness that refreshes and validates `analytics_heatmap_agg`. |
+| Frontend & Supabase assets | [`chd-qbank/`](./chd-qbank) houses the React app, SQL migrations, automation scripts, and tests. |
+| Operational playbooks | The [`docs/`](./docs) directory collects analytics, security, runtime, and compliance references. Start with the [documentation index](./docs/README.md) for task-specific guidance. |
+| Contributor workflow | [`CONTRIBUTING.md`](./CONTRIBUTING.md) outlines branching, testing, and review expectations. |
+| Security reporting | [`SECURITY.md`](./SECURITY.md) explains disclosure channels and response timelines. |
 
-## Environment variables
+## Development essentials
 
-Create `chd-qbank/.env` with the variables required for your workflow:
+- **Prerequisites:** Node.js 18+, npm 9+, and access to a Supabase project (maintain separate development and production projects when possible).
+- **Core scripts:** Run commands from `chd-qbank/`:
 
-```bash
-VITE_SUPABASE_URL=<your-supabase-url>
-VITE_SUPABASE_ANON_KEY=<your-anon-key>
+  | Command | Purpose |
+  | --- | --- |
+  | `npm run dev` | Launch the Vite development server on [http://localhost:5173](http://localhost:5173). |
+  | `npm run build` | Produce a production bundle in `dist/`. |
+  | `npm run lint` / `npm run test` | Execute linting and Vitest suites before opening a feature PR. |
+  | `npm run seed:full` / `npm run seed:invite` | Synchronize Supabase content and invite codes using service-role credentials. |
+  | `npm run verify:seed` / `npm run verify:analytics:heatmap` | Validate database state and analytics materialized views after deployments. |
 
-# Automation scripts (service role credentials never ship to the client bundle)
-SUPABASE_URL=<your-supabase-url>
-SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
-INVITE_CODE=<optional-invite-code>
-INVITE_EXPIRES=<optional-iso-date>
-```
+- **Environment variables:** `ENV.md` is the single source of truth for required and optional variables, including where each value should be configured.
 
-The automation helpers load `.env` automatically. Invite codes are only written to the `app_settings` table via `npm run seed:invite`—do **not** expose them through Vite environment variables. When deploying Edge Functions, configure their environment variables separately inside Supabase.
+- **Data model overview:** Supabase tables, functions, and materialized views are defined in [`chd-qbank/schema.sql`](./chd-qbank/schema.sql). Analytics helpers, Row Level Security, and automation entry points are annotated throughout the file.
 
-## Testing expectations
+## Operations & deployment
 
-- Run `npm run lint` and `npm run test` before submitting feature or bug-fix pull requests.
-- The `tests/e2e` directory contains Vitest-powered UI flows (murmur drills, CXR labeling, onboarding) that rely on seeded content. Keep them in sync with seed templates when updating gameplay logic.
-- Document executed commands in your pull request; documentation-only updates can reference the exemption in the PR template.
+- Follow the consolidated [release & operations guide](./docs/ops/release-operations.md) for environment promotion, rehearsal checklists, verification steps, and rollback procedures.
+- Deployment targets (Vercel + Supabase) are configured via [`vercel.json`](./vercel.json) and the Supabase project settings referenced in the operations guide.
+- Update documentation and Supabase migrations when making schema or policy changes; automation scripts depend on both staying in sync.
 
-## Development workflow
+## Further reading
 
-1. Branch from `main` and install dependencies.
-2. Implement changes in focused commits. Update SQL migrations and automation scripts when altering data models or Supabase behavior.
-3. Run the required lint/test commands for code changes.
-4. Update documentation to reflect user-facing or operational differences.
-5. Open a pull request describing the change, attaching screenshots for UI modifications when possible.
-6. Address review feedback promptly and keep scope tight—open draft pull requests if work is still in progress.
-
-## Deployment
-
-1. Build static assets (`npm run build`) and deploy them to a static host such as Vercel (Hobby tier works for previews).
-2. Point preview deployments at the development Supabase project; production deployments should target Supabase Pro to unlock `pg_cron`.
-3. Run `npm run seed:invite` after rotating invite codes or service-role keys.
-4. Refresh analytics materialized views (`select analytics_refresh_heatmap();`) post-deployment to keep dashboards current.
-
-## Security & compliance
-
-- Sensitive migrations (auth, RLS, analytics) require an additional reviewer and may necessitate credential rotation. Consult [`SECURITY.md`](./SECURITY.md) for disclosure contacts and processes.
-- Admin access is granted via the `app_roles` table. For detailed grant/revoke/audit procedures see [`docs/security/admin-roles.md`](./docs/security/admin-roles.md).
-- Event retention automation and service worker operations are documented in [`docs/ops/event-retention.md`](./docs/ops/event-retention.md) and [`docs/runtime/service-worker.md`](./docs/runtime/service-worker.md).
-- License inventory and the root `NOTICE` file are regenerated automatically in CI using `npm run notice`; commit updated artifacts when dependencies change.
-
-## Additional documentation
-
-- Analytics heatmap operations: [`docs/analytics/heatmap.md`](./docs/analytics/heatmap.md)
-- Event retention jobs: [`docs/ops/event-retention.md`](./docs/ops/event-retention.md)
-- Service worker behavior: [`docs/runtime/service-worker.md`](./docs/runtime/service-worker.md)
-- Admin role management: [`docs/security/admin-roles.md`](./docs/security/admin-roles.md)
+- Browse the [documentation index](./docs/README.md) for analytics, runtime, compliance, and onboarding references.
+- Review the [documentation content style checklist](./docs/documentation-content-style-checklist.md) before submitting substantial doc updates.
 
 ## License
 
