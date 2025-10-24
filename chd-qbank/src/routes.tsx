@@ -21,6 +21,7 @@ const ItemEditor = lazy(() => import("./pages/Admin/ItemEditor"));
 const Importer = lazy(() => import("./pages/Admin/Importer"));
 const Analytics = lazy(() => import("./pages/Admin/Analytics"));
 const Settings = lazy(() => import("./pages/Admin/Settings"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 function LeaderboardGuard() {
   const loadSettings = useSettingsStore((state) => state.loadSettings);
@@ -199,7 +200,8 @@ export function AppRoutes() {
               <Settings />
             </RequireAdmin>
           )
-        }
+        },
+        { path: "*", element: <NotFound /> }
       ]
     }
   ]);
