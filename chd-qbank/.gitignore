@@ -1,7 +1,10 @@
 node_modules
 .DS_Store
+/coverage
+/playwright-report
+.env
+.env.*
+.vite
 dist
 scripts/dist
-.env
-.vite
-coverage
+*.log

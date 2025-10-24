@@ -1,12 +1,6 @@
-* text=auto eol=lf
+* text=auto
 
-# Treat media as binary
-*.png binary
-*.jpg binary
-*.jpeg binary
-*.gif binary
-*.svg text diff
-*.mp3 binary
-*.mp4 binary
-*.webm binary
-*.wav binary
+*.sh text eol=lf
+*.sh executable
+
+*.sql diff=sql
