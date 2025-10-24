@@ -1,5 +1,6 @@
 import { Suspense, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import PageState from "./components/PageState";
 import { AppRoutes } from "./routes";
 import { getSession, useSessionStore } from "./lib/auth";
 import { useServiceWorkerUpdates } from "./hooks/useServiceWorkerUpdates";
@@ -24,7 +25,13 @@ export default function App() {
 
   return (
     <>
-      <Suspense fallback={<div className="p-6">Loading…</div>}>
+      <Suspense
+        fallback={
+          <div className="flex min-h-screen items-center justify-center bg-neutral-50 p-6">
+            <PageState title="Loading the app" description="Hang tight while we prep your workspace." fullHeight />
+          </div>
+        }
+      >
         <AppRoutes />
       </Suspense>
       {updateVersion && (

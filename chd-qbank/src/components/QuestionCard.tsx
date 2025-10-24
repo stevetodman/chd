@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Choice, Question } from "../lib/constants";
 import ChoiceList from "./ChoiceList";
 import Explanation from "./Explanation";
@@ -24,6 +24,8 @@ export default function QuestionCard({ question, onAnswer, onFlagChange, initial
   const [showExplanation, setShowExplanation] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [answerCommitted, setAnswerCommitted] = useState(false);
+  const [feedbackAnnouncement, setFeedbackAnnouncement] = useState("");
+  const explanationRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setStart(performance.now());
@@ -31,11 +33,17 @@ export default function QuestionCard({ question, onAnswer, onFlagChange, initial
     setShowExplanation(false);
     setSubmitting(false);
     setAnswerCommitted(false);
+    setFeedbackAnnouncement("");
   }, [question.id]);
 
   useEffect(() => {
     setFlagged(initialFlagged);
   }, [question.id, initialFlagged]);
+
+  useEffect(() => {
+    if (!showExplanation) return;
+    explanationRef.current?.focus({ preventScroll: false });
+  }, [showExplanation]);
 
   const handleSelect = async (choice: Choice) => {
     if (submitting || answerCommitted) return;
@@ -43,6 +51,11 @@ export default function QuestionCard({ question, onAnswer, onFlagChange, initial
     setSubmitting(true);
     setSelected(choice);
     setShowExplanation(true);
+    setFeedbackAnnouncement(
+      choice.is_correct
+        ? `${choice.label} is correct. The explanation is now focused.`
+        : `${choice.label} is incorrect. The explanation is now focused for more details.`
+    );
     try {
       await onAnswer(choice, elapsed, flagged);
       setAnswerCommitted(true);
@@ -50,6 +63,7 @@ export default function QuestionCard({ question, onAnswer, onFlagChange, initial
       setSelected(null);
       setShowExplanation(false);
       setAnswerCommitted(false);
+      setFeedbackAnnouncement("");
     } finally {
       setSubmitting(false);
     }
@@ -68,6 +82,9 @@ export default function QuestionCard({ question, onAnswer, onFlagChange, initial
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div aria-live="assertive" role="status" className="sr-only">
+        {feedbackAnnouncement}
+      </div>
       <Card className="lg:col-span-1">
         <CardHeader className="space-y-4">
           <CardTitle>{question.lead_in ?? "Question"}</CardTitle>
@@ -79,6 +96,7 @@ export default function QuestionCard({ question, onAnswer, onFlagChange, initial
             onSelect={handleSelect}
             selectedId={selected?.id ?? null}
             showFeedback={!!selected}
+            autoFocusFirst
           />
         </CardContent>
         <CardFooter className="flex items-center justify-between gap-3">
@@ -108,7 +126,12 @@ export default function QuestionCard({ question, onAnswer, onFlagChange, initial
           }
         })}
         {showExplanation ? (
-          <Explanation brief={question.explanation_brief_md} deep={question.explanation_deep_md} />
+          <Explanation
+            ref={explanationRef}
+            brief={question.explanation_brief_md}
+            deep={question.explanation_deep_md}
+            tabIndex={-1}
+          />
         ) : null}
       </div>
     </div>

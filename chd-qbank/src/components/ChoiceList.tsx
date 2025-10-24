@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Choice } from "../lib/constants";
 import { classNames } from "../lib/utils";
@@ -10,10 +10,19 @@ type Props = {
   onSelect: (choice: Choice) => void;
   selectedId?: string | null;
   showFeedback?: boolean;
+  autoFocusFirst?: boolean;
 };
 
-export default function ChoiceList({ choices, disabled, onSelect, selectedId, showFeedback = false }: Props) {
+export default function ChoiceList({
+  choices,
+  disabled,
+  onSelect,
+  selectedId,
+  showFeedback = false,
+  autoFocusFirst = false
+}: Props) {
   const [struck, setStruck] = useState<Record<string, boolean>>({});
+  const firstChoiceRef = useRef<HTMLButtonElement | null>(null);
 
   const toggleStrike = useCallback((id: string) => {
     setStruck((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -22,6 +31,12 @@ export default function ChoiceList({ choices, disabled, onSelect, selectedId, sh
   useEffect(() => {
     setStruck({});
   }, [choices]);
+
+  useEffect(() => {
+    if (!autoFocusFirst || disabled) return;
+    if (selectedId !== undefined && selectedId !== null) return;
+    firstChoiceRef.current?.focus({ preventScroll: true });
+  }, [autoFocusFirst, disabled, selectedId]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -59,7 +74,7 @@ export default function ChoiceList({ choices, disabled, onSelect, selectedId, sh
 
   return (
     <div className="space-y-3">
-      {choices.map((choice) => {
+      {choices.map((choice, index) => {
         const isSelected = selectedId === choice.id;
         const reveal = showFeedback && selectedId !== null;
         const isCorrect = choice.is_correct;
@@ -78,6 +93,11 @@ export default function ChoiceList({ choices, disabled, onSelect, selectedId, sh
             onContextMenu={(e) => {
               e.preventDefault();
               toggleStrike(choice.id);
+            }}
+            ref={(element) => {
+              if (index === 0) {
+                firstChoiceRef.current = element;
+              }
             }}
             className={classNames(
               "w-full rounded-md border border-neutral-200 bg-white p-4 text-left shadow-sm transition focus:outline-none focus:ring-2 focus:ring-brand-500",
