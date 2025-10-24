@@ -1,7 +1,7 @@
 version: "3.9"
 
 services:
-  qbank-web:
+  app:
     build:
       context: .
       dockerfile: Dockerfile
@@ -15,3 +15,30 @@ services:
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
     ports:
       - "3000:80"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: supabase/postgres:15.1.1.109
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./chd-qbank/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./chd-qbank/storage-policies.sql:/docker-entrypoint-initdb.d/02-storage-policies.sql:ro
+      - ./chd-qbank/cron.sql:/docker-entrypoint-initdb.d/03-cron.sql:ro
+
+volumes:
+  db-data:
