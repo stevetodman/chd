@@ -37,6 +37,14 @@ const mapResponse = (data: {
   ms_to_answer: data.ms_to_answer
 });
 
+export type PracticeSessionStats = {
+  totalAnswered: number;
+  totalCorrect: number;
+  accuracy: number | null;
+  averageMs: number | null;
+  flagged: number;
+};
+
 export function usePracticeSession() {
   const [questions, setQuestions] = useState<QuestionRow[]>([]);
   const [index, setIndex] = useState(0);
@@ -326,6 +334,42 @@ export function usePracticeSession() {
     return responses[currentQuestion.id] ?? null;
   }, [currentQuestion, responses]);
 
+  const sessionStats = useMemo<PracticeSessionStats>(() => {
+    const values = Object.values(responses);
+    const base = values.reduce(
+      (
+        acc,
+        response
+      ) => {
+        if (!response) return acc;
+        if (response.flagged) acc.flagged += 1;
+        if (response.choice_id) {
+          acc.totalAnswered += 1;
+          if (response.is_correct) acc.totalCorrect += 1;
+          if (typeof response.ms_to_answer === "number") {
+            acc.totalMs += response.ms_to_answer;
+            acc.timedCount += 1;
+          }
+        }
+        return acc;
+      },
+      { totalAnswered: 0, totalCorrect: 0, flagged: 0, totalMs: 0, timedCount: 0 }
+    );
+
+    return {
+      totalAnswered: base.totalAnswered,
+      totalCorrect: base.totalCorrect,
+      accuracy: base.totalAnswered ? base.totalCorrect / base.totalAnswered : null,
+      averageMs: base.timedCount ? Math.round(base.totalMs / base.timedCount) : null,
+      flagged: base.flagged
+    } satisfies PracticeSessionStats;
+  }, [responses]);
+
+  const sessionComplete = useMemo(
+    () => !hasMore && questions.length > 0 && index >= questions.length - 1 && sessionStats.totalAnswered > 0,
+    [hasMore, index, questions.length, sessionStats.totalAnswered]
+  );
+
   return {
     questions,
     currentQuestion,
@@ -336,6 +380,8 @@ export function usePracticeSession() {
     hasMore,
     next,
     handleAnswer,
-    handleFlagChange
+    handleFlagChange,
+    sessionStats,
+    sessionComplete
   } as const;
 }
