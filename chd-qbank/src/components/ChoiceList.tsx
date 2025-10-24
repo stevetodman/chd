@@ -19,6 +19,10 @@ export default function ChoiceList({ choices, disabled, onSelect, selectedId }: 
   }, []);
 
   useEffect(() => {
+    setStruck({});
+  }, [choices]);
+
+  useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (disabled) return;
       if (!e.key) return;
