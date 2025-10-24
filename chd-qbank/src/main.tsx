@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
+import { I18nProvider } from "./i18n";
 import { EXPECTED_STORAGE_BUCKETS } from "./config/storageBuckets";
 import { supabase } from "./lib/supabaseClient";
 import "./styles/globals.css";
@@ -66,10 +67,14 @@ if (!root) {
   throw new Error("Root element not found");
 }
 
+const locale = typeof navigator !== "undefined" && navigator.language ? navigator.language : "en-US";
+
 ReactDOM.createRoot(root).render(
   <React.StrictMode>
     <BrowserRouter>
-      <App />
+      <I18nProvider locale={locale}>
+        <App />
+      </I18nProvider>
     </BrowserRouter>
   </React.StrictMode>
 );
