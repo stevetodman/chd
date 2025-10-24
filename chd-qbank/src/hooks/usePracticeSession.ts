@@ -46,6 +46,8 @@ export type PracticeSessionStats = {
   accuracy: number | null;
   averageMs: number | null;
   flagged: number;
+  currentStreak: number;
+  longestStreak: number;
 };
 
 export type PracticeFilters = {
@@ -686,14 +688,43 @@ export function usePracticeSession() {
       { totalAnswered: 0, totalCorrect: 0, flagged: 0, totalMs: 0, timedCount: 0 }
     );
 
+    let currentStreak = 0;
+    let longestStreak = 0;
+    let rollingStreak = 0;
+    let lastAnsweredIndex = -1;
+
+    for (let i = 0; i < questions.length; i += 1) {
+      const question = questions[i];
+      const response = responses[question.id];
+      if (!response || !response.choice_id) continue;
+      lastAnsweredIndex = i;
+      if (response.is_correct) {
+        rollingStreak += 1;
+        longestStreak = Math.max(longestStreak, rollingStreak);
+      } else {
+        rollingStreak = 0;
+      }
+    }
+
+    if (lastAnsweredIndex >= 0) {
+      for (let i = lastAnsweredIndex; i >= 0; i -= 1) {
+        const response = responses[questions[i].id];
+        if (!response || !response.choice_id) continue;
+        if (!response.is_correct) break;
+        currentStreak += 1;
+      }
+    }
+
     return {
       totalAnswered: base.totalAnswered,
       totalCorrect: base.totalCorrect,
       accuracy: base.totalAnswered ? base.totalCorrect / base.totalAnswered : null,
       averageMs: base.timedCount ? Math.round(base.totalMs / base.timedCount) : null,
-      flagged: base.flagged
+      flagged: base.flagged,
+      currentStreak,
+      longestStreak
     } satisfies PracticeSessionStats;
-  }, [responses]);
+  }, [questions, responses]);
 
   const sessionComplete = useMemo(
     () => !hasMore && questions.length > 0 && index >= questions.length - 1 && sessionStats.totalAnswered > 0,
