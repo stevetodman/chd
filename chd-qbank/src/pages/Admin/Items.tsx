@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabaseClient";
-import { Link } from "react-router-dom";
-import { classNames } from "../../lib/utils";
+import { useEffect, useState } from 'react';
+import { supabase } from '../../lib/supabaseClient';
+import { Link } from 'react-router-dom';
+import { classNames } from '../../lib/utils';
 
 interface AdminItem {
   id: string;
@@ -17,9 +17,9 @@ export default function Items() {
   useEffect(() => {
     // Supabase integration: admin-only access to manage question versions.
     supabase
-      .from("questions")
-      .select("id, slug, status, lesion, topic")
-      .order("updated_at", { ascending: false })
+      .from('questions')
+      .select('id, slug, status, lesion, topic')
+      .order('updated_at', { ascending: false })
       .then(({ data }) => setItems((data as AdminItem[]) ?? []));
   }, []);
 
@@ -47,13 +47,13 @@ export default function Items() {
               <tr key={item.id}>
                 <td className="px-4 py-3">{item.slug}</td>
                 <td className="px-4 py-3">{item.status}</td>
-                <td className="px-4 py-3">{item.lesion ?? "–"}</td>
-                <td className="px-4 py-3">{item.topic ?? "–"}</td>
+                <td className="px-4 py-3">{item.lesion ?? '–'}</td>
+                <td className="px-4 py-3">{item.topic ?? '–'}</td>
                 <td className="px-4 py-3 text-right">
                   <Link
                     to={`/admin/item/${item.id}`}
                     className={classNames(
-                      "inline-flex items-center rounded-md border border-neutral-200 px-3 py-1 text-sm text-neutral-700 hover:bg-neutral-100"
+                      'inline-flex items-center rounded-md border border-neutral-200 px-3 py-1 text-sm text-neutral-700 hover:bg-neutral-100',
                     )}
                   >
                     Edit

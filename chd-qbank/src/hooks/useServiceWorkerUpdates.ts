@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from 'react';
 
 type UpdateReadyMessage = {
-  type: "UPDATE_READY";
+  type: 'UPDATE_READY';
   version?: string;
 };
 
 type UpdatedMessage = {
-  type: "UPDATED";
+  type: 'UPDATED';
   version?: string;
 };
 
@@ -18,7 +18,7 @@ export function useServiceWorkerUpdates() {
   const shouldReloadRef = useRef(false);
 
   useEffect(() => {
-    if (!("serviceWorker" in navigator)) {
+    if (!('serviceWorker' in navigator)) {
       return;
     }
 
@@ -36,13 +36,13 @@ export function useServiceWorkerUpdates() {
     const handleMessage = (event: MessageEvent<ServiceWorkerEventMessage>) => {
       const data = event.data;
 
-      if (!data || typeof data.type !== "string") {
+      if (!data || typeof data.type !== 'string') {
         return;
       }
 
-      if (data.type === "UPDATE_READY") {
+      if (data.type === 'UPDATE_READY') {
         if (!isMounted) return;
-        setUpdateVersion(data.version ?? "latest");
+        setUpdateVersion(data.version ?? 'latest');
         void navigator.serviceWorker.getRegistration().then((registration) => {
           if (registration?.waiting) {
             waitingWorkerRef.current = registration.waiting;
@@ -50,7 +50,7 @@ export function useServiceWorkerUpdates() {
         });
       }
 
-      if (data.type === "UPDATED") {
+      if (data.type === 'UPDATED') {
         reloadIfNeeded();
       }
     };
@@ -59,8 +59,8 @@ export function useServiceWorkerUpdates() {
       reloadIfNeeded();
     };
 
-    navigator.serviceWorker.addEventListener("message", handleMessage);
-    navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
+    navigator.serviceWorker.addEventListener('message', handleMessage);
+    navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
 
     void navigator.serviceWorker.getRegistration().then((registration) => {
       if (registration?.waiting) {
@@ -70,8 +70,8 @@ export function useServiceWorkerUpdates() {
 
     return () => {
       isMounted = false;
-      navigator.serviceWorker.removeEventListener("message", handleMessage);
-      navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
+      navigator.serviceWorker.removeEventListener('message', handleMessage);
+      navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
     };
   }, []);
 
@@ -80,7 +80,7 @@ export function useServiceWorkerUpdates() {
   };
 
   const confirmUpdate = () => {
-    if (!("serviceWorker" in navigator)) {
+    if (!('serviceWorker' in navigator)) {
       return;
     }
 
@@ -88,7 +88,7 @@ export function useServiceWorkerUpdates() {
     setUpdateVersion(null);
 
     const postSkipWaiting = (worker: ServiceWorker | null | undefined) => {
-      worker?.postMessage({ type: "SKIP_WAITING" });
+      worker?.postMessage({ type: 'SKIP_WAITING' });
       waitingWorkerRef.current = null;
     };
 
@@ -105,6 +105,6 @@ export function useServiceWorkerUpdates() {
   return {
     updateVersion,
     confirmUpdate,
-    dismissUpdate
+    dismissUpdate,
   };
 }

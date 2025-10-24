@@ -1,5 +1,5 @@
-import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
 export interface LocaleState {
   locale: string;
@@ -7,7 +7,7 @@ export interface LocaleState {
 }
 
 const storage = createJSONStorage<LocaleState>(() => {
-  if (typeof window === "undefined") {
+  if (typeof window === 'undefined') {
     return undefined;
   }
   return window.localStorage;
@@ -16,14 +16,14 @@ const storage = createJSONStorage<LocaleState>(() => {
 export const useLocaleStore = create<LocaleState>()(
   persist(
     (set) => ({
-      locale: "en",
-      setLocale: (locale) => set({ locale })
+      locale: 'en',
+      setLocale: (locale) => set({ locale }),
     }),
     {
-      name: "chd-locale",
+      name: 'chd-locale',
       version: 1,
       storage,
-      partialize: (state) => ({ locale: state.locale })
-    }
-  )
+      partialize: (state) => ({ locale: state.locale }),
+    },
+  ),
 );

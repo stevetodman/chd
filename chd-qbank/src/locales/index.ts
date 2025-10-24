@@ -1,9 +1,9 @@
-import en from "./en.json";
-import es from "./es.json";
+import en from './en.json';
+import es from './es.json';
 
 export const messages = {
   en,
-  es
+  es,
 };
 
 export type LocaleOption = {
@@ -12,8 +12,8 @@ export type LocaleOption = {
 };
 
 export const LOCALE_OPTIONS: LocaleOption[] = [
-  { code: "en", label: "English" },
-  { code: "es", label: "Español" }
+  { code: 'en', label: 'English' },
+  { code: 'es', label: 'Español' },
 ];
 
-export const FALLBACK_LOCALE: LocaleOption["code"] = "en";
+export const FALLBACK_LOCALE: LocaleOption['code'] = 'en';

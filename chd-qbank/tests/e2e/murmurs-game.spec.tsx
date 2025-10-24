@@ -3,7 +3,7 @@ let murmurAttemptsBuilder: ReturnType<typeof createMurmurAttemptsBuilder>;
 
 const supabaseState = vi.hoisted(() => ({
   from: vi.fn(),
-  rpc: vi.fn()
+  rpc: vi.fn(),
 }));
 
 function createMurmurItemsBuilder() {
@@ -11,7 +11,7 @@ function createMurmurItemsBuilder() {
     select: vi.fn(),
     eq: vi.fn(),
     order: vi.fn(),
-    limit: vi.fn()
+    limit: vi.fn(),
   };
   builder.select.mockReturnValue(builder);
   builder.eq.mockReturnValue(builder);
@@ -23,14 +23,14 @@ function createMurmurAttemptsBuilder() {
   const builder: any = {
     insert: vi.fn(),
     select: vi.fn(),
-    single: vi.fn()
+    single: vi.fn(),
   };
   builder.insert.mockReturnValue(builder);
   builder.select.mockReturnValue(builder);
   return builder;
 }
 
-vi.mock("../../src/lib/supabaseClient", () => ({
+vi.mock('../../src/lib/supabaseClient', () => ({
   supabase: {
     from: (...args: unknown[]) => supabaseState.from(...args),
     rpc: (...args: unknown[]) => supabaseState.rpc(...args),
@@ -38,39 +38,39 @@ vi.mock("../../src/lib/supabaseClient", () => ({
       signInWithPassword: vi.fn(),
       signOut: vi.fn(),
       getSession: vi.fn(),
-      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } }))
-    }
-  }
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+    },
+  },
 }));
 
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
-import Murmurs from "../../src/pages/Games/Murmurs";
-import { useSessionStore } from "../../src/lib/auth";
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import Murmurs from '../../src/pages/Games/Murmurs';
+import { useSessionStore } from '../../src/lib/auth';
 
-describe("murmurs game flow", () => {
+describe('murmurs game flow', () => {
   const rows = [
     {
-      id: "item-1",
-      prompt_md: "Prompt **1**",
-      rationale_md: "Rationale 1",
-      media_url: "https://example.com/clip1.mp3",
+      id: 'item-1',
+      prompt_md: 'Prompt **1**',
+      rationale_md: 'Rationale 1',
+      media_url: 'https://example.com/clip1.mp3',
       murmur_options: [
-        { id: "opt-1", label: "A", text_md: "Systolic ejection", is_correct: false },
-        { id: "opt-2", label: "B", text_md: "Holosystolic murmur", is_correct: true }
-      ]
+        { id: 'opt-1', label: 'A', text_md: 'Systolic ejection', is_correct: false },
+        { id: 'opt-2', label: 'B', text_md: 'Holosystolic murmur', is_correct: true },
+      ],
     },
     {
-      id: "item-2",
-      prompt_md: "Prompt 2",
+      id: 'item-2',
+      prompt_md: 'Prompt 2',
       rationale_md: null,
-      media_url: "https://example.com/clip2.mp3",
+      media_url: 'https://example.com/clip2.mp3',
       murmur_options: [
-        { id: "opt-3", label: "A", text_md: "Diastolic rumble", is_correct: true },
-        { id: "opt-4", label: "B", text_md: "Continuous murmur", is_correct: false }
-      ]
-    }
+        { id: 'opt-3', label: 'A', text_md: 'Diastolic rumble', is_correct: true },
+        { id: 'opt-4', label: 'B', text_md: 'Continuous murmur', is_correct: false },
+      ],
+    },
   ];
 
   beforeEach(() => {
@@ -81,18 +81,20 @@ describe("murmurs game flow", () => {
     supabaseState.rpc.mockReset();
 
     supabaseState.from.mockImplementation((table: string) => {
-      if (table === "murmur_items") return murmurItemsBuilder;
-      if (table === "murmur_attempts") return murmurAttemptsBuilder;
+      if (table === 'murmur_items') return murmurItemsBuilder;
+      if (table === 'murmur_attempts') return murmurAttemptsBuilder;
       throw new Error(`Unexpected table: ${table}`);
     });
     supabaseState.rpc.mockResolvedValue({ data: null, error: null });
 
     murmurItemsBuilder.limit.mockResolvedValue({ data: rows, error: null });
     murmurAttemptsBuilder.single
-      .mockResolvedValueOnce({ data: { id: "attempt-incorrect" }, error: null })
-      .mockResolvedValueOnce({ data: { id: "attempt-correct" }, error: null });
+      .mockResolvedValueOnce({ data: { id: 'attempt-incorrect' }, error: null })
+      .mockResolvedValueOnce({ data: { id: 'attempt-correct' }, error: null });
 
-    const session = { user: { id: "user-42" } } as ReturnType<typeof useSessionStore.getState>["session"];
+    const session = { user: { id: 'user-42' } } as ReturnType<
+      typeof useSessionStore.getState
+    >['session'];
     useSessionStore.setState({ session, loading: false, initialized: true });
   });
 
@@ -100,47 +102,47 @@ describe("murmurs game flow", () => {
     useSessionStore.setState({ session: null, loading: true, initialized: false });
   });
 
-  it("loads murmur clips, records attempts, and awards points for correct answers", async () => {
+  it('loads murmur clips, records attempts, and awards points for correct answers', async () => {
     const user = userEvent.setup();
 
     render(<Murmurs />);
 
-    expect(supabaseState.from).toHaveBeenCalledWith("murmur_items");
+    expect(supabaseState.from).toHaveBeenCalledWith('murmur_items');
 
-    const incorrectButton = await screen.findByRole("button", { name: /A\.\s*Systolic ejection/i });
+    const incorrectButton = await screen.findByRole('button', { name: /A\.\s*Systolic ejection/i });
     await user.click(incorrectButton);
 
-    await screen.findByText("Try again");
+    await screen.findByText('Try again');
 
     expect(murmurAttemptsBuilder.insert).toHaveBeenCalledWith({
-      user_id: "user-42",
-      item_id: "item-1",
-      option_id: "opt-1",
-      is_correct: false
+      user_id: 'user-42',
+      item_id: 'item-1',
+      option_id: 'opt-1',
+      is_correct: false,
     });
 
     expect(supabaseState.rpc).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("button", { name: /next clip/i }));
+    await user.click(screen.getByRole('button', { name: /next clip/i }));
 
     await waitFor(() => expect(screen.getByText(/Prompt\s*2/)).toBeInTheDocument());
-    await waitFor(() => expect(screen.queryByText("Try again")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText('Try again')).not.toBeInTheDocument());
 
-    const correctButton = screen.getByRole("button", { name: /A\.\s*Diastolic rumble/i });
+    const correctButton = screen.getByRole('button', { name: /A\.\s*Diastolic rumble/i });
     await user.click(correctButton);
 
-    await screen.findByText("Correct!");
+    await screen.findByText('Correct!');
 
     expect(murmurAttemptsBuilder.insert).toHaveBeenLastCalledWith({
-      user_id: "user-42",
-      item_id: "item-2",
-      option_id: "opt-3",
-      is_correct: true
+      user_id: 'user-42',
+      item_id: 'item-2',
+      option_id: 'opt-3',
+      is_correct: true,
     });
 
-    expect(supabaseState.rpc).toHaveBeenCalledWith("increment_points", {
-      source: "murmur_attempt",
-      source_id: "attempt-correct"
+    expect(supabaseState.rpc).toHaveBeenCalledWith('increment_points', {
+      source: 'murmur_attempt',
+      source_id: 'attempt-correct',
     });
   });
 });

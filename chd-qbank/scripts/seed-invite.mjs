@@ -76,17 +76,17 @@ async function seedInviteSettings() {
   const payload = [
     { key: 'invite_code_hash', value: digest },
     { key: 'invite_code_salt', value: salt },
-    { key: 'invite_expires', value: expiresDate.toISOString().slice(0, 10) }
+    { key: 'invite_expires', value: expiresDate.toISOString().slice(0, 10) },
   ];
 
   const withTimeout = (promise, ms = 15000) =>
     Promise.race([
       promise,
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms)),
     ]);
 
   const { error: cleanupError } = await withTimeout(
-    supabase.from('app_settings').delete().eq('key', 'invite_code')
+    supabase.from('app_settings').delete().eq('key', 'invite_code'),
   );
 
   if (cleanupError && cleanupError.code !== 'PGRST116') {
@@ -95,7 +95,7 @@ async function seedInviteSettings() {
   }
 
   const { error } = await withTimeout(
-    supabase.from('app_settings').upsert(payload, { onConflict: 'key' })
+    supabase.from('app_settings').upsert(payload, { onConflict: 'key' }),
   );
 
   if (error) {

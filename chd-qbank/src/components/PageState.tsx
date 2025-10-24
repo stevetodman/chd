@@ -1,17 +1,20 @@
-import type { ReactNode } from "react";
-import { classNames } from "../lib/utils";
+import type { ReactNode } from 'react';
+import { classNames } from '../lib/utils';
 
 const variantStyles = {
   loading: {
-    container: "border-neutral-200 bg-white text-neutral-700",
-    heading: "text-neutral-900",
+    container: 'border-neutral-200 bg-white text-neutral-700',
+    heading: 'text-neutral-900',
     icon: (
-      <span aria-hidden="true" className="inline-flex h-12 w-12 items-center justify-center rounded-full border-4 border-neutral-200 border-t-brand-500 align-middle [animation:spin_0.8s_linear_infinite]" />
-    )
+      <span
+        aria-hidden="true"
+        className="inline-flex h-12 w-12 items-center justify-center rounded-full border-4 border-neutral-200 border-t-brand-500 align-middle [animation:spin_0.8s_linear_infinite]"
+      />
+    ),
   },
   error: {
-    container: "border-rose-200 bg-rose-50 text-rose-800",
-    heading: "text-rose-700",
+    container: 'border-rose-200 bg-rose-50 text-rose-800',
+    heading: 'text-rose-700',
     icon: (
       <span
         aria-hidden="true"
@@ -31,11 +34,11 @@ const variantStyles = {
           <line x1="12" y1="16" x2="12" y2="16" />
         </svg>
       </span>
-    )
+    ),
   },
   empty: {
-    container: "border-neutral-200 bg-white text-neutral-600",
-    heading: "text-neutral-700",
+    container: 'border-neutral-200 bg-white text-neutral-600',
+    heading: 'text-neutral-700',
     icon: (
       <span
         aria-hidden="true"
@@ -54,11 +57,11 @@ const variantStyles = {
           <polyline points="14 3 14 9 20 9" />
         </svg>
       </span>
-    )
+    ),
   },
   info: {
-    container: "border-neutral-200 bg-white text-neutral-700",
-    heading: "text-neutral-800",
+    container: 'border-neutral-200 bg-white text-neutral-700',
+    heading: 'text-neutral-800',
     icon: (
       <span
         aria-hidden="true"
@@ -78,8 +81,8 @@ const variantStyles = {
           <line x1="12" y1="8" x2="12" y2="8" />
         </svg>
       </span>
-    )
-  }
+    ),
+  },
 } as const;
 
 type Variant = keyof typeof variantStyles;
@@ -97,30 +100,30 @@ type PageStateProps = {
 export function PageState({
   title,
   description,
-  variant = "loading",
+  variant = 'loading',
   action,
   children,
   className,
-  fullHeight = false
+  fullHeight = false,
 }: PageStateProps) {
   const styles = variantStyles[variant];
-  const role = variant === "error" ? "alert" : variant === "loading" ? "status" : undefined;
-  const live = variant === "loading" ? "polite" : undefined;
+  const role = variant === 'error' ? 'alert' : variant === 'loading' ? 'status' : undefined;
+  const live = variant === 'loading' ? 'polite' : undefined;
 
   return (
     <section
       className={classNames(
-        "flex w-full flex-col items-center justify-center gap-4 rounded-xl border p-8 text-center shadow-sm",
+        'flex w-full flex-col items-center justify-center gap-4 rounded-xl border p-8 text-center shadow-sm',
         styles.container,
-        fullHeight ? "min-h-[280px]" : "",
-        className
+        fullHeight ? 'min-h-[280px]' : '',
+        className,
       )}
       role={role}
       aria-live={live}
     >
       {styles.icon}
       <div className="space-y-2">
-        <h2 className={classNames("text-lg font-semibold", styles.heading)}>{title}</h2>
+        <h2 className={classNames('text-lg font-semibold', styles.heading)}>{title}</h2>
         {description ? <p className="text-sm text-current opacity-80">{description}</p> : null}
       </div>
       {children}

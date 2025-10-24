@@ -11,7 +11,7 @@ test.describe('Signup → Login → Dashboard happy path', () => {
   test('create account with invite, then sign in and reach dashboard', async ({ page }) => {
     const email = uniqueEmail('student');
     const password = 'StrongPass!123';
-    const alias = `Test-Alias-${Math.floor(Math.random()*10_000)}`;
+    const alias = `Test-Alias-${Math.floor(Math.random() * 10_000)}`;
 
     await page.goto('/signup');
     await expect(page.getByRole('heading', { name: /join chd qbank/i })).toBeVisible();

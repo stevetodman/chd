@@ -6,8 +6,8 @@ import {
   useMemo,
   useRef,
   useState,
-  type ReactNode
-} from "react";
+  type ReactNode,
+} from 'react';
 
 export type MessageDescriptor = {
   id: string;
@@ -51,13 +51,15 @@ export function normalizeLocale(input: string, available: string[], fallback: st
   if (baseMatch) return baseMatch;
   const prefixMatch = available.find((locale) => normalized.startsWith(locale.toLowerCase()));
   if (prefixMatch) return prefixMatch;
-  const languagePart = normalized.split("-")[0];
-  const languageMatch = available.find((locale) => locale.split("-")[0]?.toLowerCase() === languagePart);
+  const languagePart = normalized.split('-')[0];
+  const languageMatch = available.find(
+    (locale) => locale.split('-')[0]?.toLowerCase() === languagePart,
+  );
   return languageMatch ?? fallback;
 }
 
 function serializeNumberFormatOptions(options?: Intl.NumberFormatOptions) {
-  if (!options) return "{}";
+  if (!options) return '{}';
   return JSON.stringify(
     Object.keys(options)
       .sort()
@@ -65,29 +67,30 @@ function serializeNumberFormatOptions(options?: Intl.NumberFormatOptions) {
         const optionKey = key as keyof Intl.NumberFormatOptions;
         accumulator[optionKey] = options[optionKey];
         return accumulator;
-      }, {})
+      }, {}),
   );
 }
 
-function resolveMessages(locale: string, fallbackLocale: string, messages: MessagesByLocale): Map<string, string> {
+function resolveMessages(
+  locale: string,
+  fallbackLocale: string,
+  messages: MessagesByLocale,
+): Map<string, string> {
   const primary = messages[locale] ?? {};
-  const fallback = locale === fallbackLocale ? {} : messages[fallbackLocale] ?? {};
-  return new Map<string, string>([
-    ...Object.entries(fallback),
-    ...Object.entries(primary)
-  ]);
+  const fallback = locale === fallbackLocale ? {} : (messages[fallbackLocale] ?? {});
+  return new Map<string, string>([...Object.entries(fallback), ...Object.entries(primary)]);
 }
 
 export function I18nProvider({
   children,
-  initialLocale = "en",
-  fallbackLocale = "en",
+  initialLocale = 'en',
+  fallbackLocale = 'en',
   messages,
-  onLocaleChange
+  onLocaleChange,
 }: I18nProviderProps) {
   const availableLocales = useMemo(() => Object.keys(messages), [messages]);
   const [locale, setLocaleState] = useState(() =>
-    normalizeLocale(initialLocale, availableLocales, fallbackLocale)
+    normalizeLocale(initialLocale, availableLocales, fallbackLocale),
   );
   const numberFormatterCache = useRef(new Map<string, Intl.NumberFormat>());
 
@@ -101,7 +104,7 @@ export function I18nProvider({
 
   const resolvedMessages = useMemo(
     () => resolveMessages(locale, fallbackLocale, messages),
-    [locale, fallbackLocale, messages]
+    [locale, fallbackLocale, messages],
   );
 
   const formatNumber = useCallback(
@@ -114,14 +117,14 @@ export function I18nProvider({
       }
       return formatter.format(value);
     },
-    [locale]
+    [locale],
   );
 
   const formatTemplate = useCallback(
     (template: string, values?: MessageValues): string => {
       const formatValue = (value: unknown): string => {
-        if (value === null || value === undefined) return "";
-        if (typeof value === "number") {
+        if (value === null || value === undefined) return '';
+        if (typeof value === 'number') {
           return formatNumber(value);
         }
         if (value instanceof Date) {
@@ -132,7 +135,7 @@ export function I18nProvider({
 
       const formatPlaceholder = (content: string): string => {
         if (!content) {
-          return "";
+          return '';
         }
 
         const segments: string[] = [];
@@ -141,11 +144,11 @@ export function I18nProvider({
 
         for (let i = 0; i < content.length; i += 1) {
           const character = content[i];
-          if (character === "{") {
+          if (character === '{') {
             depth += 1;
-          } else if (character === "}") {
+          } else if (character === '}') {
             depth = Math.max(depth - 1, 0);
-          } else if (character === "," && depth === 0) {
+          } else if (character === ',' && depth === 0) {
             segments.push(content.slice(segmentStart, i).trim());
             segmentStart = i + 1;
           }
@@ -153,35 +156,38 @@ export function I18nProvider({
         segments.push(content.slice(segmentStart).trim());
 
         const [rawKey, type, ...rest] = segments;
-        const key = rawKey ?? "";
+        const key = rawKey ?? '';
         const value = values?.[key];
 
         if (!type) {
           return formatValue(value);
         }
 
-        if (type === "number") {
+        if (type === 'number') {
           const style = rest[0]?.trim();
           const options: Intl.NumberFormatOptions = {};
-          if (style === "integer") {
+          if (style === 'integer') {
             options.maximumFractionDigits = 0;
           }
-          const numericValue = typeof value === "number" ? value : Number(value ?? 0);
+          const numericValue = typeof value === 'number' ? value : Number(value ?? 0);
           return formatNumber(numericValue, options);
         }
 
-        if (type === "plural") {
-          const pluralOptions = rest.join(",").trim();
-          if (typeof value !== "number") {
-            return "";
+        if (type === 'plural') {
+          const pluralOptions = rest.join(',').trim();
+          if (typeof value !== 'number') {
+            return '';
           }
           const optionsMap: Record<string, string> = {};
           let optionIndex = 0;
           while (optionIndex < pluralOptions.length) {
-            while (optionIndex < pluralOptions.length && /\s/.test(pluralOptions[optionIndex] ?? "")) {
+            while (
+              optionIndex < pluralOptions.length &&
+              /\s/.test(pluralOptions[optionIndex] ?? '')
+            ) {
               optionIndex += 1;
             }
-            let optionKey = "";
+            let optionKey = '';
             while (optionIndex < pluralOptions.length) {
               const char = pluralOptions[optionIndex];
               if (!char || /[\s{]/.test(char)) {
@@ -190,10 +196,13 @@ export function I18nProvider({
               optionKey += char;
               optionIndex += 1;
             }
-            while (optionIndex < pluralOptions.length && /\s/.test(pluralOptions[optionIndex] ?? "")) {
+            while (
+              optionIndex < pluralOptions.length &&
+              /\s/.test(pluralOptions[optionIndex] ?? '')
+            ) {
               optionIndex += 1;
             }
-            if (pluralOptions[optionIndex] !== "{") {
+            if (pluralOptions[optionIndex] !== '{') {
               break;
             }
             optionIndex += 1; // skip "{"
@@ -201,9 +210,9 @@ export function I18nProvider({
             let bodyStart = optionIndex;
             while (optionIndex < pluralOptions.length && optionDepth > 0) {
               const char = pluralOptions[optionIndex];
-              if (char === "{") {
+              if (char === '{') {
                 optionDepth += 1;
-              } else if (char === "}") {
+              } else if (char === '}') {
                 optionDepth -= 1;
               }
               optionIndex += 1;
@@ -214,7 +223,7 @@ export function I18nProvider({
 
           const pluralRule = new Intl.PluralRules(locale);
           const category = pluralRule.select(value);
-          const selected = optionsMap[category] ?? optionsMap.other ?? "";
+          const selected = optionsMap[category] ?? optionsMap.other ?? '';
           const formattedCount = formatNumber(value, { maximumFractionDigits: 0 });
           return formatTemplate(selected.replace(/#/g, formattedCount), values);
         }
@@ -222,11 +231,11 @@ export function I18nProvider({
         return formatValue(value);
       };
 
-      let result = "";
+      let result = '';
       let index = 0;
 
       while (index < template.length) {
-        const openIndex = template.indexOf("{", index);
+        const openIndex = template.indexOf('{', index);
         if (openIndex === -1) {
           result += template.slice(index);
           break;
@@ -237,9 +246,9 @@ export function I18nProvider({
         let cursor = openIndex + 1;
 
         while (cursor < template.length && depth > 0) {
-          if (template[cursor] === "{") {
+          if (template[cursor] === '{') {
             depth += 1;
-          } else if (template[cursor] === "}") {
+          } else if (template[cursor] === '}') {
             depth -= 1;
           }
           cursor += 1;
@@ -257,7 +266,7 @@ export function I18nProvider({
 
       return result;
     },
-    [formatNumber, locale]
+    [formatNumber, locale],
   );
 
   const getMessage = useCallback(
@@ -267,7 +276,7 @@ export function I18nProvider({
       }
       return defaultMessage ?? id;
     },
-    [resolvedMessages]
+    [resolvedMessages],
   );
 
   const formatMessage = useCallback(
@@ -275,16 +284,16 @@ export function I18nProvider({
       const template = getMessage(descriptor.id, descriptor.defaultMessage ?? descriptor.id);
       return formatTemplate(template, values);
     },
-    [formatTemplate, getMessage]
+    [formatTemplate, getMessage],
   );
 
   const translate = useCallback(
     (key: string, options?: TranslateOptions) => {
       const { defaultValue, ...values } = options ?? {};
-      const template = getMessage(key, typeof defaultValue === "string" ? defaultValue : undefined);
+      const template = getMessage(key, typeof defaultValue === 'string' ? defaultValue : undefined);
       return formatTemplate(template, values);
     },
-    [formatTemplate, getMessage]
+    [formatTemplate, getMessage],
   );
 
   const setLocale = useCallback(
@@ -293,7 +302,7 @@ export function I18nProvider({
       setLocaleState(normalized);
       onLocaleChange?.(normalized);
     },
-    [availableLocales, fallbackLocale, onLocaleChange]
+    [availableLocales, fallbackLocale, onLocaleChange],
   );
 
   const contextValue = useMemo<I18nContextValue>(
@@ -303,9 +312,9 @@ export function I18nProvider({
       setLocale,
       formatMessage,
       formatNumber,
-      t: translate
+      t: translate,
     }),
-    [availableLocales, formatMessage, formatNumber, locale, setLocale, translate]
+    [availableLocales, formatMessage, formatNumber, locale, setLocale, translate],
   );
 
   return <I18nContext.Provider value={contextValue}>{children}</I18nContext.Provider>;
@@ -314,7 +323,7 @@ export function I18nProvider({
 export function useI18n() {
   const context = useContext(I18nContext);
   if (!context) {
-    throw new Error("useI18n must be used within an I18nProvider");
+    throw new Error('useI18n must be used within an I18nProvider');
   }
   return context;
 }

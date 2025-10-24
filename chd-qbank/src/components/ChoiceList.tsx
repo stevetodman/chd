@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import ReactMarkdown from "react-markdown";
-import type { Choice } from "../lib/constants";
-import { classNames } from "../lib/utils";
-import { markdownRemarkPlugins, markdownRehypePlugins } from "../lib/markdown";
+import { useState, useEffect, useCallback, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import type { Choice } from '../lib/constants';
+import { classNames } from '../lib/utils';
+import { markdownRemarkPlugins, markdownRehypePlugins } from '../lib/markdown';
 
 type Props = {
   choices: Choice[];
@@ -19,7 +19,7 @@ export default function ChoiceList({
   onSelect,
   selectedId,
   showFeedback = false,
-  autoFocusFirst = false
+  autoFocusFirst = false,
 }: Props) {
   const [struck, setStruck] = useState<Record<string, boolean>>({});
   const firstChoiceRef = useRef<HTMLButtonElement | null>(null);
@@ -45,7 +45,7 @@ export default function ChoiceList({
 
       const key = e.key.toLowerCase();
 
-      if (key === "x") {
+      if (key === 'x') {
         const activeElement = document.activeElement;
         if (activeElement instanceof HTMLElement) {
           const choiceId = activeElement.dataset.choiceId;
@@ -68,8 +68,8 @@ export default function ChoiceList({
         onSelect(matchedChoice);
       }
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, [choices, disabled, onSelect, toggleStrike]);
 
   return (
@@ -100,27 +100,27 @@ export default function ChoiceList({
               }
             }}
             className={classNames(
-              "choice-option w-full rounded-md border border-neutral-200 bg-white p-4 text-left shadow-sm transition focus:outline-none focus:ring-2 focus:ring-brand-500",
-              isSelected && !reveal && "border-brand-500 ring-2 ring-brand-500",
+              'choice-option w-full rounded-md border border-neutral-200 bg-white p-4 text-left shadow-sm transition focus:outline-none focus:ring-2 focus:ring-brand-500',
+              isSelected && !reveal && 'border-brand-500 ring-2 ring-brand-500',
               showAsCorrectSelection &&
-                "border-emerald-500 bg-emerald-50 text-emerald-900 ring-2 ring-emerald-300",
+                'border-emerald-500 bg-emerald-50 text-emerald-900 ring-2 ring-emerald-300',
               showAsIncorrectSelection &&
-                "border-rose-500 bg-rose-50 text-rose-900 ring-2 ring-rose-300",
-              showAsCorrect && !isSelected && "border-emerald-400 bg-emerald-50 text-emerald-900",
-              isStruck && "line-through text-neutral-400"
+                'border-rose-500 bg-rose-50 text-rose-900 ring-2 ring-rose-300',
+              showAsCorrect && !isSelected && 'border-emerald-400 bg-emerald-50 text-emerald-900',
+              isStruck && 'line-through text-neutral-400',
             )}
             data-state={
               !reveal
                 ? isSelected
-                  ? "selected"
-                  : "idle"
+                  ? 'selected'
+                  : 'idle'
                 : showAsCorrectSelection
-                  ? "correct"
+                  ? 'correct'
                   : showAsIncorrectSelection
-                    ? "incorrect"
+                    ? 'incorrect'
                     : showAsCorrect
-                      ? "correct-answer"
-                      : "revealed"
+                      ? 'correct-answer'
+                      : 'revealed'
             }
           >
             <div className="flex items-start gap-3">
@@ -136,21 +136,21 @@ export default function ChoiceList({
                 {reveal ? (
                   <p
                     className={classNames(
-                      "text-sm font-medium",
+                      'text-sm font-medium',
                       showAsCorrectSelection || (showAsCorrect && !isSelected)
-                        ? "text-emerald-700"
+                        ? 'text-emerald-700'
                         : showAsIncorrectSelection
-                          ? "text-rose-700"
-                          : "text-neutral-500"
+                          ? 'text-rose-700'
+                          : 'text-neutral-500',
                     )}
-                    role={isSelected ? "status" : undefined}
+                    role={isSelected ? 'status' : undefined}
                   >
                     {showAsCorrectSelection
-                      ? "Correct answer"
+                      ? 'Correct answer'
                       : showAsIncorrectSelection
-                        ? "Your answer — incorrect"
+                        ? 'Your answer — incorrect'
                         : showAsCorrect
-                          ? "Correct answer"
+                          ? 'Correct answer'
                           : null}
                   </p>
                 ) : null}

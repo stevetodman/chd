@@ -1,10 +1,10 @@
-import { forwardRef, useState } from "react";
-import type { ComponentPropsWithoutRef } from "react";
-import { classNames } from "../lib/utils";
-import ReactMarkdown from "react-markdown";
-import { markdownRemarkPlugins, markdownRehypePlugins } from "../lib/markdown";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/Card";
-import { Button } from "./ui/Button";
+import { forwardRef, useState } from 'react';
+import type { ComponentPropsWithoutRef } from 'react';
+import { classNames } from '../lib/utils';
+import ReactMarkdown from 'react-markdown';
+import { markdownRemarkPlugins, markdownRehypePlugins } from '../lib/markdown';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
+import { Button } from './ui/Button';
 
 type Props = {
   brief: string;
@@ -17,17 +17,20 @@ type ExplanationProps = Props & ComponentPropsWithoutRef<typeof Card>;
 
 const Explanation = forwardRef<HTMLDivElement, ExplanationProps>(function Explanation(
   { brief, deep, showHeader = true, labelId, className, ...cardProps },
-  ref
+  ref,
 ) {
   const [open, setOpen] = useState(false);
-  const toggleLabel = open ? "Hide deep dive" : "Show deep dive";
+  const toggleLabel = open ? 'Hide deep dive' : 'Show deep dive';
   const handleToggle = () => setOpen((prev) => !prev);
   const deepSectionId = labelId ? `${labelId}-deep` : undefined;
   return (
     <Card
       ref={ref}
       aria-labelledby={labelId}
-      className={classNames(showHeader ? undefined : "border-0 bg-transparent p-0 shadow-none", className)}
+      className={classNames(
+        showHeader ? undefined : 'border-0 bg-transparent p-0 shadow-none',
+        className,
+      )}
       {...cardProps}
     >
       {showHeader ? (
@@ -47,7 +50,7 @@ const Explanation = forwardRef<HTMLDivElement, ExplanationProps>(function Explan
         </CardHeader>
       ) : null}
       <CardContent
-        className={classNames("space-y-3 text-sm text-neutral-700", showHeader ? undefined : "p-0")}
+        className={classNames('space-y-3 text-sm text-neutral-700', showHeader ? undefined : 'p-0')}
       >
         {!showHeader && deep ? (
           <div className="flex justify-end">

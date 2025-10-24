@@ -1,4 +1,4 @@
-import type { PracticeTrendDatum } from "../types/practice";
+import type { PracticeTrendDatum } from '../types/practice';
 
 const toUtcWeekStart = (value: Date): Date => {
   const base = new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
@@ -23,9 +23,9 @@ export function computeWeeklyStreak(trendData: PracticeTrendDatum[]): number {
 
 export async function fetchPracticeTrendData(
   userId: string,
-  weeksToShow = 8
+  weeksToShow = 8,
 ): Promise<PracticeTrendDatum[]> {
-  const { supabase } = await import("./supabaseClient");
+  const { supabase } = await import('./supabaseClient');
 
   const now = new Date();
   const latestWeek = toUtcWeekStart(now);
@@ -33,11 +33,11 @@ export async function fetchPracticeTrendData(
   earliestWeek.setUTCDate(earliestWeek.getUTCDate() - (weeksToShow - 1) * 7);
 
   const { data, error } = await supabase
-    .from("responses")
-    .select("created_at, is_correct")
-    .eq("user_id", userId)
-    .gte("created_at", earliestWeek.toISOString())
-    .order("created_at", { ascending: true });
+    .from('responses')
+    .select('created_at, is_correct')
+    .eq('user_id', userId)
+    .gte('created_at', earliestWeek.toISOString())
+    .order('created_at', { ascending: true });
 
   if (error) throw error;
 
@@ -54,7 +54,7 @@ export async function fetchPracticeTrendData(
     aggregates.set(key, entry);
   }
 
-  const formatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
+  const formatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
   const points: PracticeTrendDatum[] = [];
 
   for (let i = 0; i < weeksToShow; i += 1) {
@@ -66,7 +66,7 @@ export async function fetchPracticeTrendData(
     points.push({
       label: formatter.format(cursor),
       attempts: summary.attempts,
-      accuracy
+      accuracy,
     });
   }
 

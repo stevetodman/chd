@@ -1,4 +1,4 @@
-export const APP_NAME = import.meta.env.VITE_APP_NAME ?? "CHD QBank";
+export const APP_NAME = import.meta.env.VITE_APP_NAME ?? 'CHD QBank';
 
 export type UserAlias = {
   user_id: string;
@@ -17,7 +17,7 @@ export type MediaBundle = {
 
 export type Choice = {
   id: string;
-  label: "A" | "B" | "C" | "D" | "E";
+  label: 'A' | 'B' | 'C' | 'D' | 'E';
   text_md: string;
   is_correct: boolean;
 };
@@ -35,21 +35,21 @@ export type FormulaReference = {
 
 export type ContextInfoPanel = {
   id: string;
-  kind: "context";
+  kind: 'context';
   title?: string | null;
   body_md: string;
 };
 
 export type ContextLabsPanel = {
   id: string;
-  kind: "labs";
+  kind: 'labs';
   title?: string | null;
   labs: LabValue[];
 };
 
 export type ContextFormulaPanel = {
   id: string;
-  kind: "formula";
+  kind: 'formula';
   title?: string | null;
   formulas?: FormulaReference[] | null;
   body_md?: string | null;
@@ -128,4 +128,3 @@ export type DashboardMetrics = {
   weekly_points: number;
   all_time_points: number;
 };
-

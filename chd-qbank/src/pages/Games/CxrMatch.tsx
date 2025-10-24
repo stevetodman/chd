@@ -1,21 +1,22 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { DragEvent, SyntheticEvent } from "react";
-import ReactMarkdown from "react-markdown";
-import { useLocation } from "react-router-dom";
-import { Button } from "../../components/ui/Button";
-import { supabase } from "../../lib/supabaseClient";
-import { useSessionStore } from "../../lib/auth";
-import { markdownRemarkPlugins, markdownRehypePlugins } from "../../lib/markdown";
-import type { BoundingBox, Point, Size } from "../../games/cxr/geom";
-import { BoundingBoxOverlay } from "../../games/cxr/BoundingBoxOverlay";
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { DragEvent, SyntheticEvent } from 'react';
+import ReactMarkdown from 'react-markdown';
+import { useLocation } from 'react-router-dom';
+import { Button } from '../../components/ui/Button';
+import { supabase } from '../../lib/supabaseClient';
+import { useSessionStore } from '../../lib/auth';
+import { markdownRemarkPlugins, markdownRehypePlugins } from '../../lib/markdown';
+import type { BoundingBox, Point, Size } from '../../games/cxr/geom';
+import { BoundingBoxOverlay } from '../../games/cxr/BoundingBoxOverlay';
 import {
   displayPointToNaturalPoint,
   hasPositiveArea,
   hitTestBoundingBox,
-  hitTolerance
-} from "../../games/cxr/geom";
+  hitTolerance,
+} from '../../games/cxr/geom';
 
-const DEFAULT_CXR_ALT_TEXT = "Chest radiograph for the congenital heart disease lesion matching game.";
+const DEFAULT_CXR_ALT_TEXT =
+  'Chest radiograph for the congenital heart disease lesion matching game.';
 
 interface Label {
   id: string;
@@ -77,9 +78,9 @@ export default function CxrMatch() {
     setLoading(true);
     setError(null);
     supabase
-      .from("cxr_items")
-      .select("id, image_url, caption_md, lesion, cxr_labels(id,label,is_correct,x,y,w,h)")
-      .eq("status", "published")
+      .from('cxr_items')
+      .select('id, image_url, caption_md, lesion, cxr_labels(id,label,is_correct,x,y,w,h)')
+      .eq('status', 'published')
       .limit(20)
       .then(({ data, error: fetchError }) => {
         if (fetchError) {
@@ -92,12 +93,14 @@ export default function CxrMatch() {
           image_url: item.image_url,
           caption_md: item.caption_md,
           lesion: item.lesion,
-          labels: shuffle((item.cxr_labels ?? []).map((label) => ({
-            id: label.id,
-            label: label.label,
-            is_correct: Boolean(label.is_correct),
-            bbox: mapBoundingBox(label)
-          })))
+          labels: shuffle(
+            (item.cxr_labels ?? []).map((label) => ({
+              id: label.id,
+              label: label.label,
+              is_correct: Boolean(label.is_correct),
+              bbox: mapBoundingBox(label),
+            })),
+          ),
         }));
         setItems(shuffle(normalized));
         setIndex(0);
@@ -106,7 +109,10 @@ export default function CxrMatch() {
   }, []);
 
   const current = items[index];
-  const correctLabel = useMemo(() => current?.labels.find((label) => label.is_correct) ?? null, [current]);
+  const correctLabel = useMemo(
+    () => current?.labels.find((label) => label.is_correct) ?? null,
+    [current],
+  );
 
   const cxrAltText = useMemo(() => {
     if (!current) {
@@ -120,10 +126,10 @@ export default function CxrMatch() {
     }
     if (current.caption_md) {
       const plainCaption = current.caption_md
-        .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
-        .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-        .replace(/[\*_`>#~|-]/g, "")
-        .replace(/\s+/g, " ")
+        .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+        .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+        .replace(/[\*_`>#~|-]/g, '')
+        .replace(/\s+/g, ' ')
         .trim();
       if (plainCaption) {
         return `Chest radiograph: ${plainCaption}`;
@@ -138,22 +144,22 @@ export default function CxrMatch() {
     setSelected(label.id);
     setError(null);
     if (correct) {
-      setMessage("Correct!");
+      setMessage('Correct!');
     } else if (correctLabel) {
       setMessage(`Not quite. The correct answer is ${correctLabel.label}.`);
     } else {
-      setMessage("Not quite. Try another lesion.");
+      setMessage('Not quite. Try another lesion.');
     }
     if (session) {
       const { data: attempt, error: attemptError } = await supabase
-        .from("cxr_attempts")
+        .from('cxr_attempts')
         .insert({
           user_id: session.user.id,
           item_id: current.id,
           is_correct: correct,
-          detail: { selected: label.label }
+          detail: { selected: label.label },
         })
-        .select("id")
+        .select('id')
         .single();
 
       if (attemptError) {
@@ -164,13 +170,15 @@ export default function CxrMatch() {
       }
 
       if (correct && attempt) {
-        const { error: rpcError } = await supabase.rpc("increment_points", {
-          source: "cxr_attempt",
-          source_id: attempt.id
+        const { error: rpcError } = await supabase.rpc('increment_points', {
+          source: 'cxr_attempt',
+          source_id: attempt.id,
         });
 
         if (rpcError) {
-          setError("Your answer was saved, but we couldn't update your points. Please try again later.");
+          setError(
+            "Your answer was saved, but we couldn't update your points. Please try again later.",
+          );
         }
       }
     }
@@ -184,8 +192,9 @@ export default function CxrMatch() {
   };
 
   const selectedLabel = useMemo(
-    () => (selected && current ? current.labels.find((label) => label.id === selected) ?? null : null),
-    [current, selected]
+    () =>
+      selected && current ? (current.labels.find((label) => label.id === selected) ?? null) : null,
+    [current, selected],
   );
 
   useEffect(() => {
@@ -197,8 +206,8 @@ export default function CxrMatch() {
       event.preventDefault();
       return;
     }
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("application/json", JSON.stringify({ id: label.id }));
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('application/json', JSON.stringify({ id: label.id }));
   };
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
@@ -207,7 +216,7 @@ export default function CxrMatch() {
     if (selected || !current) return;
     const container = imageContainerRef.current;
     try {
-      const payload = event.dataTransfer.getData("application/json");
+      const payload = event.dataTransfer.getData('application/json');
       if (!payload) return;
       const { id } = JSON.parse(payload) as { id: string };
       const match = current.labels.find((label) => label.id === id);
@@ -221,19 +230,23 @@ export default function CxrMatch() {
       const rect = container.getBoundingClientRect();
       const displayPoint: Point = {
         x: event.clientX - rect.left,
-        y: event.clientY - rect.top
+        y: event.clientY - rect.top,
       };
       const currentDisplaySize: Size = {
         width: rect.width,
-        height: rect.height
+        height: rect.height,
       };
       setDisplaySize(currentDisplaySize);
-      const naturalPoint = displayPointToNaturalPoint(displayPoint, naturalSize, currentDisplaySize);
+      const naturalPoint = displayPointToNaturalPoint(
+        displayPoint,
+        naturalSize,
+        currentDisplaySize,
+      );
       const tolerance = hitTolerance(naturalSize);
       if (hitTestBoundingBox(naturalPoint, match.bbox, naturalSize, tolerance)) {
         void submit(match);
       } else {
-        setMessage("Drop inside the target lesion to submit your answer.");
+        setMessage('Drop inside the target lesion to submit your answer.');
       }
     } catch {
       // Ignore malformed payloads.
@@ -243,7 +256,7 @@ export default function CxrMatch() {
   const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
     if (selected) return;
     event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
+    event.dataTransfer.dropEffect = 'move';
   };
 
   const handleDragEnter = (event: DragEvent<HTMLDivElement>) => {
@@ -265,7 +278,7 @@ export default function CxrMatch() {
   };
 
   useEffect(() => {
-    if (!imageContainerRef.current || typeof ResizeObserver === "undefined") {
+    if (!imageContainerRef.current || typeof ResizeObserver === 'undefined') {
       return;
     }
     const element = imageContainerRef.current;
@@ -286,8 +299,8 @@ export default function CxrMatch() {
 
   const showBoundingBoxes = useMemo(() => {
     const params = new URLSearchParams(location.search);
-    const debugValues = params.getAll("debug").flatMap((value) => value.split(","));
-    return debugValues.some((value) => value.trim().toLowerCase() === "bbox");
+    const debugValues = params.getAll('debug').flatMap((value) => value.split(','));
+    return debugValues.some((value) => value.trim().toLowerCase() === 'bbox');
   }, [location.search]);
 
   const handleImageLoad = (event: SyntheticEvent<HTMLImageElement>) => {
@@ -307,10 +320,10 @@ export default function CxrMatch() {
         ? current.labels.map((label) => ({
             id: label.id,
             label: label.label,
-            bbox: label.bbox
+            bbox: label.bbox,
           }))
         : [],
-    [current]
+    [current],
   );
 
   if (!current) {
@@ -329,7 +342,7 @@ export default function CxrMatch() {
           <div
             ref={imageContainerRef}
             className={`relative w-full max-w-xl overflow-hidden rounded border ${
-              isDropActive ? "border-brand-500 ring-4 ring-brand-200" : "border-neutral-200"
+              isDropActive ? 'border-brand-500 ring-4 ring-brand-200' : 'border-neutral-200'
             }`}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
@@ -339,7 +352,12 @@ export default function CxrMatch() {
             tabIndex={0}
             aria-label="Drop a lesion label on the matching region"
           >
-            <img src={current.image_url} alt={cxrAltText} className="block h-auto w-full" onLoad={handleImageLoad} />
+            <img
+              src={current.image_url}
+              alt={cxrAltText}
+              className="block h-auto w-full"
+              onLoad={handleImageLoad}
+            />
             {!selectedLabel ? (
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
                 <span className="rounded bg-neutral-900/80 px-3 py-1 text-sm font-medium text-white">
@@ -360,17 +378,17 @@ export default function CxrMatch() {
               rehypePlugins={markdownRehypePlugins}
               className="prose prose-sm max-w-none"
             >
-              {current.caption_md ?? "Match the imaging sign with the lesion."}
+              {current.caption_md ?? 'Match the imaging sign with the lesion.'}
             </ReactMarkdown>
             <p className="text-xs text-neutral-500">
-              Drop the label onto the lesion (or click a label) to submit. Labels remain keyboard accessible—use space
-              or enter to select.
+              Drop the label onto the lesion (or click a label) to submit. Labels remain keyboard
+              accessible—use space or enter to select.
             </p>
             <div className="grid gap-2">
               {current.labels.map((label) => (
                 <Button
                   key={label.id}
-                  variant={selected === label.id ? "primary" : "secondary"}
+                  variant={selected === label.id ? 'primary' : 'secondary'}
                   draggable={!selected}
                   onDragStart={(event) => handleDragStart(event, label)}
                   onDragEnd={handleDragEnd}
@@ -394,16 +412,16 @@ export default function CxrMatch() {
 
 const mapBoundingBox = (label: CxrLabelRow): BoundingBox | null => {
   if (
-    typeof label.x === "number" &&
-    typeof label.y === "number" &&
-    typeof label.w === "number" &&
-    typeof label.h === "number"
+    typeof label.x === 'number' &&
+    typeof label.y === 'number' &&
+    typeof label.w === 'number' &&
+    typeof label.h === 'number'
   ) {
     return {
       x: label.x,
       y: label.y,
       w: label.w,
-      h: label.h
+      h: label.h,
     };
   }
   return null;

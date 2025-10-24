@@ -1,11 +1,11 @@
-import { FormEvent, useEffect, useState } from "react";
-import classNames from "classnames";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../../components/ui/Card";
-import { Button } from "../../components/ui/Button";
-import PageState from "../../components/PageState";
-import { supabase } from "../../lib/supabaseClient";
-import { useSessionStore } from "../../lib/auth";
-import { useFeatureFlagsStore } from "../../store/featureFlags";
+import { FormEvent, useEffect, useState } from 'react';
+import classNames from 'classnames';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import PageState from '../../components/PageState';
+import { supabase } from '../../lib/supabaseClient';
+import { useSessionStore } from '../../lib/auth';
+import { useFeatureFlagsStore } from '../../store/featureFlags';
 
 type PreferenceToggleProps = {
   id: string;
@@ -23,18 +23,24 @@ function PreferenceToggle({ id, label, description, checked, onToggle }: Prefere
         <span className="mt-1 block text-xs text-neutral-500">{description}</span>
       </span>
       <span className="flex items-center pt-1">
-        <input id={id} type="checkbox" checked={checked} onChange={onToggle} className="peer sr-only" />
+        <input
+          id={id}
+          type="checkbox"
+          checked={checked}
+          onChange={onToggle}
+          className="peer sr-only"
+        />
         <span
           aria-hidden
           className={classNames(
-            "inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-500",
-            checked ? "bg-brand-600" : "bg-neutral-300"
+            'inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-500',
+            checked ? 'bg-brand-600' : 'bg-neutral-300',
           )}
         >
           <span
             className={classNames(
-              "ml-[3px] inline-block h-5 w-5 rounded-full bg-white shadow transition-all",
-              checked ? "translate-x-[18px]" : "translate-x-0"
+              'ml-[3px] inline-block h-5 w-5 rounded-full bg-white shadow transition-all',
+              checked ? 'translate-x-[18px]' : 'translate-x-0',
             )}
           />
         </span>
@@ -45,7 +51,7 @@ function PreferenceToggle({ id, label, description, checked, onToggle }: Prefere
 
 export default function AliasSettings() {
   const { session } = useSessionStore();
-  const [alias, setAlias] = useState("");
+  const [alias, setAlias] = useState('');
   const [locked, setLocked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -63,17 +69,17 @@ export default function AliasSettings() {
     if (!session) return;
     setLoading(true);
     supabase
-      .from("app_users")
-      .select("alias, alias_locked")
-      .eq("id", session.user.id)
+      .from('app_users')
+      .select('alias, alias_locked')
+      .eq('id', session.user.id)
       .maybeSingle()
       .then(({ data, error }) => {
         if (error) {
           setError(error.message);
-          setAlias("");
+          setAlias('');
           setLocked(false);
         } else if (data) {
-          setAlias(data.alias ?? "");
+          setAlias(data.alias ?? '');
           setLocked(Boolean(data.alias_locked));
         }
       })
@@ -84,13 +90,13 @@ export default function AliasSettings() {
     event.preventDefault();
     if (!session) return;
     if (locked) {
-      setMessage("Your alias is locked and cannot be changed.");
+      setMessage('Your alias is locked and cannot be changed.');
       return;
     }
 
     const trimmed = alias.trim();
     if (!trimmed) {
-      setError("Alias cannot be empty.");
+      setError('Alias cannot be empty.');
       return;
     }
 
@@ -99,10 +105,10 @@ export default function AliasSettings() {
     setError(null);
 
     const { data, error: updateError } = await supabase
-      .from("app_users")
+      .from('app_users')
       .update({ alias: trimmed })
-      .eq("id", session.user.id)
-      .select("alias, alias_locked")
+      .eq('id', session.user.id)
+      .select('alias, alias_locked')
       .maybeSingle();
 
     if (updateError) {
@@ -110,7 +116,7 @@ export default function AliasSettings() {
     } else if (data) {
       setAlias(data.alias ?? trimmed);
       setLocked(Boolean(data.alias_locked));
-      setMessage("Alias saved! This name is now locked for leaderboard play.");
+      setMessage('Alias saved! This name is now locked for leaderboard play.');
     }
 
     setSaving(false);
@@ -131,7 +137,9 @@ export default function AliasSettings() {
     if (resetErr) {
       setResetError(resetErr.message);
     } else {
-      setResetMessage(`Password reset email sent to ${session.user.email}. Check your inbox to continue.`);
+      setResetMessage(
+        `Password reset email sent to ${session.user.email}. Check your inbox to continue.`,
+      );
     }
 
     setResetSending(false);
@@ -156,11 +164,13 @@ export default function AliasSettings() {
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-3 text-sm text-neutral-700">
             <p>
-              Choose a display alias for the leaderboard. Aliases are visible to other learners and lock permanently after your
-              first save.
+              Choose a display alias for the leaderboard. Aliases are visible to other learners and
+              lock permanently after your first save.
             </p>
             <label className="block space-y-1">
-              <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Alias</span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                Alias
+              </span>
               <input
                 type="text"
                 value={alias}
@@ -176,13 +186,17 @@ export default function AliasSettings() {
               <li>No PHI, profanity, or identifying details.</li>
               <li>Aliases lock after the first save to protect leaderboard integrity.</li>
             </ul>
-            {locked ? <p className="text-xs text-neutral-500">Your alias is locked. Contact an admin for changes.</p> : null}
+            {locked ? (
+              <p className="text-xs text-neutral-500">
+                Your alias is locked. Contact an admin for changes.
+              </p>
+            ) : null}
             {error ? <p className="text-xs text-red-600">{error}</p> : null}
             {message ? <p className="text-xs text-emerald-600">{message}</p> : null}
           </CardContent>
           <CardFooter>
             <Button type="submit" disabled={locked || saving}>
-              {locked ? "Alias locked" : saving ? "Saving…" : "Save alias"}
+              {locked ? 'Alias locked' : saving ? 'Saving…' : 'Save alias'}
             </Button>
           </CardFooter>
         </form>
@@ -194,15 +208,20 @@ export default function AliasSettings() {
         <CardContent className="space-y-3 text-sm text-neutral-700">
           <p>Need a new password? Send yourself a secure reset link at any time.</p>
           <p className="text-xs text-neutral-500">
-            We&apos;ll email instructions to {session?.user.email ?? "the address on file"}. Links expire after a short time for
-            your security.
+            We&apos;ll email instructions to {session?.user.email ?? 'the address on file'}. Links
+            expire after a short time for your security.
           </p>
           {resetError ? <p className="text-xs text-red-600">{resetError}</p> : null}
           {resetMessage ? <p className="text-xs text-emerald-600">{resetMessage}</p> : null}
         </CardContent>
         <CardFooter>
-          <Button type="button" variant="secondary" onClick={sendPasswordReset} disabled={resetSending}>
-            {resetSending ? "Sending…" : "Email me a reset link"}
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={sendPasswordReset}
+            disabled={resetSending}
+          >
+            {resetSending ? 'Sending…' : 'Email me a reset link'}
           </Button>
         </CardFooter>
       </Card>

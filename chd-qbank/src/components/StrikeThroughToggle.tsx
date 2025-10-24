@@ -1,4 +1,4 @@
-import { Button } from "./ui/Button";
+import { Button } from './ui/Button';
 
 type Props = {
   active: boolean;
@@ -9,7 +9,7 @@ export default function StrikeThroughToggle({ active, onToggle }: Props) {
   return (
     <Button
       type="button"
-      variant={active ? "secondary" : "ghost"}
+      variant={active ? 'secondary' : 'ghost'}
       onClick={onToggle}
       aria-keyshortcuts="x"
       aria-pressed={active}

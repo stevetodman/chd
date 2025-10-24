@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from 'vitest';
 
 type AnswerEvent = {
   userId: string;
@@ -39,7 +39,7 @@ const computeWeeklyLeaderboard = ({
   now,
   responseEvents,
   murmurAttempts = [],
-  cxrAttempts = []
+  cxrAttempts = [],
 }: WeeklyInput): Map<string, number> => {
   const weekStart = startOfWeekUtc(now);
   const weekEnd = new Date(weekStart.getTime() + 7 * MS_PER_DAY);
@@ -47,7 +47,11 @@ const computeWeeklyLeaderboard = ({
   const grouped = new Map<string, AnswerEvent>();
 
   const filteredEvents = responseEvents
-    .map((event) => ({ ...event, effective: toDate(event.effectiveAt), created: toDate(event.createdAt) }))
+    .map((event) => ({
+      ...event,
+      effective: toDate(event.effectiveAt),
+      created: toDate(event.createdAt),
+    }))
     .filter((event) => withinBounds(event.effective, weekStart, weekEnd))
     .sort((a, b) => {
       const userCompare = a.userId.localeCompare(b.userId);
@@ -67,7 +71,7 @@ const computeWeeklyLeaderboard = ({
         questionId: event.questionId,
         isCorrect: event.isCorrect,
         effectiveAt: event.effectiveAt,
-        createdAt: event.createdAt
+        createdAt: event.createdAt,
       });
     }
   }
@@ -94,52 +98,52 @@ const computeWeeklyLeaderboard = ({
   return totals;
 };
 
-describe("weekly leaderboard aggregation", () => {
-  const now = new Date("2024-05-08T12:00:00Z");
+describe('weekly leaderboard aggregation', () => {
+  const now = new Date('2024-05-08T12:00:00Z');
 
-  it("awards points when a response is corrected during the week", () => {
+  it('awards points when a response is corrected during the week', () => {
     const responseEvents: AnswerEvent[] = [
       {
-        userId: "user-corrected",
-        questionId: "question-1",
+        userId: 'user-corrected',
+        questionId: 'question-1',
         isCorrect: false,
-        effectiveAt: "2024-04-29T09:00:00Z",
-        createdAt: "2024-04-29T09:00:00Z"
+        effectiveAt: '2024-04-29T09:00:00Z',
+        createdAt: '2024-04-29T09:00:00Z',
       },
       {
-        userId: "user-corrected",
-        questionId: "question-1",
+        userId: 'user-corrected',
+        questionId: 'question-1',
         isCorrect: true,
-        effectiveAt: "2024-05-06T08:00:00Z",
-        createdAt: "2024-05-06T08:00:00Z"
-      }
+        effectiveAt: '2024-05-06T08:00:00Z',
+        createdAt: '2024-05-06T08:00:00Z',
+      },
     ];
 
     const leaderboard = computeWeeklyLeaderboard({ now, responseEvents });
 
-    expect(leaderboard.get("user-corrected")).toBe(1);
+    expect(leaderboard.get('user-corrected')).toBe(1);
   });
 
-  it("does not double count when answers flip within the week", () => {
+  it('does not double count when answers flip within the week', () => {
     const responseEvents: AnswerEvent[] = [
       {
-        userId: "user-flip",
-        questionId: "question-2",
+        userId: 'user-flip',
+        questionId: 'question-2',
         isCorrect: true,
-        effectiveAt: "2024-05-07T10:00:00Z",
-        createdAt: "2024-05-07T10:00:00Z"
+        effectiveAt: '2024-05-07T10:00:00Z',
+        createdAt: '2024-05-07T10:00:00Z',
       },
       {
-        userId: "user-flip",
-        questionId: "question-2",
+        userId: 'user-flip',
+        questionId: 'question-2',
         isCorrect: false,
-        effectiveAt: "2024-05-07T11:30:00Z",
-        createdAt: "2024-05-07T11:30:00Z"
-      }
+        effectiveAt: '2024-05-07T11:30:00Z',
+        createdAt: '2024-05-07T11:30:00Z',
+      },
     ];
 
     const leaderboard = computeWeeklyLeaderboard({ now, responseEvents });
 
-    expect(leaderboard.get("user-flip")).toBeUndefined();
+    expect(leaderboard.get('user-flip')).toBeUndefined();
   });
 });

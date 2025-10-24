@@ -1,5 +1,10 @@
-import type { BoundingBox, Size } from "./geom";
-import { bboxToNaturalRect, naturalRectToDisplayRect, hasPositiveArea, isBoundingBox } from "./geom";
+import type { BoundingBox, Size } from './geom';
+import {
+  bboxToNaturalRect,
+  naturalRectToDisplayRect,
+  hasPositiveArea,
+  isBoundingBox,
+} from './geom';
 
 interface OverlayLabel {
   id: string;

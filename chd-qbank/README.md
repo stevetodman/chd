@@ -4,15 +4,15 @@ The CHD QBank is a static-first React application that delivers a congenital hea
 
 ## Directory tour
 
-| Path | Description |
-| --- | --- |
-| `src/` | React + TypeScript source code, including routing, Zustand stores, and UI primitives. |
-| `public/` | Static assets copied into the production build. |
-| `supabase/` | Edge Functions and migration helpers deployed to Supabase. |
+| Path                                             | Description                                                                              |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `src/`                                           | React + TypeScript source code, including routing, Zustand stores, and UI primitives.    |
+| `public/`                                        | Static assets copied into the production build.                                          |
+| `supabase/`                                      | Edge Functions and migration helpers deployed to Supabase.                               |
 | `schema.sql`, `storage-policies.sql`, `cron.sql` | Canonical SQL used to bootstrap Postgres tables, Row Level Security, and scheduled jobs. |
-| `scripts/` | Node/TypeScript utilities for seeding, verification, and migration safety checks. |
-| `data/templates/` | Seed JSON referenced by automation scripts (`npm run seed:full`). |
-| `tests/` | Vitest suites covering core UI flows and utility logic. |
+| `scripts/`                                       | Node/TypeScript utilities for seeding, verification, and migration safety checks.        |
+| `data/templates/`                                | Seed JSON referenced by automation scripts (`npm run seed:full`).                        |
+| `tests/`                                         | Vitest suites covering core UI flows and utility logic.                                  |
 
 ## Getting started
 
@@ -69,19 +69,19 @@ The seed utilities read from `data/templates/` and enforce idempotency, so re-ru
 
 ## Available scripts
 
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Launch the development server. |
-| `npm run build` | Generate the production build in `dist/`. |
-| `npm run preview` | Preview the production build locally. |
-| `npm run lint` | Run ESLint on `src/`. |
-| `npm run test` | Execute the Vitest suite. |
-| `npm run build:scripts` | Compile TypeScript utilities in `scripts/`. |
-| `npm run check:migration-safety` | Scan `supabase/migrations` for destructive or unsafe SQL patterns. |
-| `npm run seed:invite` | Upsert the invite-code configuration in `app_settings`. |
-| `npm run seed:full` | Seed questions, games, media bundles, and related metadata. |
-| `npm run verify:seed` | Perform a read-only integrity check against the current database contents. |
-| `npm run verify:analytics:heatmap` | Exercise the analytics materialized view using synthetic responses. |
+| Command                            | Purpose                                                                    |
+| ---------------------------------- | -------------------------------------------------------------------------- |
+| `npm run dev`                      | Launch the development server.                                             |
+| `npm run build`                    | Generate the production build in `dist/`.                                  |
+| `npm run preview`                  | Preview the production build locally.                                      |
+| `npm run lint`                     | Run ESLint on `src/`.                                                      |
+| `npm run test`                     | Execute the Vitest suite.                                                  |
+| `npm run build:scripts`            | Compile TypeScript utilities in `scripts/`.                                |
+| `npm run check:migration-safety`   | Scan `supabase/migrations` for destructive or unsafe SQL patterns.         |
+| `npm run seed:invite`              | Upsert the invite-code configuration in `app_settings`.                    |
+| `npm run seed:full`                | Seed questions, games, media bundles, and related metadata.                |
+| `npm run verify:seed`              | Perform a read-only integrity check against the current database contents. |
+| `npm run verify:analytics:heatmap` | Exercise the analytics materialized view using synthetic responses.        |
 
 ## Testing & quality
 
@@ -107,20 +107,22 @@ Run the validation suite with `npm test` for a one-time check or `npm run test:w
 If you intentionally change the question shape, update snapshots with `npx vitest -u`.
 
 ### QBank Tests
+
 Add items under `content/questions/`. Run:
-  npm test
-  npm run test:watch
+npm test
+npm run test:watch
 Update snapshots intentionally:
-  npx vitest -u
+npx vitest -u
 
 ### QBank Migration (schema normalization)
+
 Dry run (no writes):
-  npm run migrate:qbank:dry
+npm run migrate:qbank:dry
 
 Perform migration with backups + CSV report:
-  npm run migrate:qbank
+npm run migrate:qbank
 
 Outputs:
-- Backups → chd-qbank/content/_backup_YYYYMMDD_HHMMSS/
-- Report  → chd-qbank/content/_reports/migration_YYYYMMDD_HHMMSS.csv
 
+- Backups → chd-qbank/content/\_backup_YYYYMMDD_HHMMSS/
+- Report → chd-qbank/content/\_reports/migration_YYYYMMDD_HHMMSS.csv

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -8,12 +8,21 @@ import {
   BarElement,
   Tooltip,
   Legend,
-  Filler
-} from "chart.js";
-import { Chart } from "react-chartjs-2";
-import type { PracticeTrendDatum } from "../../types/practice";
+  Filler,
+} from 'chart.js';
+import { Chart } from 'react-chartjs-2';
+import type { PracticeTrendDatum } from '../../types/practice';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend, Filler);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Tooltip,
+  Legend,
+  Filler,
+);
 
 type Props = {
   data: PracticeTrendDatum[];
@@ -26,14 +35,16 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
   const chartData = useMemo(() => {
     const labels = data.map((point) => point.label);
     const attemptValues = data.map((point) => point.attempts);
-    const accuracyValues = data.map((point) => (point.accuracy === null ? null : Number(point.accuracy.toFixed(1))));
+    const accuracyValues = data.map((point) =>
+      point.accuracy === null ? null : Number(point.accuracy.toFixed(1)),
+    );
     const attemptDeltas = attemptValues.map((value, index) => {
       if (index === 0) return null;
       return value - attemptValues[index - 1];
     });
     const accuracyDeltas = accuracyValues.map((value, index) => {
       const previous = accuracyValues[index - 1];
-      if (index === 0 || value === null || previous === null || typeof previous === "undefined") {
+      if (index === 0 || value === null || previous === null || typeof previous === 'undefined') {
         return null;
       }
       const delta = value - previous;
@@ -41,24 +52,25 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
     });
 
     const maxAttempt = attemptValues.length > 0 ? Math.max(...attemptValues) : 0;
-    const maxAttemptIndex = maxAttempt > 0 ? attemptValues.findIndex((value) => value === maxAttempt) : -1;
+    const maxAttemptIndex =
+      maxAttempt > 0 ? attemptValues.findIndex((value) => value === maxAttempt) : -1;
     const backgroundColors = attemptValues.map((value, index) => {
       if (index === maxAttemptIndex) {
-        return "rgba(37,99,235,0.65)";
+        return 'rgba(37,99,235,0.65)';
       }
       if (index === attemptValues.length - 1 && value > 0) {
-        return "rgba(59,130,246,0.45)";
+        return 'rgba(59,130,246,0.45)';
       }
-      return "rgba(37,99,235,0.2)";
+      return 'rgba(37,99,235,0.2)';
     });
     const borderColors = attemptValues.map((value, index) => {
       if (index === maxAttemptIndex) {
-        return "rgba(37,99,235,0.85)";
+        return 'rgba(37,99,235,0.85)';
       }
       if (index === attemptValues.length - 1 && value > 0) {
-        return "rgba(59,130,246,0.65)";
+        return 'rgba(59,130,246,0.65)';
       }
-      return value > 0 ? "rgba(37,99,235,0.35)" : "rgba(148,163,184,0.25)";
+      return value > 0 ? 'rgba(37,99,235,0.35)' : 'rgba(148,163,184,0.25)';
     });
 
     return {
@@ -69,7 +81,7 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
       accuracyDeltas,
       backgroundColors,
       borderColors,
-      maxAttemptIndex
+      maxAttemptIndex,
     };
   }, [data]);
 
@@ -81,9 +93,9 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
     accuracyDeltas,
     backgroundColors,
     borderColors,
-    maxAttemptIndex
+    maxAttemptIndex,
   } = chartData;
-  const numberFormatter = useMemo(() => new Intl.NumberFormat("en-US"), []);
+  const numberFormatter = useMemo(() => new Intl.NumberFormat('en-US'), []);
   const mostRecentIndex = Math.max(0, labels.length - 1);
   const currentStreak = useMemo(() => {
     let streak = 0;
@@ -105,19 +117,20 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
       return `You're on a ${currentStreak}-week practice streak—keep it going!`;
     }
     if (currentStreak === 2) {
-      return "Nice momentum—two weeks of consistent practice.";
+      return 'Nice momentum—two weeks of consistent practice.';
     }
-    return "Great job getting back into practice this week.";
+    return 'Great job getting back into practice this week.';
   }, [attemptValues.length, currentStreak]);
 
   const accessibleSummary = useMemo(() => {
     if (!labels.length) {
-      return "No practice activity recorded yet.";
+      return 'No practice activity recorded yet.';
     }
     const latestAttempts = attemptValues[mostRecentIndex] ?? 0;
-    const previousAttempts = mostRecentIndex > 0 ? attemptValues[mostRecentIndex - 1] ?? 0 : null;
+    const previousAttempts = mostRecentIndex > 0 ? (attemptValues[mostRecentIndex - 1] ?? 0) : null;
     const latestAccuracy = accuracyValues[mostRecentIndex];
-    const previousAccuracy = mostRecentIndex > 0 ? accuracyValues[mostRecentIndex - 1] ?? null : null;
+    const previousAccuracy =
+      mostRecentIndex > 0 ? (accuracyValues[mostRecentIndex - 1] ?? null) : null;
 
     const attemptPart = (() => {
       if (previousAttempts === null) {
@@ -127,13 +140,13 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
       if (delta === 0) {
         return `This week matched last week's ${numberFormatter.format(latestAttempts)} attempts.`;
       }
-      const direction = delta > 0 ? "up" : "down";
+      const direction = delta > 0 ? 'up' : 'down';
       return `This week logged ${numberFormatter.format(latestAttempts)} attempts, ${direction} ${numberFormatter.format(Math.abs(delta))} from last week.`;
     })();
 
     const accuracyPart = (() => {
       if (latestAccuracy === null) {
-        return "Accuracy is not yet available for this period.";
+        return 'Accuracy is not yet available for this period.';
       }
       if (previousAccuracy === null) {
         return `Accuracy landed at ${latestAccuracy.toFixed(1)}%.`;
@@ -142,8 +155,8 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
       if (delta === 0) {
         return `Accuracy held steady at ${latestAccuracy.toFixed(1)}%.`;
       }
-      const direction = delta > 0 ? "improved" : "slipped";
-      return `Accuracy ${direction} to ${latestAccuracy.toFixed(1)}%, ${Math.abs(delta).toFixed(1)} points ${delta > 0 ? "higher" : "lower"} than last week.`;
+      const direction = delta > 0 ? 'improved' : 'slipped';
+      return `Accuracy ${direction} to ${latestAccuracy.toFixed(1)}%, ${Math.abs(delta).toFixed(1)} points ${delta > 0 ? 'higher' : 'lower'} than last week.`;
     })();
 
     return `${attemptPart} ${accuracyPart}`;
@@ -155,7 +168,10 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
 
   if (error) {
     return (
-      <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
+      <div
+        className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+        role="alert"
+      >
         {error}
       </div>
     );
@@ -166,7 +182,11 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
   }
 
   if (labels.length === 0) {
-    return <p className="text-sm text-neutral-500">Practice a few questions to unlock your trend chart.</p>;
+    return (
+      <p className="text-sm text-neutral-500">
+        Practice a few questions to unlock your trend chart.
+      </p>
+    );
   }
 
   return (
@@ -182,7 +202,7 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
           aria-pressed={showTable}
           aria-controls="practice-trend-table"
         >
-          {showTable ? "Hide data table" : "Show data table"}
+          {showTable ? 'Hide data table' : 'Show data table'}
         </button>
       </div>
       <div className="h-64" aria-describedby="practice-trend-summary">
@@ -192,30 +212,30 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
             labels,
             datasets: [
               {
-                type: "bar" as const,
-                label: "Attempts",
+                type: 'bar' as const,
+                label: 'Attempts',
                 data: attemptValues,
                 backgroundColor: backgroundColors,
                 borderColor: borderColors,
                 borderWidth: 1,
                 borderRadius: 6,
-                yAxisID: "y"
+                yAxisID: 'y',
               },
               {
-                type: "line" as const,
-                label: "Accuracy %",
+                type: 'line' as const,
+                label: 'Accuracy %',
                 data: accuracyValues,
-                borderColor: "rgba(16,185,129,1)",
-                backgroundColor: "rgba(16,185,129,0.15)",
-                pointBackgroundColor: "rgba(16,185,129,1)",
-                pointBorderColor: "rgba(16,185,129,1)",
+                borderColor: 'rgba(16,185,129,1)',
+                backgroundColor: 'rgba(16,185,129,0.15)',
+                pointBackgroundColor: 'rgba(16,185,129,1)',
+                pointBorderColor: 'rgba(16,185,129,1)',
                 pointRadius: 4,
                 fill: true,
                 tension: 0.35,
                 spanGaps: true,
-                yAxisID: "y1"
-              }
-            ]
+                yAxisID: 'y1',
+              },
+            ],
           }}
           options={{
             maintainAspectRatio: false,
@@ -223,30 +243,31 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
             plugins: {
               legend: {
                 display: true,
-                position: "top",
+                position: 'top',
                 labels: {
                   usePointStyle: true,
-                  boxWidth: 8
-                }
+                  boxWidth: 8,
+                },
               },
               tooltip: {
-                mode: "index",
+                mode: 'index',
                 intersect: false,
                 displayColors: false,
                 callbacks: {
                   label: (context) => {
                     if (context.datasetIndex === 0) {
-                      const value = typeof context.parsed.y === "number" && Number.isFinite(context.parsed.y)
-                        ? context.parsed.y
-                        : 0;
+                      const value =
+                        typeof context.parsed.y === 'number' && Number.isFinite(context.parsed.y)
+                          ? context.parsed.y
+                          : 0;
                       return `Attempts: ${numberFormatter.format(value)}`;
                     }
                     if (context.datasetIndex === 1) {
                       const value =
-                        typeof context.parsed.y === "number" && Number.isFinite(context.parsed.y)
+                        typeof context.parsed.y === 'number' && Number.isFinite(context.parsed.y)
                           ? context.parsed.y
                           : null;
-                      return value === null ? "Accuracy: –" : `Accuracy: ${value.toFixed(1)}%`;
+                      return value === null ? 'Accuracy: –' : `Accuracy: ${value.toFixed(1)}%`;
                     }
                     return null;
                   },
@@ -255,74 +276,75 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
                     if (context.datasetIndex === 0) {
                       const delta = attemptDeltas[index];
                       if (delta === null || delta === 0) return undefined;
-                      const arrow = delta > 0 ? "▲" : "▼";
+                      const arrow = delta > 0 ? '▲' : '▼';
                       return `${arrow} ${numberFormatter.format(Math.abs(delta))} vs. prior week`;
                     }
                     if (context.datasetIndex === 1) {
                       const delta = accuracyDeltas[index];
                       if (delta === null || delta === 0) return undefined;
-                      const arrow = delta > 0 ? "▲" : "▼";
+                      const arrow = delta > 0 ? '▲' : '▼';
                       return `${arrow} ${Math.abs(delta).toFixed(1)} pts vs. prior week`;
                     }
                     return undefined;
                   },
                   footer: (items) => {
-                    if (!items.length) return "";
+                    if (!items.length) return '';
                     const index = items[0]?.dataIndex ?? 0;
                     const badges: string[] = [];
                     if (index === mostRecentIndex && attemptValues[index] > 0) {
-                      badges.push("Latest week");
+                      badges.push('Latest week');
                     }
                     if (index === maxAttemptIndex && maxAttemptIndex >= 0) {
-                      badges.push("Best week so far");
+                      badges.push('Best week so far');
                     }
-                    return badges.join(" • ");
-                  }
-                }
-              }
+                    return badges.join(' • ');
+                  },
+                },
+              },
             },
             interaction: {
-              mode: "index" as const,
-              intersect: false
+              mode: 'index' as const,
+              intersect: false,
             },
             scales: {
               y: {
                 beginAtZero: true,
                 grid: {
-                  color: "rgba(148,163,184,0.2)"
+                  color: 'rgba(148,163,184,0.2)',
                 },
                 ticks: {
-                  precision: 0
-                }
+                  precision: 0,
+                },
               },
               y1: {
                 beginAtZero: true,
                 max: 100,
-                position: "right",
+                position: 'right',
                 grid: {
-                  drawOnChartArea: false
+                  drawOnChartArea: false,
                 },
                 ticks: {
-                  callback: (value) => `${value}%`
-                }
+                  callback: (value) => `${value}%`,
+                },
               },
               x: {
                 grid: {
-                  display: false
-                }
-              }
-            }
+                  display: false,
+                },
+              },
+            },
           }}
         />
       </div>
       {streakMessage ? <p className="text-xs text-neutral-600">{streakMessage}</p> : null}
       <div
         id="practice-trend-table"
-        className={`${showTable ? "block" : "hidden"} overflow-x-auto rounded-lg border border-neutral-200 bg-white text-sm`}
+        className={`${showTable ? 'block' : 'hidden'} overflow-x-auto rounded-lg border border-neutral-200 bg-white text-sm`}
       >
         <table className="min-w-full divide-y divide-neutral-200 text-left">
           <caption className="px-4 py-2 text-left text-xs text-neutral-500">
-            Tabular summary of weekly attempts and accuracy for screen readers and printable reports.
+            Tabular summary of weekly attempts and accuracy for screen readers and printable
+            reports.
           </caption>
           <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
             <tr>
@@ -347,7 +369,7 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
                   </th>
                   <td className="px-4 py-2">{numberFormatter.format(attemptValues[index] ?? 0)}</td>
                   <td className="px-4 py-2">
-                    {typeof accuracyValue === "number" ? accuracyValue.toFixed(1) : "–"}
+                    {typeof accuracyValue === 'number' ? accuracyValue.toFixed(1) : '–'}
                   </td>
                 </tr>
               );

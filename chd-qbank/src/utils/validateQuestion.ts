@@ -1,4 +1,4 @@
-import { Question, QuestionT } from "../schema/question.schema";
+import { Question, QuestionT } from '../schema/question.schema';
 
 export function validateQuestion(q: unknown): QuestionT {
   const parsed = Question.safeParse(q);

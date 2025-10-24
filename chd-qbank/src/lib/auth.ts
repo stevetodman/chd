@@ -1,11 +1,11 @@
-import { supabase } from "./supabaseClient";
-import { create } from "zustand";
+import { supabase } from './supabaseClient';
+import { create } from 'zustand';
 
 interface SessionState {
-  session: Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"] | null;
+  session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session'] | null;
   loading: boolean;
   initialized: boolean;
-  setSession: (session: SessionState["session"]) => void;
+  setSession: (session: SessionState['session']) => void;
   setLoading: (loading: boolean) => void;
   setInitialized: (initialized: boolean) => void;
 }
@@ -16,7 +16,7 @@ export const useSessionStore = create<SessionState>((set) => ({
   initialized: false,
   setSession: (session) => set({ session }),
   setLoading: (loading) => set({ loading }),
-  setInitialized: (initialized) => set({ initialized })
+  setInitialized: (initialized) => set({ initialized }),
 }));
 
 export async function signIn(email: string, password: string) {
@@ -50,7 +50,7 @@ export async function getSession() {
 export async function requireAuth() {
   const session = await getSession();
   if (!session) {
-    throw new Error("AUTH_REQUIRED");
+    throw new Error('AUTH_REQUIRED');
   }
   return session;
 }
@@ -58,12 +58,12 @@ export async function requireAuth() {
 export async function requireAdmin(): Promise<boolean> {
   const session = await requireAuth();
   const { data, error } = await supabase
-    .from("app_users")
-    .select("role")
-    .eq("id", session.user.id)
+    .from('app_users')
+    .select('role')
+    .eq('id', session.user.id)
     .maybeSingle();
   if (error) throw error;
-  return data?.role === "admin";
+  return data?.role === 'admin';
 }
 
 supabase.auth.onAuthStateChange((_event, session) => {

@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Choice } from "../lib/constants";
-import { useSessionStore } from "../lib/auth";
-import { supabase } from "../lib/supabaseClient";
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { Choice } from '../lib/constants';
+import { useSessionStore } from '../lib/auth';
+import { supabase } from '../lib/supabaseClient';
 import {
   determineHasMore,
   mergeQuestionPages,
@@ -10,8 +10,8 @@ import {
   type QuestionQueryRow,
   type QuestionRow,
   shuffleQuestions,
-  shouldLoadNextPage
-} from "../lib/practice";
+  shouldLoadNextPage,
+} from '../lib/practice';
 
 export type PracticeResponse = {
   id: string;
@@ -37,7 +37,7 @@ const mapResponse = (data: ResponseRow): PracticeResponse => ({
   flagged: data.flagged,
   choice_id: data.choice_id,
   is_correct: data.is_correct,
-  ms_to_answer: data.ms_to_answer
+  ms_to_answer: data.ms_to_answer,
 });
 
 export type PracticeSessionStats = {
@@ -53,17 +53,17 @@ export type PracticeSessionStats = {
 export type PracticeFilters = {
   topic: string | null;
   lesion: string | null;
-  flagged: "all" | "flagged";
-  status: "all" | "new" | "seen";
+  flagged: 'all' | 'flagged';
+  status: 'all' | 'new' | 'seen';
   sessionLength: number;
 };
 
 export const DEFAULT_PRACTICE_FILTERS: PracticeFilters = {
   topic: null,
   lesion: null,
-  flagged: "all",
-  status: "all",
-  sessionLength: PRACTICE_PAGE_SIZE
+  flagged: 'all',
+  status: 'all',
+  sessionLength: PRACTICE_PAGE_SIZE,
 };
 
 type FilterOptions = {
@@ -71,7 +71,8 @@ type FilterOptions = {
   lesions: string[];
 };
 
-const formatNotIn = (values: string[]): string => `(${values.map((value) => `'${value}'`).join(",")})`;
+const formatNotIn = (values: string[]): string =>
+  `(${values.map((value) => `'${value}'`).join(',')})`;
 
 export function usePracticeSession() {
   const [questions, setQuestions] = useState<QuestionRow[]>([]);
@@ -99,7 +100,7 @@ export function usePracticeSession() {
   const filterFieldSnapshotRef = useRef({
     topic: DEFAULT_PRACTICE_FILTERS.topic,
     lesion: DEFAULT_PRACTICE_FILTERS.lesion,
-    sessionLength: DEFAULT_PRACTICE_FILTERS.sessionLength
+    sessionLength: DEFAULT_PRACTICE_FILTERS.sessionLength,
   });
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({ topics: [], lesions: [] });
   const [filterOptionsLoading, setFilterOptionsLoading] = useState(false);
@@ -130,14 +131,8 @@ export function usePracticeSession() {
     const loadFilterOptions = async () => {
       try {
         const [topicsResult, lesionsResult] = await Promise.all([
-          supabase
-            .from("questions")
-            .select("topic", { distinct: true })
-            .eq("status", "published"),
-          supabase
-            .from("questions")
-            .select("lesion", { distinct: true })
-            .eq("status", "published")
+          supabase.from('questions').select('topic', { distinct: true }).eq('status', 'published'),
+          supabase.from('questions').select('lesion', { distinct: true }).eq('status', 'published'),
         ]);
 
         if (!active) return;
@@ -149,15 +144,15 @@ export function usePracticeSession() {
         }
 
         const topics = (topicsResult.data ?? [])
-          .map((row) => (row.topic ?? "").trim())
+          .map((row) => (row.topic ?? '').trim())
           .filter((value) => value.length > 0);
         const lesions = (lesionsResult.data ?? [])
-          .map((row) => (row.lesion ?? "").trim())
+          .map((row) => (row.lesion ?? '').trim())
           .filter((value) => value.length > 0);
 
         setFilterOptions({
           topics: Array.from(new Set(topics)).sort((a, b) => a.localeCompare(b)),
-          lesions: Array.from(new Set(lesions)).sort((a, b) => a.localeCompare(b))
+          lesions: Array.from(new Set(lesions)).sort((a, b) => a.localeCompare(b)),
         });
       } catch {
         if (!active) return;
@@ -189,9 +184,9 @@ export function usePracticeSession() {
     let active = true;
 
     supabase
-      .from("responses")
-      .select("id, question_id, flagged, choice_id, is_correct, ms_to_answer")
-      .eq("user_id", session.user.id)
+      .from('responses')
+      .select('id, question_id, flagged, choice_id, is_correct, ms_to_answer')
+      .eq('user_id', session.user.id)
       .then(({ data, error }) => {
         if (!active) return;
         if (error) {
@@ -245,44 +240,41 @@ export function usePracticeSession() {
     setSeenVersion((version) => version + 1);
   }, []);
 
-  const syncSetsFromResponses = useCallback(
-    (rows: ResponseRow[]) => {
-      if (rows.length === 0) return;
-      let flaggedChanged = false;
-      let seenChanged = false;
-      const flagged = new Set(flaggedIdsRef.current);
-      const seen = new Set(seenIdsRef.current);
+  const syncSetsFromResponses = useCallback((rows: ResponseRow[]) => {
+    if (rows.length === 0) return;
+    let flaggedChanged = false;
+    let seenChanged = false;
+    const flagged = new Set(flaggedIdsRef.current);
+    const seen = new Set(seenIdsRef.current);
 
-      for (const row of rows) {
-        if (!row.question_id) continue;
-        if (row.flagged) {
-          if (!flagged.has(row.question_id)) {
-            flagged.add(row.question_id);
-            flaggedChanged = true;
-          }
-        } else if (flagged.delete(row.question_id)) {
+    for (const row of rows) {
+      if (!row.question_id) continue;
+      if (row.flagged) {
+        if (!flagged.has(row.question_id)) {
+          flagged.add(row.question_id);
           flaggedChanged = true;
         }
+      } else if (flagged.delete(row.question_id)) {
+        flaggedChanged = true;
+      }
 
-        if (row.choice_id) {
-          if (!seen.has(row.question_id)) {
-            seen.add(row.question_id);
-            seenChanged = true;
-          }
+      if (row.choice_id) {
+        if (!seen.has(row.question_id)) {
+          seen.add(row.question_id);
+          seenChanged = true;
         }
       }
+    }
 
-      if (flaggedChanged) {
-        flaggedIdsRef.current = flagged;
-        setFlaggedVersion((version) => version + 1);
-      }
-      if (seenChanged) {
-        seenIdsRef.current = seen;
-        setSeenVersion((version) => version + 1);
-      }
-    },
-    []
-  );
+    if (flaggedChanged) {
+      flaggedIdsRef.current = flagged;
+      setFlaggedVersion((version) => version + 1);
+    }
+    if (seenChanged) {
+      seenIdsRef.current = seen;
+      setSeenVersion((version) => version + 1);
+    }
+  }, []);
 
   const loadPage = useCallback(
     async (pageToLoad: number, replace = false) => {
@@ -295,7 +287,7 @@ export function usePracticeSession() {
       }
 
       const activeFilters = filtersRef.current;
-      const flaggedOnly = activeFilters.flagged === "flagged";
+      const flaggedOnly = activeFilters.flagged === 'flagged';
       const seenFilter = activeFilters.status;
       const flaggedIds = Array.from(flaggedIdsRef.current);
       const seenIds = Array.from(seenIdsRef.current);
@@ -311,7 +303,7 @@ export function usePracticeSession() {
         return 0;
       }
 
-      if (seenFilter === "seen" && seenIds.length === 0) {
+      if (seenFilter === 'seen' && seenIds.length === 0) {
         setQuestions([]);
         setHasMore(false);
         setPage(0);
@@ -331,34 +323,38 @@ export function usePracticeSession() {
 
       try {
         let query = supabase
-          .from("questions")
+          .from('questions')
           .select(
-            "id, slug, stem_md, lead_in, explanation_brief_md, explanation_deep_md, topic, subtopic, lesion, context_panels, media_bundle:media_bundles(id, murmur_url, cxr_url, ekg_url, diagram_url, alt_text), choices(id,label,text_md,is_correct)",
-            { count: "exact" }
+            'id, slug, stem_md, lead_in, explanation_brief_md, explanation_deep_md, topic, subtopic, lesion, context_panels, media_bundle:media_bundles(id, murmur_url, cxr_url, ekg_url, diagram_url, alt_text), choices(id,label,text_md,is_correct)',
+            { count: 'exact' },
           )
-          .eq("status", "published");
+          .eq('status', 'published');
 
         if (activeFilters.topic) {
-          query = query.eq("topic", activeFilters.topic);
+          query = query.eq('topic', activeFilters.topic);
         }
 
         if (activeFilters.lesion) {
-          query = query.eq("lesion", activeFilters.lesion);
+          query = query.eq('lesion', activeFilters.lesion);
         }
 
         if (flaggedOnly && flaggedIds.length > 0) {
-          query = query.in("id", flaggedIds);
+          query = query.in('id', flaggedIds);
         }
 
-        if (seenFilter === "seen" && seenIds.length > 0) {
-          query = query.in("id", seenIds);
+        if (seenFilter === 'seen' && seenIds.length > 0) {
+          query = query.in('id', seenIds);
         }
 
-        if (seenFilter === "new" && seenIds.length > 0) {
-          query = query.not("id", "in", formatNotIn(seenIds));
+        if (seenFilter === 'new' && seenIds.length > 0) {
+          query = query.not('id', 'in', formatNotIn(seenIds));
         }
 
-        const { data, error: fetchError, count } = await query.order("id", { ascending: true }).range(from, to);
+        const {
+          data,
+          error: fetchError,
+          count,
+        } = await query.order('id', { ascending: true }).range(from, to);
 
         if (requestVersion !== filterVersionRef.current) {
           return 0;
@@ -421,7 +417,7 @@ export function usePracticeSession() {
         setLoading(stillLoading);
       }
     },
-    [updateResponses]
+    [updateResponses],
   );
 
   useEffect(() => {
@@ -438,7 +434,7 @@ export function usePracticeSession() {
     filterFieldSnapshotRef.current = {
       topic: filters.topic,
       lesion: filters.lesion,
-      sessionLength: filters.sessionLength
+      sessionLength: filters.sessionLength,
     };
 
     if (!changed) {
@@ -449,13 +445,13 @@ export function usePracticeSession() {
   }, [filters.topic, filters.lesion, filters.sessionLength, loadPage]);
 
   useEffect(() => {
-    if (filters.flagged === "flagged") {
+    if (filters.flagged === 'flagged') {
       void loadPage(0, true);
     }
   }, [filters.flagged, flaggedVersion, loadPage]);
 
   useEffect(() => {
-    if (filters.status !== "all") {
+    if (filters.status !== 'all') {
       void loadPage(0, true);
     }
   }, [filters.status, seenVersion, loadPage]);
@@ -471,8 +467,8 @@ export function usePracticeSession() {
       if (!current) return;
 
       if (!session) {
-        setError("You must be signed in to save your progress.");
-        throw new Error("Missing session");
+        setError('You must be signed in to save your progress.');
+        throw new Error('Missing session');
       }
 
       const fail = (message: string): never => {
@@ -486,15 +482,15 @@ export function usePracticeSession() {
 
       if (existing) {
         const { data, error } = await supabase
-          .from("responses")
+          .from('responses')
           .update({
             choice_id: choice.id,
             is_correct: choice.is_correct,
             ms_to_answer: ms,
-            flagged
+            flagged,
           })
-          .eq("id", existing.id)
-          .select("id, flagged, choice_id, is_correct, ms_to_answer")
+          .eq('id', existing.id)
+          .select('id, flagged, choice_id, is_correct, ms_to_answer')
           .maybeSingle();
 
         if (error || !data) {
@@ -504,16 +500,16 @@ export function usePracticeSession() {
         saved = mapResponse(data);
       } else {
         const { data, error } = await supabase
-          .from("responses")
+          .from('responses')
           .insert({
             user_id: session.user.id,
             question_id: current.id,
             choice_id: choice.id,
             is_correct: choice.is_correct,
             ms_to_answer: ms,
-            flagged
+            flagged,
           })
-          .select("id, flagged, choice_id, is_correct, ms_to_answer")
+          .select('id, flagged, choice_id, is_correct, ms_to_answer')
           .single();
 
         if (error || !data) {
@@ -525,26 +521,28 @@ export function usePracticeSession() {
 
       updateResponses((prev) => ({
         ...prev,
-        [current.id]: saved
+        [current.id]: saved,
       }));
 
       markQuestionSeen(current.id);
       updateFlaggedSet(current.id, saved?.flagged ?? flagged);
 
       if (saved?.is_correct && !wasCorrect) {
-        const { error: rpcError } = await supabase.rpc("increment_points", {
-          source: "practice_response",
-          source_id: saved.id
+        const { error: rpcError } = await supabase.rpc('increment_points', {
+          source: 'practice_response',
+          source_id: saved.id,
         });
         if (rpcError) {
-          setError("Your answer was saved, but we couldn't update your points. Please try again later.");
+          setError(
+            "Your answer was saved, but we couldn't update your points. Please try again later.",
+          );
           return;
         }
       }
 
       setError(null);
     },
-    [index, session, markQuestionSeen, updateFlaggedSet, updateResponses]
+    [index, session, markQuestionSeen, updateFlaggedSet, updateResponses],
   );
 
   const handleFlagChange = useCallback(
@@ -559,10 +557,10 @@ export function usePracticeSession() {
 
       if (existing) {
         const { data, error } = await supabase
-          .from("responses")
+          .from('responses')
           .update({ flagged })
-          .eq("id", existing.id)
-          .select("id, flagged, choice_id, is_correct, ms_to_answer")
+          .eq('id', existing.id)
+          .select('id, flagged, choice_id, is_correct, ms_to_answer')
           .maybeSingle();
 
         if (error || !data) {
@@ -571,39 +569,39 @@ export function usePracticeSession() {
 
         updateResponses((prev) => ({
           ...prev,
-          [current.id]: mapResponse(data)
+          [current.id]: mapResponse(data),
         }));
 
-      updateFlaggedSet(current.id, flagged);
-    } else {
-      const { data, error } = await supabase
-        .from("responses")
-        .insert({
-          user_id: session.user.id,
+        updateFlaggedSet(current.id, flagged);
+      } else {
+        const { data, error } = await supabase
+          .from('responses')
+          .insert({
+            user_id: session.user.id,
             question_id: current.id,
             flagged,
             choice_id: null,
             is_correct: false,
-            ms_to_answer: null
+            ms_to_answer: null,
           })
-          .select("id, flagged, choice_id, is_correct, ms_to_answer")
+          .select('id, flagged, choice_id, is_correct, ms_to_answer')
           .single();
 
         if (error || !data) {
           fail("We couldn't save the flag. Please check your connection and try again.");
         }
 
-      updateResponses((prev) => ({
-        ...prev,
-        [current.id]: mapResponse(data)
-      }));
+        updateResponses((prev) => ({
+          ...prev,
+          [current.id]: mapResponse(data),
+        }));
 
-      updateFlaggedSet(current.id, flagged);
-    }
+        updateFlaggedSet(current.id, flagged);
+      }
 
       setError(null);
     },
-    [index, session, updateFlaggedSet, updateResponses]
+    [index, session, updateFlaggedSet, updateResponses],
   );
 
   useEffect(() => {
@@ -612,18 +610,18 @@ export function usePracticeSession() {
     if (currentQuestion.id in responsesRef.current) return;
 
     void supabase
-      .from("responses")
-      .select("id, flagged, choice_id, is_correct, ms_to_answer")
-      .eq("user_id", session.user.id)
-      .eq("question_id", currentQuestion.id)
-      .order("created_at", { ascending: false })
+      .from('responses')
+      .select('id, flagged, choice_id, is_correct, ms_to_answer')
+      .eq('user_id', session.user.id)
+      .eq('question_id', currentQuestion.id)
+      .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
       .then(({ data, error }) => {
         if (error) return;
         updateResponses((prev) => ({
           ...prev,
-          [currentQuestion.id]: data ? mapResponse(data) : null
+          [currentQuestion.id]: data ? mapResponse(data) : null,
         }));
         if (data) {
           syncSetsFromResponses([
@@ -633,8 +631,8 @@ export function usePracticeSession() {
               flagged: data.flagged,
               choice_id: data.choice_id,
               is_correct: data.is_correct,
-              ms_to_answer: data.ms_to_answer
-            }
+              ms_to_answer: data.ms_to_answer,
+            },
           ]);
         }
       });
@@ -673,23 +671,20 @@ export function usePracticeSession() {
   const sessionStats = useMemo<PracticeSessionStats>(() => {
     const values = Object.values(responses);
     const base = values.reduce(
-      (
-        acc,
-        response
-      ) => {
+      (acc, response) => {
         if (!response) return acc;
         if (response.flagged) acc.flagged += 1;
         if (response.choice_id) {
           acc.totalAnswered += 1;
           if (response.is_correct) acc.totalCorrect += 1;
-          if (typeof response.ms_to_answer === "number") {
+          if (typeof response.ms_to_answer === 'number') {
             acc.totalMs += response.ms_to_answer;
             acc.timedCount += 1;
           }
         }
         return acc;
       },
-      { totalAnswered: 0, totalCorrect: 0, flagged: 0, totalMs: 0, timedCount: 0 }
+      { totalAnswered: 0, totalCorrect: 0, flagged: 0, totalMs: 0, timedCount: 0 },
     );
 
     let currentStreak = 0;
@@ -726,13 +721,17 @@ export function usePracticeSession() {
       averageMs: base.timedCount ? Math.round(base.totalMs / base.timedCount) : null,
       flagged: base.flagged,
       currentStreak,
-      longestStreak
+      longestStreak,
     } satisfies PracticeSessionStats;
   }, [questions, responses]);
 
   const sessionComplete = useMemo(
-    () => !hasMore && questions.length > 0 && index >= questions.length - 1 && sessionStats.totalAnswered > 0,
-    [hasMore, index, questions.length, sessionStats.totalAnswered]
+    () =>
+      !hasMore &&
+      questions.length > 0 &&
+      index >= questions.length - 1 &&
+      sessionStats.totalAnswered > 0,
+    [hasMore, index, questions.length, sessionStats.totalAnswered],
   );
 
   return {
@@ -753,6 +752,6 @@ export function usePracticeSession() {
     applyFilters: setFilters,
     filterOptions,
     filterOptionsLoading,
-    filterOptionsError
+    filterOptionsError,
   } as const;
 }

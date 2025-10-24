@@ -1,4 +1,4 @@
-import type { Choice, ContextPanel, Question } from "./constants";
+import type { Choice, ContextPanel, Question } from './constants';
 
 export type QuestionRow = Question & { choices: Choice[] };
 
@@ -12,7 +12,7 @@ export type QuestionQueryRow = {
   topic: string | null;
   subtopic: string | null;
   lesion: string | null;
-  media_bundle: Question["media_bundle"];
+  media_bundle: Question['media_bundle'];
   context_panels: ContextPanel[] | null;
   choices: Choice[] | null;
 };
@@ -32,13 +32,14 @@ export function normalizeQuestionRows(rows: QuestionQueryRow[]): QuestionRow[] {
     lesion: item.lesion,
     media_bundle: item.media_bundle ?? null,
     context_panels: item.context_panels ?? null,
-    choices: (item.choices ?? [])
-      .slice()
-      .sort((a, b) => a.label.localeCompare(b.label))
+    choices: (item.choices ?? []).slice().sort((a, b) => a.label.localeCompare(b.label)),
   }));
 }
 
-export function mergeQuestionPages(existing: QuestionRow[], incoming: QuestionRow[]): QuestionRow[] {
+export function mergeQuestionPages(
+  existing: QuestionRow[],
+  incoming: QuestionRow[],
+): QuestionRow[] {
   if (existing.length === 0) {
     return incoming.slice();
   }
@@ -65,15 +66,19 @@ export function determineHasMore(
   totalCount: number | null | undefined,
   totalLoaded: number,
   lastPageLength: number,
-  pageSize = PRACTICE_PAGE_SIZE
+  pageSize = PRACTICE_PAGE_SIZE,
 ): boolean {
-  if (typeof totalCount === "number") {
+  if (typeof totalCount === 'number') {
     return totalLoaded < totalCount;
   }
   return lastPageLength === pageSize;
 }
 
-export function shouldLoadNextPage(index: number, totalQuestions: number, hasMore: boolean): boolean {
+export function shouldLoadNextPage(
+  index: number,
+  totalQuestions: number,
+  hasMore: boolean,
+): boolean {
   if (!hasMore) return false;
   if (totalQuestions === 0) return false;
   return index >= totalQuestions - 2;

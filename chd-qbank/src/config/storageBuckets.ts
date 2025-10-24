@@ -1,4 +1,4 @@
-import bucketConfig from "./storageBuckets.json";
+import bucketConfig from './storageBuckets.json';
 
 export type StorageBucketExpectation = {
   name: string;

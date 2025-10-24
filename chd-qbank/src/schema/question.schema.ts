@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const Choice = z.object({
   id: z.string().min(1),
@@ -17,7 +17,7 @@ export const Question = z.object({
   choices: z.array(Choice).min(2),
   explanation: z.string().min(1),
   tags: z.array(z.string()).default([]),
-  difficulty: z.enum(["easy","med","hard"]).default("med"),
+  difficulty: z.enum(['easy', 'med', 'hard']).default('med'),
   references: z.array(z.string()).default([]),
   mediaBundle: z.array(z.string()).default([]),
   offlineRequired: z.boolean().default(false),

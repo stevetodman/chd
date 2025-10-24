@@ -1,7 +1,7 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy } from 'react';
 
-const ItemStatsChart = lazy(() => import("../../components/Charts/ItemStatsChart"));
-const Heatmap = lazy(() => import("../../components/Charts/Heatmap"));
+const ItemStatsChart = lazy(() => import('../../components/Charts/ItemStatsChart'));
+const Heatmap = lazy(() => import('../../components/Charts/Heatmap'));
 
 export default function Analytics() {
   return (

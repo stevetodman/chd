@@ -1,6 +1,6 @@
-import { useEffect, useId, useState } from "react";
-import type { ReactNode } from "react";
-import { classNames } from "../lib/utils";
+import { useEffect, useId, useState } from 'react';
+import type { ReactNode } from 'react';
+import { classNames } from '../lib/utils';
 
 type Props = {
   title: string;
@@ -17,7 +17,7 @@ export default function CollapsibleSection({
   defaultOpen = false,
   children,
   onToggle,
-  id
+  id,
 }: Props) {
   const generatedId = useId();
   const headingId = id ?? generatedId;
@@ -48,18 +48,16 @@ export default function CollapsibleSection({
       >
         <div className="flex flex-1 flex-col gap-1">
           <span>{title}</span>
-          {summary ? (
-            <span className="text-sm font-normal text-neutral-500">{summary}</span>
-          ) : null}
+          {summary ? <span className="text-sm font-normal text-neutral-500">{summary}</span> : null}
         </div>
         <span
           aria-hidden
           className={classNames(
-            "grid h-9 w-9 place-items-center rounded-full border border-neutral-300 text-lg transition-transform",
-            open ? "bg-neutral-100" : "bg-white"
+            'grid h-9 w-9 place-items-center rounded-full border border-neutral-300 text-lg transition-transform',
+            open ? 'bg-neutral-100' : 'bg-white',
           )}
         >
-          {open ? "–" : "+"}
+          {open ? '–' : '+'}
         </span>
       </button>
       {open ? (

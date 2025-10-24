@@ -1,14 +1,14 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { loadEnvFile } from "./utils/loadEnv.js";
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { loadEnvFile } from './utils/loadEnv.js';
 
 interface CliOptions {
   outputPath: string | null;
   status: StatusFilter;
 }
 
-type StatusFilter = "published" | "draft" | "archived" | "all";
+type StatusFilter = 'published' | 'draft' | 'archived' | 'all';
 
 type QuestionRecord = Record<string, any>;
 
@@ -19,8 +19,8 @@ type CoverageRow = {
   count: number;
 };
 
-const CSV_HEADER = "learning_objective,bloom,topic,count\n";
-const DEFAULT_STATUS: StatusFilter = "published";
+const CSV_HEADER = 'learning_objective,bloom,topic,count\n';
+const DEFAULT_STATUS: StatusFilter = 'published';
 const PAGE_SIZE = 1000;
 
 function parseArgs(argv: string[]): CliOptions {
@@ -28,18 +28,18 @@ function parseArgs(argv: string[]): CliOptions {
   let status: StatusFilter = DEFAULT_STATUS;
 
   for (const arg of argv) {
-    if (arg === "--help" || arg === "-h") {
+    if (arg === '--help' || arg === '-h') {
       printUsage();
       process.exit(0);
-    } else if (arg.startsWith("--output=")) {
-      const value = arg.slice("--output=".length).trim();
+    } else if (arg.startsWith('--output=')) {
+      const value = arg.slice('--output='.length).trim();
       if (!value) {
-        throw new Error("--output requires a file path");
+        throw new Error('--output requires a file path');
       }
       outputPath = path.resolve(process.cwd(), value);
-    } else if (arg.startsWith("--status=")) {
-      const value = arg.slice("--status=".length).trim().toLowerCase();
-      if (value === "all" || value === "published" || value === "draft" || value === "archived") {
+    } else if (arg.startsWith('--status=')) {
+      const value = arg.slice('--status='.length).trim().toLowerCase();
+      if (value === 'all' || value === 'published' || value === 'draft' || value === 'archived') {
         status = value as StatusFilter;
       } else {
         throw new Error(`Unknown status filter: ${value}`);
@@ -53,15 +53,17 @@ function parseArgs(argv: string[]): CliOptions {
 }
 
 function printUsage(): void {
-  console.log(`Usage: npm run blueprint:coverage [-- --status=<published|draft|archived|all>] [--output=<file.csv>]\n\n` +
-    `By default, the script connects to Supabase using SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY from the environment.\n` +
-    `If those variables are absent or the request fails, it falls back to reading JSON items under content/questions.\n` +
-    `The resulting CSV is printed to stdout unless --output is supplied.`);
+  console.log(
+    `Usage: npm run blueprint:coverage [-- --status=<published|draft|archived|all>] [--output=<file.csv>]\n\n` +
+      `By default, the script connects to Supabase using SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY from the environment.\n` +
+      `If those variables are absent or the request fails, it falls back to reading JSON items under content/questions.\n` +
+      `The resulting CSV is printed to stdout unless --output is supplied.`,
+  );
 }
 
 async function loadLocalQuestions(status: StatusFilter): Promise<QuestionRecord[]> {
   const repoRoot = process.cwd();
-  const contentDir = path.join(repoRoot, "chd-qbank", "content", "questions");
+  const contentDir = path.join(repoRoot, 'chd-qbank', 'content', 'questions');
 
   try {
     await fs.access(contentDir);
@@ -73,13 +75,13 @@ async function loadLocalQuestions(status: StatusFilter): Promise<QuestionRecord[
   const records: QuestionRecord[] = [];
 
   for (const entry of entries) {
-    if (!entry.endsWith(".json")) continue;
+    if (!entry.endsWith('.json')) continue;
     const fullPath = path.join(contentDir, entry);
     try {
-      const raw = await fs.readFile(fullPath, "utf8");
+      const raw = await fs.readFile(fullPath, 'utf8');
       const parsed = JSON.parse(raw);
-      if (status !== "all") {
-        const itemStatus = typeof parsed.status === "string" ? parsed.status.toLowerCase() : null;
+      if (status !== 'all') {
+        const itemStatus = typeof parsed.status === 'string' ? parsed.status.toLowerCase() : null;
         if (itemStatus && itemStatus !== status) {
           continue;
         }
@@ -100,14 +102,20 @@ function createSupabaseClient(): SupabaseClient | null {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-async function loadSupabaseQuestions(client: SupabaseClient, status: StatusFilter): Promise<QuestionRecord[]> {
+async function loadSupabaseQuestions(
+  client: SupabaseClient,
+  status: StatusFilter,
+): Promise<QuestionRecord[]> {
   const rows: QuestionRecord[] = [];
   let from = 0;
 
   while (true) {
-    let query = client.from("questions").select("*", { count: "exact" }).order("slug", { ascending: true, nullsFirst: false });
-    if (status !== "all") {
-      query = query.eq("status", status);
+    let query = client
+      .from('questions')
+      .select('*', { count: 'exact' })
+      .order('slug', { ascending: true, nullsFirst: false });
+    if (status !== 'all') {
+      query = query.eq('status', status);
     }
     const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
     if (error) {
@@ -123,7 +131,7 @@ async function loadSupabaseQuestions(client: SupabaseClient, status: StatusFilte
 }
 
 function normalizeString(value: unknown, fallback: string): string {
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     const trimmed = value.trim();
     return trimmed.length > 0 ? trimmed : fallback;
   }
@@ -132,7 +140,7 @@ function normalizeString(value: unknown, fallback: string): string {
 
 function collectObjectiveCandidates(value: unknown, results: Set<string>): void {
   if (!value) return;
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     const trimmed = value.trim();
     if (trimmed) results.add(trimmed);
     return;
@@ -143,9 +151,9 @@ function collectObjectiveCandidates(value: unknown, results: Set<string>): void 
     }
     return;
   }
-  if (typeof value === "object") {
+  if (typeof value === 'object') {
     const obj = value as Record<string, unknown>;
-    const preferredKeys = ["code", "slug", "id", "name", "title", "label", "value", "text"];
+    const preferredKeys = ['code', 'slug', 'id', 'name', 'title', 'label', 'value', 'text'];
     for (const key of preferredKeys) {
       if (key in obj) collectObjectiveCandidates(obj[key], results);
     }
@@ -168,7 +176,7 @@ function extractLearningObjectives(record: QuestionRecord): string[] {
     record.metadata?.learningObjectives,
     record.metadata?.learning_objectives,
     record.metadata?.learningObjective,
-    record.metadata?.learning_objective
+    record.metadata?.learning_objective,
   ];
 
   for (const source of explicitSources) {
@@ -180,7 +188,7 @@ function extractLearningObjectives(record: QuestionRecord): string[] {
   }
 
   if (results.size === 0) {
-    results.add("Unspecified");
+    results.add('Unspecified');
   }
 
   return Array.from(results);
@@ -193,16 +201,16 @@ function extractBloom(record: QuestionRecord): string {
     record.bloom_level,
     record.metadata?.bloom,
     record.metadata?.bloomLevel,
-    record.metadata?.bloom_level
+    record.metadata?.bloom_level,
   ];
 
   for (const candidate of candidates) {
-    if (typeof candidate === "string" && candidate.trim()) {
+    if (typeof candidate === 'string' && candidate.trim()) {
       return candidate.trim();
     }
   }
 
-  return "Unspecified";
+  return 'Unspecified';
 }
 
 function extractTopic(record: QuestionRecord): string {
@@ -212,18 +220,18 @@ function extractTopic(record: QuestionRecord): string {
     record.topicSlug,
     record.metadata?.topic,
     record.metadata?.topicSlug,
-    record.metadata?.topic_slug
+    record.metadata?.topic_slug,
   ];
 
   for (const candidate of candidates) {
-    if (typeof candidate === "string" && candidate.trim()) {
+    if (typeof candidate === 'string' && candidate.trim()) {
       return candidate.trim();
     }
   }
 
   if (Array.isArray(record.topics)) {
     for (const topic of record.topics) {
-      if (typeof topic === "string" && topic.trim()) {
+      if (typeof topic === 'string' && topic.trim()) {
         return topic.trim();
       }
     }
@@ -231,13 +239,13 @@ function extractTopic(record: QuestionRecord): string {
 
   if (Array.isArray(record.tags)) {
     for (const tag of record.tags) {
-      if (typeof tag === "string" && tag.trim()) {
+      if (typeof tag === 'string' && tag.trim()) {
         return tag.trim();
       }
     }
   }
 
-  return "Unspecified";
+  return 'Unspecified';
 }
 
 function computeCoverage(records: QuestionRecord[]): CoverageRow[] {
@@ -245,10 +253,12 @@ function computeCoverage(records: QuestionRecord[]): CoverageRow[] {
 
   for (const record of records) {
     const objectives = extractLearningObjectives(record);
-    const bloom = normalizeString(extractBloom(record), "Unspecified");
-    const topic = normalizeString(extractTopic(record), "Unspecified");
+    const bloom = normalizeString(extractBloom(record), 'Unspecified');
+    const topic = normalizeString(extractTopic(record), 'Unspecified');
 
-    const uniqueObjectives = new Set(objectives.map((objective) => normalizeString(objective, "Unspecified")));
+    const uniqueObjectives = new Set(
+      objectives.map((objective) => normalizeString(objective, 'Unspecified')),
+    );
 
     for (const objective of uniqueObjectives) {
       const key = `${objective}|||${bloom}|||${topic}`;
@@ -271,12 +281,19 @@ function computeCoverage(records: QuestionRecord[]): CoverageRow[] {
 }
 
 function toCsv(rows: CoverageRow[]): string {
-  const lines = rows.map((row) => [row.learningObjective, row.bloom, row.topic, String(row.count)].map(csvEscape).join(","));
-  return CSV_HEADER + lines.join("\n") + (lines.length > 0 ? "\n" : "");
+  const lines = rows.map((row) =>
+    [row.learningObjective, row.bloom, row.topic, String(row.count)].map(csvEscape).join(','),
+  );
+  return CSV_HEADER + lines.join('\n') + (lines.length > 0 ? '\n' : '');
 }
 
 function csvEscape(value: string): string {
-  const needsQuotes = value.includes(",") || value.includes("\n") || value.includes("\"") || value.startsWith(" ") || value.endsWith(" ");
+  const needsQuotes =
+    value.includes(',') ||
+    value.includes('\n') ||
+    value.includes('"') ||
+    value.startsWith(' ') ||
+    value.endsWith(' ');
   const escaped = value.replace(/"/g, '""');
   return needsQuotes ? `"${escaped}"` : escaped;
 }
@@ -288,7 +305,7 @@ async function writeOutput(csv: string, outputPath: string | null): Promise<void
   }
 
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
-  await fs.writeFile(outputPath, csv, "utf8");
+  await fs.writeFile(outputPath, csv, 'utf8');
   console.log(`Blueprint coverage written to ${outputPath}`);
 }
 
@@ -313,7 +330,7 @@ async function main(): Promise<void> {
       records = await loadSupabaseQuestions(supabaseClient, options.status);
     } catch (error) {
       console.error(String(error));
-      console.error("Falling back to local content/questions data.");
+      console.error('Falling back to local content/questions data.');
     }
   }
 
@@ -322,7 +339,7 @@ async function main(): Promise<void> {
   }
 
   if (!records || records.length === 0) {
-    console.error("No questions found to analyze.");
+    console.error('No questions found to analyze.');
     process.exit(1);
     return;
   }
@@ -333,6 +350,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  console.error("Blueprint coverage script failed:", error);
+  console.error('Blueprint coverage script failed:', error);
   process.exit(1);
 });

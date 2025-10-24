@@ -7,7 +7,7 @@
     { "id": "B", "label": "B", "text": "VSD", "isCorrect": true }
   ],
   "explanation": "VSD: holosystolic at LLSB; PDA: continuous machinery at LUSB.",
-  "tags": ["murmurs","acyanotic"],
+  "tags": ["murmurs", "acyanotic"],
   "difficulty": "easy",
   "references": ["Lilly Ch. 12"],
   "mediaBundle": [],

@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState, type ChangeEvent } from "react";
-import { supabase } from "../../lib/supabaseClient";
-import { Button } from "../../components/ui/Button";
-import { useSettingsStore } from "../../lib/settings";
-import { getErrorMessage } from "../../lib/utils";
-import { useI18n } from "../../i18n";
-import { LOCALE_OPTIONS } from "../../locales";
-import { Select } from "../../components/ui/Select";
+import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
+import { supabase } from '../../lib/supabaseClient';
+import { Button } from '../../components/ui/Button';
+import { useSettingsStore } from '../../lib/settings';
+import { getErrorMessage } from '../../lib/utils';
+import { useI18n } from '../../i18n';
+import { LOCALE_OPTIONS } from '../../locales';
+import { Select } from '../../components/ui/Select';
 
 export default function Settings() {
   const loadSettings = useSettingsStore((s) => s.loadSettings);
@@ -18,21 +18,30 @@ export default function Settings() {
   const [leaderboardEnabled, setLeaderboardEnabled] = useState(globalLeaderboard);
   const [maintenanceMode, setMaintenanceMode] = useState(globalMaintenance);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ text: string; tone: "success" | "error" } | null>(null);
+  const [message, setMessage] = useState<{ text: string; tone: 'success' | 'error' } | null>(null);
   const languageLabel = useMemo(
     () => LOCALE_OPTIONS.find((option) => option.code === locale)?.label ?? locale,
-    [locale]
+    [locale],
   );
   const hasChanges =
     leaderboardEnabled !== globalLeaderboard || maintenanceMode !== globalMaintenance;
 
-  useEffect(() => { void loadSettings(); }, [loadSettings]);
-  useEffect(() => { setLeaderboardEnabled(globalLeaderboard); }, [globalLeaderboard]);
-  useEffect(() => { setMaintenanceMode(globalMaintenance); }, [globalMaintenance]);
+  useEffect(() => {
+    void loadSettings();
+  }, [loadSettings]);
+  useEffect(() => {
+    setLeaderboardEnabled(globalLeaderboard);
+  }, [globalLeaderboard]);
+  useEffect(() => {
+    setMaintenanceMode(globalMaintenance);
+  }, [globalMaintenance]);
 
   const saveSettings = async () => {
     if (!hasChanges) {
-      setMessage({ text: t("admin.settings.noChanges", { defaultValue: "No changes to save." }), tone: "success" });
+      setMessage({
+        text: t('admin.settings.noChanges', { defaultValue: 'No changes to save.' }),
+        tone: 'success',
+      });
       return;
     }
 
@@ -40,24 +49,24 @@ export default function Settings() {
     setSaving(true);
     try {
       const rows = [
-        { key: "leaderboard_enabled", value: leaderboardEnabled ? "true" : "false" },
-        { key: "maintenance_mode", value: maintenanceMode ? "true" : "false" }
+        { key: 'leaderboard_enabled', value: leaderboardEnabled ? 'true' : 'false' },
+        { key: 'maintenance_mode', value: maintenanceMode ? 'true' : 'false' },
       ];
-      const { error } = await supabase.from("app_settings").upsert(rows, { onConflict: "key" });
+      const { error } = await supabase.from('app_settings').upsert(rows, { onConflict: 'key' });
       if (error) throw error;
       setGlobalLeaderboard(leaderboardEnabled);
       setGlobalMaintenance(maintenanceMode);
       setMessage({
-        text: t("admin.settings.saveSuccess", { defaultValue: "Settings saved." }),
-        tone: "success"
+        text: t('admin.settings.saveSuccess', { defaultValue: 'Settings saved.' }),
+        tone: 'success',
       });
     } catch (err) {
       setMessage({
-        text: t("admin.settings.saveError", {
-          defaultValue: "Failed to save: {message}",
-          message: getErrorMessage(err, "Unknown error")
+        text: t('admin.settings.saveError', {
+          defaultValue: 'Failed to save: {message}',
+          message: getErrorMessage(err, 'Unknown error'),
         }),
-        tone: "error"
+        tone: 'error',
       });
     } finally {
       setSaving(false);
@@ -66,30 +75,30 @@ export default function Settings() {
 
   const resetLeaderboard = async () => {
     if (
-      typeof window !== "undefined" &&
+      typeof window !== 'undefined' &&
       !window.confirm(
-        t("admin.settings.resetConfirm", {
-          defaultValue: "This will clear all-time leaderboard scores. Continue?"
-        })
+        t('admin.settings.resetConfirm', {
+          defaultValue: 'This will clear all-time leaderboard scores. Continue?',
+        }),
       )
     ) {
       return;
     }
     setMessage(null);
     try {
-      const { error } = await supabase.from("leaderboard").delete().neq("user_id", "");
+      const { error } = await supabase.from('leaderboard').delete().neq('user_id', '');
       if (error) throw error;
       setMessage({
-        text: t("admin.settings.resetSuccess", { defaultValue: "Leaderboard reset." }),
-        tone: "success"
+        text: t('admin.settings.resetSuccess', { defaultValue: 'Leaderboard reset.' }),
+        tone: 'success',
       });
     } catch (err) {
       setMessage({
-        text: t("admin.settings.resetError", {
-          defaultValue: "Failed to reset leaderboard: {message}",
-          message: getErrorMessage(err, "Unknown error")
+        text: t('admin.settings.resetError', {
+          defaultValue: 'Failed to reset leaderboard: {message}',
+          message: getErrorMessage(err, 'Unknown error'),
         }),
-        tone: "error"
+        tone: 'error',
       });
     }
   };
@@ -101,7 +110,7 @@ export default function Settings() {
   return (
     <div className="space-y-5">
       <h1 className="text-xl font-semibold">
-        {t("admin.settings.heading", { defaultValue: "Admin Settings" })}
+        {t('admin.settings.heading', { defaultValue: 'Admin Settings' })}
       </h1>
 
       <div className="rounded-lg border border-neutral-200 bg-white p-4 space-y-3">
@@ -113,8 +122,8 @@ export default function Settings() {
             onChange={(e) => setLeaderboardEnabled(e.target.checked)}
           />
           <span>
-            {t("admin.settings.enableLeaderboard", {
-              defaultValue: "Enable leaderboard for all users"
+            {t('admin.settings.enableLeaderboard', {
+              defaultValue: 'Enable leaderboard for all users',
             })}
           </span>
         </label>
@@ -127,21 +136,23 @@ export default function Settings() {
             onChange={(e) => setMaintenanceMode(e.target.checked)}
           />
           <span>
-            {t("admin.settings.enableMaintenance", {
-              defaultValue: "Enable maintenance mode (lock out non-admins)"
+            {t('admin.settings.enableMaintenance', {
+              defaultValue: 'Enable maintenance mode (lock out non-admins)',
             })}
           </span>
         </label>
 
         <div className="space-y-1 text-sm">
           <label htmlFor="language-select" className="font-medium text-neutral-700">
-            {t("admin.settings.languageLabel", { defaultValue: "Language" })}
+            {t('admin.settings.languageLabel', { defaultValue: 'Language' })}
           </label>
           <Select
             id="language-select"
             value={locale}
             onChange={handleLocaleChange}
-            aria-label={t("admin.settings.languageAriaLabel", { defaultValue: "Select interface language" })}
+            aria-label={t('admin.settings.languageAriaLabel', {
+              defaultValue: 'Select interface language',
+            })}
           >
             {LOCALE_OPTIONS.map((option) => (
               <option key={option.code} value={option.code}>
@@ -150,9 +161,9 @@ export default function Settings() {
             ))}
           </Select>
           <p className="text-xs text-neutral-500">
-            {t("admin.settings.languageDescription", {
-              defaultValue: "Current language: {language}",
-              language: languageLabel
+            {t('admin.settings.languageDescription', {
+              defaultValue: 'Current language: {language}',
+              language: languageLabel,
             })}
           </p>
         </div>
@@ -160,16 +171,22 @@ export default function Settings() {
         <div className="flex items-center gap-3">
           <Button onClick={saveSettings} disabled={saving || !hasChanges}>
             {saving
-              ? t("admin.settings.saving", { defaultValue: "Saving…" })
-              : t("admin.settings.save", { defaultValue: "Save settings" })}
+              ? t('admin.settings.saving', { defaultValue: 'Saving…' })
+              : t('admin.settings.save', { defaultValue: 'Save settings' })}
           </Button>
           <Button onClick={resetLeaderboard} variant="secondary">
-            {t("admin.settings.resetLeaderboard", { defaultValue: "Reset all-time leaderboard" })}
+            {t('admin.settings.resetLeaderboard', { defaultValue: 'Reset all-time leaderboard' })}
           </Button>
         </div>
 
         {message ? (
-          <p className={message.tone === "error" ? "text-sm text-red-600" : "text-sm text-neutral-700"}>{message.text}</p>
+          <p
+            className={
+              message.tone === 'error' ? 'text-sm text-red-600' : 'text-sm text-neutral-700'
+            }
+          >
+            {message.text}
+          </p>
         ) : null}
       </div>
     </div>

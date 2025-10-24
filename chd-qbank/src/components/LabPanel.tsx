@@ -1,6 +1,6 @@
-import { useId } from "react";
-import type { LabValue } from "../lib/constants";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/Card";
+import { useId } from 'react';
+import type { LabValue } from '../lib/constants';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 
 type Props = {
   labs?: LabValue[] | null;
@@ -12,10 +12,10 @@ type Props = {
 
 export default function LabPanel({
   labs,
-  title = "Vitals & Labs",
+  title = 'Vitals & Labs',
   labelId,
   showTitle = true,
-  asSection = true
+  asSection = true,
 }: Props) {
   if (!labs || labs.length === 0) {
     return null;
@@ -24,13 +24,13 @@ export default function LabPanel({
   const headingId = useId();
 
   const content = (
-    <Card className={showTitle ? "bg-white" : "border-0 bg-transparent shadow-none p-0"}>
+    <Card className={showTitle ? 'bg-white' : 'border-0 bg-transparent shadow-none p-0'}>
       {showTitle && title ? (
         <CardHeader>
           <CardTitle id={headingId}>{title}</CardTitle>
         </CardHeader>
       ) : null}
-      <CardContent className={showTitle ? undefined : "p-0"}>
+      <CardContent className={showTitle ? undefined : 'p-0'}>
         <dl className="grid grid-cols-2 gap-3 text-sm">
           {labs.map((lab) => (
             <div key={`${lab.label}-${lab.value}`} className="flex flex-col">
@@ -54,7 +54,7 @@ export default function LabPanel({
     <section
       role="complementary"
       aria-labelledby={showTitle && title ? headingId : labelId}
-      aria-label={showTitle && title ? undefined : "Vitals and labs"}
+      aria-label={showTitle && title ? undefined : 'Vitals and labs'}
     >
       {content}
     </section>

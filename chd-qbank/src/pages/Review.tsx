@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
-import { useSessionStore } from "../lib/auth";
-import { normalizeQuestionRows, type QuestionQueryRow } from "../lib/practice";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/Card";
-import { Button } from "../components/ui/Button";
-import PageState from "../components/PageState";
-import ReviewQuestionCard, { type ReviewFlag } from "../components/ReviewQuestionCard";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import { useSessionStore } from '../lib/auth';
+import { normalizeQuestionRows, type QuestionQueryRow } from '../lib/practice';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
+import PageState from '../components/PageState';
+import ReviewQuestionCard, { type ReviewFlag } from '../components/ReviewQuestionCard';
 
 type FlaggedResponseRow = {
   id: string;
@@ -27,7 +27,7 @@ export default function Review() {
     setLoading(true);
     setFetchError(null);
     const { data, error } = await supabase
-      .from("responses")
+      .from('responses')
       .select(
         `id, created_at, questions(
           id,
@@ -42,11 +42,11 @@ export default function Review() {
           context_panels,
           media_bundle:media_bundles(id, murmur_url, cxr_url, ekg_url, diagram_url, alt_text),
           choices(id,label,text_md,is_correct)
-        )`
+        )`,
       )
-      .eq("user_id", session.user.id)
-      .eq("flagged", true)
-      .order("created_at", { ascending: false });
+      .eq('user_id', session.user.id)
+      .eq('flagged', true)
+      .order('created_at', { ascending: false });
 
     if (error) {
       setFetchError(error.message);
@@ -79,57 +79,77 @@ export default function Review() {
       setActionError(null);
 
       const { error } = await supabase
-        .from("responses")
+        .from('responses')
         .update({ flagged: false })
-        .eq("id", responseId)
-        .eq("user_id", session.user.id);
+        .eq('id', responseId)
+        .eq('user_id', session.user.id);
 
       if (error) {
         setActionError(error.message);
       } else {
         setFlags((previous) => previous.filter((flag) => flag.id !== responseId));
-        setActionMessage("Removed from review queue. Nice work!");
+        setActionMessage('Removed from review queue. Nice work!');
       }
 
       setProcessingId(null);
     },
-    [session]
+    [session],
   );
 
-  const emptyState = useMemo(() => !loading && !flags.length && !fetchError, [flags.length, fetchError, loading]);
+  const emptyState = useMemo(
+    () => !loading && !flags.length && !fetchError,
+    [flags.length, fetchError, loading],
+  );
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold">Review flagged questions</h1>
         <p className="text-sm text-neutral-600">
-          Work through the items you saved during practice. Mark questions as reviewed to remove them from this list.
+          Work through the items you saved during practice. Mark questions as reviewed to remove
+          them from this list.
         </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 text-sm">
-        <Button type="button" variant="secondary" onClick={() => void loadFlags()} disabled={loading}>
-          {loading ? "Refreshing…" : "Refresh list"}
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => void loadFlags()}
+          disabled={loading}
+        >
+          {loading ? 'Refreshing…' : 'Refresh list'}
         </Button>
         <span className="text-neutral-500">
-          {flags.length === 1 ? "1 question awaiting review" : `${flags.length} questions awaiting review`}
+          {flags.length === 1
+            ? '1 question awaiting review'
+            : `${flags.length} questions awaiting review`}
         </span>
       </div>
 
       {fetchError ? (
-        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert">
+        <div
+          className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+          role="alert"
+        >
           {fetchError}
         </div>
       ) : null}
 
       {actionError ? (
-        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
+        <div
+          className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+          role="alert"
+        >
           {actionError}
         </div>
       ) : null}
 
       {actionMessage ? (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700" role="status">
+        <div
+          className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700"
+          role="status"
+        >
           {actionMessage}
         </div>
       ) : null}
@@ -160,7 +180,8 @@ export default function Review() {
             <CardDescription>Flag items during practice to revisit them here.</CardDescription>
           </CardHeader>
           <CardContent className="text-sm text-neutral-600">
-            Visit tutor mode or a learning game to flag tricky questions and build your personal review set.
+            Visit tutor mode or a learning game to flag tricky questions and build your personal
+            review set.
           </CardContent>
         </Card>
       ) : null}

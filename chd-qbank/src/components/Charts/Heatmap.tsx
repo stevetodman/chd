@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { fetchAdminHeatmap } from "../../lib/analytics";
-import { getErrorMessage } from "../../lib/utils";
+import { useEffect, useMemo, useState } from 'react';
+import { fetchAdminHeatmap } from '../../lib/analytics';
+import { getErrorMessage } from '../../lib/utils';
 
 type Cell = {
   lesion: string;
@@ -10,19 +10,22 @@ type Cell = {
 };
 
 const paletteClasses = [
-  "bg-[#f7fbff]",
-  "bg-[#deebf7]",
-  "bg-[#c6dbef]",
-  "bg-[#9ecae1]",
-  "bg-[#6baed6]",
-  "bg-[#4292c6] text-white",
-  "bg-[#2171b5] text-white",
-  "bg-[#084594] text-white"
+  'bg-[#f7fbff]',
+  'bg-[#deebf7]',
+  'bg-[#c6dbef]',
+  'bg-[#9ecae1]',
+  'bg-[#6baed6]',
+  'bg-[#4292c6] text-white',
+  'bg-[#2171b5] text-white',
+  'bg-[#084594] text-white',
 ] as const;
 
 function classForRate(rate: number) {
   const clampedRate = Math.max(0, Math.min(1, rate));
-  const index = Math.min(paletteClasses.length - 1, Math.floor(clampedRate * paletteClasses.length));
+  const index = Math.min(
+    paletteClasses.length - 1,
+    Math.floor(clampedRate * paletteClasses.length),
+  );
   return paletteClasses[index];
 }
 
@@ -39,7 +42,7 @@ const EMPTY_DATA: HeatmapData = {
   lesions: [],
   topics: [],
   weeklySpan: null,
-  rowCount: 0
+  rowCount: 0,
 };
 
 export default function Heatmap() {
@@ -52,14 +55,17 @@ export default function Heatmap() {
     fetchAdminHeatmap()
       .then((rows) => {
         if (cancelled) return;
-        const aggregates = new Map<string, { lesion: string; topic: string; attempts: number; correct: number }>();
+        const aggregates = new Map<
+          string,
+          { lesion: string; topic: string; attempts: number; correct: number }
+        >();
         const lesionSet = new Set<string>();
         const topicSet = new Set<string>();
         const weekSet = new Set<string | null>();
 
         for (const row of rows) {
-          const lesion = row.lesion ?? "Unspecified";
-          const topic = row.topic ?? "Unspecified";
+          const lesion = row.lesion ?? 'Unspecified';
+          const topic = row.topic ?? 'Unspecified';
           const key = `${lesion}__${topic}`;
           const existing = aggregates.get(key) ?? { lesion, topic, attempts: 0, correct: 0 };
           existing.attempts += Number(row.attempts ?? 0);
@@ -75,7 +81,7 @@ export default function Heatmap() {
             lesion: entry.lesion,
             topic: entry.topic,
             attempts: entry.attempts,
-            correct_rate: entry.attempts > 0 ? entry.correct / entry.attempts : 0
+            correct_rate: entry.attempts > 0 ? entry.correct / entry.attempts : 0,
           }))
           .sort((a, b) => a.lesion.localeCompare(b.lesion) || a.topic.localeCompare(b.topic));
 
@@ -84,14 +90,14 @@ export default function Heatmap() {
           lesions: Array.from(lesionSet).sort(),
           topics: Array.from(topicSet).sort(),
           weeklySpan: weekSet.size > 0 ? weekSet.size : null,
-          rowCount: rows.length
+          rowCount: rows.length,
         });
         setError(null);
       })
       .catch((err) => {
         if (cancelled) return;
-        console.error("Failed to load heatmap", err);
-        setError(getErrorMessage(err, "Failed to load heatmap data."));
+        console.error('Failed to load heatmap', err);
+        setError(getErrorMessage(err, 'Failed to load heatmap data.'));
         setData(EMPTY_DATA);
       });
 
@@ -118,7 +124,8 @@ export default function Heatmap() {
       ) : null}
       {data.weeklySpan ? (
         <p className="mb-3 text-xs text-neutral-500">
-          Aggregated across {data.weeklySpan} weekly buckets with {data.rowCount} question-week rows.
+          Aggregated across {data.weeklySpan} weekly buckets with {data.rowCount} question-week
+          rows.
         </p>
       ) : null}
       <table className="border-collapse text-xs">
@@ -143,9 +150,9 @@ export default function Heatmap() {
                   <td
                     key={topic}
                     className={`min-w-[70px] px-2 py-1 text-center text-sm font-medium text-neutral-900 ${classForRate(rate)}`}
-                    title={cell ? `${cell.attempts} attempts` : "No attempts"}
+                    title={cell ? `${cell.attempts} attempts` : 'No attempts'}
                   >
-                    {cell ? `${Math.round(rate * 100)}%` : "–"}
+                    {cell ? `${Math.round(rate * 100)}%` : '–'}
                   </td>
                 );
               })}

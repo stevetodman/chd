@@ -1,11 +1,11 @@
-import React from "react";
-import { render } from "@testing-library/react";
-import { axe, toHaveNoViolations } from "jest-axe";
+import React from 'react';
+import { render } from '@testing-library/react';
+import { axe, toHaveNoViolations } from 'jest-axe';
 
 expect.extend(toHaveNoViolations);
 
-describe("accessibility smoke test", () => {
-  it("reports no violations for accessible markup", async () => {
+describe('accessibility smoke test', () => {
+  it('reports no violations for accessible markup', async () => {
     // In real tests, import actual components here so missing ARIA labels,
     // color contrast issues, or other accessibility regressions are caught.
     const { container } = render(

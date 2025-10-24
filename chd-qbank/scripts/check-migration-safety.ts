@@ -51,10 +51,10 @@ async function getSqlFiles(dir: string): Promise<string[]> {
 
 function sanitizeForSearch(content: string): string {
   const withoutBlockComments = content.replace(/\/\*[\s\S]*?\*\//g, (match) =>
-    match.replace(/[^\r\n]/g, ' ')
+    match.replace(/[^\r\n]/g, ' '),
   );
   const withoutLineComments = withoutBlockComments.replace(/--.*$/gm, (match) =>
-    match.replace(/[^\r\n]/g, ' ')
+    match.replace(/[^\r\n]/g, ' '),
   );
   return withoutLineComments;
 }
@@ -76,7 +76,7 @@ function checkDropTable(
   sanitized: string,
   relativePath: string,
   lines: string[],
-  violations: Violation[]
+  violations: Violation[],
 ) {
   const dropTableRegex = /\bdrop\s+table\b/gi;
   let match: RegExpExecArray | null;
@@ -96,7 +96,7 @@ function checkAlterTypeDropValue(
   sanitized: string,
   relativePath: string,
   lines: string[],
-  violations: Violation[]
+  violations: Violation[],
 ) {
   const alterTypeRegex = /alter\s+type\s+(?:"[^"]+"|\S+)\s+drop\s+value/gi;
   let match: RegExpExecArray | null;
@@ -116,7 +116,7 @@ function checkCreateIndexConcurrently(
   sanitized: string,
   relativePath: string,
   lines: string[],
-  violations: Violation[]
+  violations: Violation[],
 ) {
   const createIndexRegex =
     /create\s+(?:unique\s+)?index(?!\s+concurrently)(?:\s+if\s+not\s+exists)?\s+(?:"[^"]+"|\S+)\s+on\s+([^\s(]+)\s*\(/gi;
@@ -143,7 +143,7 @@ function checkSetNotNull(
   sanitized: string,
   relativePath: string,
   lines: string[],
-  violations: Violation[]
+  violations: Violation[],
 ) {
   const setNotNullRegex =
     /alter\s+table\s+(?:if\s+exists\s+)?(?:only\s+)?((?:"[^"]+"|\S+))\s+alter\s+column\s+((?:"[^"]+"|\S+))\s+set\s+not\s+null/gi;
@@ -157,7 +157,7 @@ function checkSetNotNull(
 
     const updateRegex = new RegExp(
       `update\\s+${escapeRegExp(tableName)}[\\s\\S]*?set[\\s\\S]*?${escapeRegExp(columnName)}`,
-      'i'
+      'i',
     );
 
     if (!updateRegex.test(sanitized)) {

@@ -1,4 +1,4 @@
-import type { DashboardMetrics } from "./constants";
+import type { DashboardMetrics } from './constants';
 
 type RawDashboardMetrics = {
   total_attempts: number | string | null;
@@ -9,10 +9,10 @@ type RawDashboardMetrics = {
 };
 
 const toNumber = (value: number | string | null | undefined): number => {
-  if (typeof value === "number") {
+  if (typeof value === 'number') {
     return Number.isFinite(value) ? value : 0;
   }
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : 0;
   }
@@ -24,13 +24,13 @@ const ZERO_METRICS: DashboardMetrics = {
   correct_attempts: 0,
   flagged_count: 0,
   weekly_points: 0,
-  all_time_points: 0
+  all_time_points: 0,
 };
 
 export function normalizeDashboardMetrics(row?: RawDashboardMetrics | null): DashboardMetrics {
   if (!row) {
     return {
-      ...ZERO_METRICS
+      ...ZERO_METRICS,
     };
   }
 
@@ -39,13 +39,13 @@ export function normalizeDashboardMetrics(row?: RawDashboardMetrics | null): Das
     correct_attempts: toNumber(row.correct_attempts),
     flagged_count: toNumber(row.flagged_count),
     weekly_points: toNumber(row.weekly_points),
-    all_time_points: toNumber(row.all_time_points)
+    all_time_points: toNumber(row.all_time_points),
   };
 }
 
 export async function fetchDashboardMetrics(): Promise<DashboardMetrics> {
-  const { supabase } = await import("./supabaseClient");
-  const { data, error } = await supabase.rpc("dashboard_metrics");
+  const { supabase } = await import('./supabaseClient');
+  const { data, error } = await supabase.rpc('dashboard_metrics');
   if (error) throw error;
   const first = Array.isArray(data) ? (data[0] as RawDashboardMetrics | null | undefined) : null;
   return normalizeDashboardMetrics(first ?? null);

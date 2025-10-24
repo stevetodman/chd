@@ -38,17 +38,17 @@ main {
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 }
 
-.choice-option[data-state="selected"] {
+.choice-option[data-state='selected'] {
   transform: translateY(-2px);
   box-shadow: 0 12px 28px rgba(59, 130, 246, 0.22);
 }
 
-.choice-option[data-state="correct"],
-.choice-option[data-state="correct-answer"] {
+.choice-option[data-state='correct'],
+.choice-option[data-state='correct-answer'] {
   animation: choiceRevealCorrect var(--motion-duration-medium) var(--motion-ease-out);
 }
 
-.choice-option[data-state="incorrect"] {
+.choice-option[data-state='incorrect'] {
   animation: choiceRevealIncorrect var(--motion-duration-medium) var(--motion-ease-out);
 }
 
@@ -98,11 +98,11 @@ main {
   }
 }
 
-.dialog-overlay[data-state="open"] {
+.dialog-overlay[data-state='open'] {
   animation: overlayShow var(--motion-duration-medium) var(--motion-ease-out);
 }
 
-.dialog-overlay[data-state="closed"] {
+.dialog-overlay[data-state='closed'] {
   animation: overlayHide var(--motion-duration-short) var(--motion-ease-in) forwards;
 }
 
@@ -110,7 +110,7 @@ main {
   animation: dialogShow var(--motion-duration-medium) var(--motion-ease-out);
 }
 
-.dialog-content[data-state="closed"] {
+.dialog-content[data-state='closed'] {
   animation: dialogHide var(--motion-duration-short) var(--motion-ease-in) forwards;
 }
 

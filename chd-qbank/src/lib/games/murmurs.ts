@@ -38,8 +38,8 @@ export function normalizeMurmurItems(rows: MurmurItemRow[]): MurmurItem[] {
       id: option.id,
       label: option.label,
       text_md: option.text_md,
-      is_correct: option.is_correct
-    }))
+      is_correct: option.is_correct,
+    })),
   }));
 }
 
@@ -50,5 +50,5 @@ export function getNextMurmurIndex(currentIndex: number, total: number): number 
 
 export function feedbackForMurmurOption(option: MurmurOption | null): string | null {
   if (!option) return null;
-  return option.is_correct ? "Correct!" : "Try again";
+  return option.is_correct ? 'Correct!' : 'Try again';
 }

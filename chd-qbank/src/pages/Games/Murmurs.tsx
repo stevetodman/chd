@@ -1,17 +1,17 @@
-import { useEffect, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import { Button } from "../../components/ui/Button";
-import { supabase } from "../../lib/supabaseClient";
-import { useSessionStore } from "../../lib/auth";
-import { markdownRemarkPlugins, markdownRehypePlugins } from "../../lib/markdown";
+import { useEffect, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import { Button } from '../../components/ui/Button';
+import { supabase } from '../../lib/supabaseClient';
+import { useSessionStore } from '../../lib/auth';
+import { markdownRemarkPlugins, markdownRehypePlugins } from '../../lib/markdown';
 import {
   feedbackForMurmurOption,
   getNextMurmurIndex,
   MurmurItem,
   MurmurItemRow,
   MurmurOption,
-  normalizeMurmurItems
-} from "../../lib/games/murmurs";
+  normalizeMurmurItems,
+} from '../../lib/games/murmurs';
 
 export default function Murmurs() {
   const { session } = useSessionStore();
@@ -29,12 +29,12 @@ export default function Murmurs() {
       setLoading(true);
       setError(null);
       const { data, error: fetchError } = await supabase
-        .from("murmur_items")
+        .from('murmur_items')
         .select(
-          "id, prompt_md, rationale_md, media_url, murmur_options(id,label,text_md,is_correct)"
+          'id, prompt_md, rationale_md, media_url, murmur_options(id,label,text_md,is_correct)',
         )
-        .eq("status", "published")
-        .order("updated_at", { ascending: false })
+        .eq('status', 'published')
+        .order('updated_at', { ascending: false })
         .limit(20);
 
       if (!active) return;
@@ -74,14 +74,14 @@ export default function Murmurs() {
     setError(null);
     if (session) {
       const { data: attempt, error: attemptError } = await supabase
-        .from("murmur_attempts")
+        .from('murmur_attempts')
         .insert({
           user_id: session.user.id,
           item_id: current.id,
           option_id: option.id,
-          is_correct: option.is_correct
+          is_correct: option.is_correct,
         })
-        .select("id")
+        .select('id')
         .single();
 
       if (attemptError) {
@@ -92,13 +92,15 @@ export default function Murmurs() {
       }
 
       if (option.is_correct && attempt) {
-        const { error: rpcError } = await supabase.rpc("increment_points", {
-          source: "murmur_attempt",
-          source_id: attempt.id
+        const { error: rpcError } = await supabase.rpc('increment_points', {
+          source: 'murmur_attempt',
+          source_id: attempt.id,
         });
 
         if (rpcError) {
-          setError("Your answer was saved, but we couldn't update your points. Please try again later.");
+          setError(
+            "Your answer was saved, but we couldn't update your points. Please try again later.",
+          );
         }
       }
     }
@@ -125,14 +127,20 @@ export default function Murmurs() {
               rehypePlugins={markdownRehypePlugins}
               className="prose prose-sm max-w-none"
             >
-              {current.prompt_md ?? ""}
+              {current.prompt_md ?? ''}
             </ReactMarkdown>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {current.options.map((option) => (
               <Button
                 key={option.id}
-                variant={selected?.id === option.id ? (option.is_correct ? "primary" : "secondary") : "secondary"}
+                variant={
+                  selected?.id === option.id
+                    ? option.is_correct
+                      ? 'primary'
+                      : 'secondary'
+                    : 'secondary'
+                }
                 onClick={() => choose(option)}
                 disabled={Boolean(selected)}
               >

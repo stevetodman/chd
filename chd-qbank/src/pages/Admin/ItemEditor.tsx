@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { supabase } from "../../lib/supabaseClient";
-import { Button } from "../../components/ui/Button";
-import ContextPanel from "../../components/ContextPanel";
-import LabPanel from "../../components/LabPanel";
-import FormulaPanel from "../../components/FormulaPanel";
-import type { ContextPanel as PersistedContextPanel } from "../../lib/constants";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { supabase } from '../../lib/supabaseClient';
+import { Button } from '../../components/ui/Button';
+import ContextPanel from '../../components/ContextPanel';
+import LabPanel from '../../components/LabPanel';
+import FormulaPanel from '../../components/FormulaPanel';
+import type { ContextPanel as PersistedContextPanel } from '../../lib/constants';
 
 interface EditableChoice {
   id: string;
@@ -14,7 +14,7 @@ interface EditableChoice {
   is_correct: boolean;
 }
 
-type PanelKind = "context" | "labs" | "formula";
+type PanelKind = 'context' | 'labs' | 'formula';
 
 type PanelSequenceEntry = {
   editorKey: string;
@@ -70,18 +70,18 @@ interface EditableItem {
 }
 
 const generatePanelKey = () => {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
   return `panel-${Math.random().toString(36).slice(2, 10)}`;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 };
 
 const toStringOrEmpty = (value: unknown): string => {
-  return typeof value === "string" ? value : "";
+  return typeof value === 'string' ? value : '';
 };
 
 type ParsedPanels = {
@@ -109,7 +109,7 @@ const parsePanels = (raw: unknown): ParsedPanels => {
     const title = toStringOrEmpty(panel.title);
     const kind = toStringOrEmpty(panel.kind) as PanelKind;
 
-    if (kind === "labs") {
+    if (kind === 'labs') {
       const labs = Array.isArray(panel.labs)
         ? panel.labs
             .map((lab) => {
@@ -117,37 +117,37 @@ const parsePanels = (raw: unknown): ParsedPanels => {
               return {
                 label: toStringOrEmpty(lab.label),
                 value: toStringOrEmpty(lab.value),
-                unit: toStringOrEmpty(lab.unit)
+                unit: toStringOrEmpty(lab.unit),
               };
             })
             .filter((lab): lab is EditableLabValue => !!lab)
         : [];
       labPanels.push({ editorKey, id: rawId, title, labs });
-      sequence.push({ kind: "labs", editorKey });
+      sequence.push({ kind: 'labs', editorKey });
       return;
     }
 
-    if (kind === "formula") {
+    if (kind === 'formula') {
       const formulas = Array.isArray(panel.formulas)
         ? panel.formulas
             .map((formula) => {
               if (!isRecord(formula)) return null;
               return {
                 name: toStringOrEmpty(formula.name),
-                expression: toStringOrEmpty(formula.expression)
+                expression: toStringOrEmpty(formula.expression),
               };
             })
             .filter((formula): formula is EditableFormulaReference => !!formula)
         : [];
       const body = toStringOrEmpty(panel.body_md);
       formulaPanels.push({ editorKey, id: rawId, title, formulas, body_md: body });
-      sequence.push({ kind: "formula", editorKey });
+      sequence.push({ kind: 'formula', editorKey });
       return;
     }
 
     const body = toStringOrEmpty(panel.body_md);
     contextPanels.push({ editorKey, id: rawId, title, body_md: body });
-    sequence.push({ kind: "context", editorKey });
+    sequence.push({ kind: 'context', editorKey });
   });
 
   return { contextPanels, labPanels, formulaPanels, sequence };
@@ -194,7 +194,7 @@ const getFormulaPanelErrors = (panels: EditableFormulaPanel[]): string[] => {
       errors.push(`${label} is missing an id.`);
     }
     const hasValidFormula = panel.formulas.some(
-      (formula) => formula.name.trim() && formula.expression.trim()
+      (formula) => formula.name.trim() && formula.expression.trim(),
     );
     const hasBody = panel.body_md.trim().length > 0;
     if (!hasValidFormula && !hasBody) {
@@ -220,7 +220,7 @@ export default function ItemEditor() {
 
   const loadItem = useCallback(async () => {
     if (!id) {
-      setLoadError("Missing item identifier.");
+      setLoadError('Missing item identifier.');
       setLoading(false);
       setItem(null);
       return;
@@ -231,11 +231,11 @@ export default function ItemEditor() {
 
     try {
       const { data, error } = await supabase
-        .from("questions")
+        .from('questions')
         .select(
-          "id, stem_md, lead_in, explanation_brief_md, explanation_deep_md, status, version, choices(id, label, text_md, is_correct)"
+          'id, stem_md, lead_in, explanation_brief_md, explanation_deep_md, status, version, choices(id, label, text_md, is_correct)',
         )
-        .eq("id", id)
+        .eq('id', id)
         .maybeSingle();
 
       if (error) {
@@ -243,11 +243,11 @@ export default function ItemEditor() {
       }
 
       if (!data) {
-        throw new Error("Item not found.");
+        throw new Error('Item not found.');
       }
 
       const { contextPanels, labPanels, formulaPanels, sequence } = parsePanels(
-        (data.context_panels as PersistedContextPanel[] | null) ?? []
+        (data.context_panels as PersistedContextPanel[] | null) ?? [],
       );
 
       const editable = {
@@ -259,18 +259,18 @@ export default function ItemEditor() {
         status: data.status as string,
         version: data.version as number,
         choices: ((data.choices ?? []) as EditableChoice[]).sort((a, b) =>
-          a.label.localeCompare(b.label)
+          a.label.localeCompare(b.label),
         ),
         context_panels: contextPanels,
         lab_panels: labPanels,
         formula_panels: formulaPanels,
-        panel_sequence: sequence
+        panel_sequence: sequence,
       } satisfies EditableItem;
 
       setItem(editable);
     } catch (err) {
       setItem(null);
-      setLoadError(err instanceof Error ? err.message : "Failed to load item.");
+      setLoadError(err instanceof Error ? err.message : 'Failed to load item.');
     } finally {
       setLoading(false);
     }
@@ -284,7 +284,7 @@ export default function ItemEditor() {
     if (!item) return;
     const correctChoices = item.choices.filter((choice) => choice.is_correct);
     if (correctChoices.length !== 1) {
-      setMessage("Please mark exactly one choice as correct before saving.");
+      setMessage('Please mark exactly one choice as correct before saving.');
       return;
     }
 
@@ -292,7 +292,7 @@ export default function ItemEditor() {
     const labErrors = getLabPanelErrors(item.lab_panels);
     const formulaErrors = getFormulaPanelErrors(item.formula_panels);
     if (contextErrors.length || labErrors.length || formulaErrors.length) {
-      setMessage("Please resolve the validation errors in the panel sections before saving.");
+      setMessage('Please resolve the validation errors in the panel sections before saving.');
       return;
     }
 
@@ -302,35 +302,35 @@ export default function ItemEditor() {
 
     const combinedPanels: PersistedContextPanel[] = item.panel_sequence
       .map((entry) => {
-        if (entry.kind === "context") {
+        if (entry.kind === 'context') {
           const panel = contextMap.get(entry.editorKey);
           if (!panel) return null;
           const trimmedId = panel.id.trim();
           const trimmedTitle = panel.title.trim();
           return {
             id: trimmedId,
-            kind: "context",
+            kind: 'context',
             title: trimmedTitle ? trimmedTitle : null,
-            body_md: panel.body_md.trim()
+            body_md: panel.body_md.trim(),
           } as PersistedContextPanel;
         }
-        if (entry.kind === "labs") {
+        if (entry.kind === 'labs') {
           const panel = labMap.get(entry.editorKey);
           if (!panel) return null;
           const trimmedId = panel.id.trim();
           const trimmedTitle = panel.title.trim();
           return {
             id: trimmedId,
-            kind: "labs",
+            kind: 'labs',
             title: trimmedTitle ? trimmedTitle : null,
             labs: panel.labs.map((lab) => ({
               label: lab.label.trim(),
               value: lab.value.trim(),
-              unit: lab.unit.trim() ? lab.unit.trim() : null
-            }))
+              unit: lab.unit.trim() ? lab.unit.trim() : null,
+            })),
           } as PersistedContextPanel;
         }
-        if (entry.kind === "formula") {
+        if (entry.kind === 'formula') {
           const panel = formulaMap.get(entry.editorKey);
           if (!panel) return null;
           const trimmedId = panel.id.trim();
@@ -340,14 +340,14 @@ export default function ItemEditor() {
             .filter((formula) => formula.name.trim() && formula.expression.trim())
             .map((formula) => ({
               name: formula.name.trim(),
-              expression: formula.expression.trim()
+              expression: formula.expression.trim(),
             }));
           return {
             id: trimmedId,
-            kind: "formula",
+            kind: 'formula',
             title: trimmedTitle ? trimmedTitle : null,
             formulas: formulas.length > 0 ? formulas : null,
-            body_md: trimmedBody || null
+            body_md: trimmedBody || null,
           } as PersistedContextPanel;
         }
         return null;
@@ -356,18 +356,16 @@ export default function ItemEditor() {
 
     setSaving(true);
     setMessage(null);
-    const { error: choiceError } = await supabase
-      .from("choices")
-      .upsert(
-        item.choices.map((choice) => ({
-          id: choice.id,
-          question_id: item.id,
-          label: choice.label,
-          text_md: choice.text_md,
-          is_correct: choice.is_correct
-        })),
-        { onConflict: "id" }
-      );
+    const { error: choiceError } = await supabase.from('choices').upsert(
+      item.choices.map((choice) => ({
+        id: choice.id,
+        question_id: item.id,
+        label: choice.label,
+        text_md: choice.text_md,
+        is_correct: choice.is_correct,
+      })),
+      { onConflict: 'id' },
+    );
     if (choiceError) {
       setSaving(false);
       setMessage(choiceError.message);
@@ -376,7 +374,7 @@ export default function ItemEditor() {
 
     // Supabase integration: update question and increment version.
     const { error } = await supabase
-      .from("questions")
+      .from('questions')
       .update({
         stem_md: item.stem_md,
         lead_in: item.lead_in,
@@ -384,14 +382,14 @@ export default function ItemEditor() {
         explanation_deep_md: item.explanation_deep_md,
         status: item.status,
         version: item.version + 1,
-        context_panels: combinedPanels
+        context_panels: combinedPanels,
       })
-      .eq("id", item.id);
+      .eq('id', item.id);
     setSaving(false);
     if (error) {
       setMessage(error.message);
     } else {
-      setMessage("Saved!");
+      setMessage('Saved!');
       const parsed = parsePanels(combinedPanels);
       setItem((prev) =>
         prev
@@ -401,26 +399,26 @@ export default function ItemEditor() {
               context_panels: parsed.contextPanels,
               lab_panels: parsed.labPanels,
               formula_panels: parsed.formulaPanels,
-              panel_sequence: parsed.sequence
+              panel_sequence: parsed.sequence,
             }
-          : prev
+          : prev,
       );
     }
   };
 
   const updateContextPanel = (
     editorKey: string,
-    updates: Partial<Omit<EditableContextPanel, "editorKey">>
+    updates: Partial<Omit<EditableContextPanel, 'editorKey'>>,
   ) => {
     setItem((prev) =>
       prev
         ? {
             ...prev,
             context_panels: prev.context_panels.map((panel) =>
-              panel.editorKey === editorKey ? { ...panel, ...updates } : panel
-            )
+              panel.editorKey === editorKey ? { ...panel, ...updates } : panel,
+            ),
           }
-        : prev
+        : prev,
     );
   };
 
@@ -432,11 +430,11 @@ export default function ItemEditor() {
             ...prev,
             context_panels: [
               ...prev.context_panels,
-              { editorKey: key, id: key, title: "", body_md: "" }
+              { editorKey: key, id: key, title: '', body_md: '' },
             ],
-            panel_sequence: [...prev.panel_sequence, { kind: "context", editorKey: key }]
+            panel_sequence: [...prev.panel_sequence, { kind: 'context', editorKey: key }],
           }
-        : prev
+        : prev,
     );
   };
 
@@ -446,25 +444,25 @@ export default function ItemEditor() {
         ? {
             ...prev,
             context_panels: prev.context_panels.filter((panel) => panel.editorKey !== editorKey),
-            panel_sequence: prev.panel_sequence.filter((entry) => entry.editorKey !== editorKey)
+            panel_sequence: prev.panel_sequence.filter((entry) => entry.editorKey !== editorKey),
           }
-        : prev
+        : prev,
     );
   };
 
   const updateLabPanel = (
     editorKey: string,
-    updater: (panel: EditableLabPanel) => EditableLabPanel
+    updater: (panel: EditableLabPanel) => EditableLabPanel,
   ) => {
     setItem((prev) =>
       prev
         ? {
             ...prev,
             lab_panels: prev.lab_panels.map((panel) =>
-              panel.editorKey === editorKey ? updater(panel) : panel
-            )
+              panel.editorKey === editorKey ? updater(panel) : panel,
+            ),
           }
-        : prev
+        : prev,
     );
   };
 
@@ -476,11 +474,11 @@ export default function ItemEditor() {
             ...prev,
             lab_panels: [
               ...prev.lab_panels,
-              { editorKey: key, id: key, title: "", labs: [{ label: "", value: "", unit: "" }] }
+              { editorKey: key, id: key, title: '', labs: [{ label: '', value: '', unit: '' }] },
             ],
-            panel_sequence: [...prev.panel_sequence, { kind: "labs", editorKey: key }]
+            panel_sequence: [...prev.panel_sequence, { kind: 'labs', editorKey: key }],
           }
-        : prev
+        : prev,
     );
   };
 
@@ -490,50 +488,50 @@ export default function ItemEditor() {
         ? {
             ...prev,
             lab_panels: prev.lab_panels.filter((panel) => panel.editorKey !== editorKey),
-            panel_sequence: prev.panel_sequence.filter((entry) => entry.editorKey !== editorKey)
+            panel_sequence: prev.panel_sequence.filter((entry) => entry.editorKey !== editorKey),
           }
-        : prev
+        : prev,
     );
   };
 
   const updateLabValue = (
     editorKey: string,
     labIndex: number,
-    updates: Partial<EditableLabValue>
+    updates: Partial<EditableLabValue>,
   ) => {
     updateLabPanel(editorKey, (panel) => ({
       ...panel,
-      labs: panel.labs.map((lab, index) => (index === labIndex ? { ...lab, ...updates } : lab))
+      labs: panel.labs.map((lab, index) => (index === labIndex ? { ...lab, ...updates } : lab)),
     }));
   };
 
   const addLabValue = (editorKey: string) => {
     updateLabPanel(editorKey, (panel) => ({
       ...panel,
-      labs: [...panel.labs, { label: "", value: "", unit: "" }]
+      labs: [...panel.labs, { label: '', value: '', unit: '' }],
     }));
   };
 
   const removeLabValue = (editorKey: string, labIndex: number) => {
     updateLabPanel(editorKey, (panel) => ({
       ...panel,
-      labs: panel.labs.filter((_, index) => index !== labIndex)
+      labs: panel.labs.filter((_, index) => index !== labIndex),
     }));
   };
 
   const updateFormulaPanel = (
     editorKey: string,
-    updater: (panel: EditableFormulaPanel) => EditableFormulaPanel
+    updater: (panel: EditableFormulaPanel) => EditableFormulaPanel,
   ) => {
     setItem((prev) =>
       prev
         ? {
             ...prev,
             formula_panels: prev.formula_panels.map((panel) =>
-              panel.editorKey === editorKey ? updater(panel) : panel
-            )
+              panel.editorKey === editorKey ? updater(panel) : panel,
+            ),
           }
-        : prev
+        : prev,
     );
   };
 
@@ -545,11 +543,17 @@ export default function ItemEditor() {
             ...prev,
             formula_panels: [
               ...prev.formula_panels,
-              { editorKey: key, id: key, title: "", formulas: [{ name: "", expression: "" }], body_md: "" }
+              {
+                editorKey: key,
+                id: key,
+                title: '',
+                formulas: [{ name: '', expression: '' }],
+                body_md: '',
+              },
             ],
-            panel_sequence: [...prev.panel_sequence, { kind: "formula", editorKey: key }]
+            panel_sequence: [...prev.panel_sequence, { kind: 'formula', editorKey: key }],
           }
-        : prev
+        : prev,
     );
   };
 
@@ -559,50 +563,50 @@ export default function ItemEditor() {
         ? {
             ...prev,
             formula_panels: prev.formula_panels.filter((panel) => panel.editorKey !== editorKey),
-            panel_sequence: prev.panel_sequence.filter((entry) => entry.editorKey !== editorKey)
+            panel_sequence: prev.panel_sequence.filter((entry) => entry.editorKey !== editorKey),
           }
-        : prev
+        : prev,
     );
   };
 
   const updateFormula = (
     editorKey: string,
     formulaIndex: number,
-    updates: Partial<EditableFormulaReference>
+    updates: Partial<EditableFormulaReference>,
   ) => {
     updateFormulaPanel(editorKey, (panel) => ({
       ...panel,
       formulas: panel.formulas.map((formula, index) =>
-        index === formulaIndex ? { ...formula, ...updates } : formula
-      )
+        index === formulaIndex ? { ...formula, ...updates } : formula,
+      ),
     }));
   };
 
   const addFormula = (editorKey: string) => {
     updateFormulaPanel(editorKey, (panel) => ({
       ...panel,
-      formulas: [...panel.formulas, { name: "", expression: "" }]
+      formulas: [...panel.formulas, { name: '', expression: '' }],
     }));
   };
 
   const removeFormula = (editorKey: string, formulaIndex: number) => {
     updateFormulaPanel(editorKey, (panel) => ({
       ...panel,
-      formulas: panel.formulas.filter((_, index) => index !== formulaIndex)
+      formulas: panel.formulas.filter((_, index) => index !== formulaIndex),
     }));
   };
 
   const contextPanelErrors = useMemo(
     () => (item ? getContextPanelErrors(item.context_panels) : []),
-    [item?.context_panels]
+    [item?.context_panels],
   );
   const labPanelErrors = useMemo(
     () => (item ? getLabPanelErrors(item.lab_panels) : []),
-    [item?.lab_panels]
+    [item?.lab_panels],
   );
   const formulaPanelErrors = useMemo(
     () => (item ? getFormulaPanelErrors(item.formula_panels) : []),
-    [item?.formula_panels]
+    [item?.formula_panels],
   );
   const previewPanels = useMemo(() => {
     if (!item) return [] as JSX.Element[];
@@ -611,7 +615,7 @@ export default function ItemEditor() {
     const formulaMap = new Map(item.formula_panels.map((panel) => [panel.editorKey, panel]));
     return item.panel_sequence
       .map((entry) => {
-        if (entry.kind === "context") {
+        if (entry.kind === 'context') {
           const panel = contextMap.get(entry.editorKey);
           if (!panel) return null;
           return (
@@ -623,7 +627,7 @@ export default function ItemEditor() {
             />
           );
         }
-        if (entry.kind === "labs") {
+        if (entry.kind === 'labs') {
           const panel = labMap.get(entry.editorKey);
           if (!panel) return null;
           const labs = panel.labs
@@ -631,7 +635,7 @@ export default function ItemEditor() {
             .map((lab) => ({
               label: lab.label,
               value: lab.value,
-              unit: lab.unit.trim() ? lab.unit : undefined
+              unit: lab.unit.trim() ? lab.unit : undefined,
             }));
           if (labs.length === 0) return null;
           return (
@@ -643,7 +647,7 @@ export default function ItemEditor() {
             />
           );
         }
-        if (entry.kind === "formula") {
+        if (entry.kind === 'formula') {
           const panel = formulaMap.get(entry.editorKey);
           if (!panel) return null;
           const formulas = panel.formulas
@@ -677,11 +681,7 @@ export default function ItemEditor() {
           <Button type="button" onClick={() => void loadItem()}>
             Retry
           </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => navigate("/admin/items")}
-          >
+          <Button type="button" variant="secondary" onClick={() => navigate('/admin/items')}>
             Back to list
           </Button>
         </div>
@@ -698,7 +698,7 @@ export default function ItemEditor() {
         <input
           type="text"
           className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
-          value={item.lead_in ?? ""}
+          value={item.lead_in ?? ''}
           onChange={(e) => setItem({ ...item, lead_in: e.target.value })}
         />
       </label>
@@ -722,7 +722,7 @@ export default function ItemEditor() {
         Deep explanation
         <textarea
           className="mt-1 h-32 w-full rounded-md border border-neutral-300 px-3 py-2"
-          value={item.explanation_deep_md ?? ""}
+          value={item.explanation_deep_md ?? ''}
           onChange={(e) => setItem({ ...item, explanation_deep_md: e.target.value })}
         />
       </label>
@@ -783,7 +783,9 @@ export default function ItemEditor() {
                   <textarea
                     className="mt-1 h-24 w-full rounded-md border border-neutral-300 px-3 py-2 font-mono"
                     value={panel.body_md}
-                    onChange={(e) => updateContextPanel(panel.editorKey, { body_md: e.target.value })}
+                    onChange={(e) =>
+                      updateContextPanel(panel.editorKey, { body_md: e.target.value })
+                    }
                   />
                 </label>
               </div>
@@ -836,7 +838,7 @@ export default function ItemEditor() {
                     onChange={(e) =>
                       updateLabPanel(panel.editorKey, (current) => ({
                         ...current,
-                        id: e.target.value
+                        id: e.target.value,
                       }))
                     }
                   />
@@ -850,7 +852,7 @@ export default function ItemEditor() {
                     onChange={(e) =>
                       updateLabPanel(panel.editorKey, (current) => ({
                         ...current,
-                        title: e.target.value
+                        title: e.target.value,
                       }))
                     }
                   />
@@ -909,7 +911,11 @@ export default function ItemEditor() {
                   ))}
                 </div>
                 <div className="flex justify-end">
-                  <Button type="button" variant="ghost" onClick={() => addLabValue(panel.editorKey)}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => addLabValue(panel.editorKey)}
+                  >
                     Add lab value
                   </Button>
                 </div>
@@ -963,7 +969,7 @@ export default function ItemEditor() {
                     onChange={(e) =>
                       updateFormulaPanel(panel.editorKey, (current) => ({
                         ...current,
-                        id: e.target.value
+                        id: e.target.value,
                       }))
                     }
                   />
@@ -977,7 +983,7 @@ export default function ItemEditor() {
                     onChange={(e) =>
                       updateFormulaPanel(panel.editorKey, (current) => ({
                         ...current,
-                        title: e.target.value
+                        title: e.target.value,
                       }))
                     }
                   />
@@ -1007,7 +1013,9 @@ export default function ItemEditor() {
                             className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
                             value={formula.expression}
                             onChange={(e) =>
-                              updateFormula(panel.editorKey, formulaIndex, { expression: e.target.value })
+                              updateFormula(panel.editorKey, formulaIndex, {
+                                expression: e.target.value,
+                              })
                             }
                           />
                         </label>
@@ -1037,7 +1045,7 @@ export default function ItemEditor() {
                     onChange={(e) =>
                       updateFormulaPanel(panel.editorKey, (current) => ({
                         ...current,
-                        body_md: e.target.value
+                        body_md: e.target.value,
                       }))
                     }
                   />
@@ -1064,7 +1072,10 @@ export default function ItemEditor() {
         <legend className="text-sm font-semibold">Choices</legend>
         <div className="space-y-4">
           {item.choices.map((choice) => (
-            <div key={choice.id} className="rounded-md border border-neutral-200 bg-white p-3 shadow-sm">
+            <div
+              key={choice.id}
+              className="rounded-md border border-neutral-200 bg-white p-3 shadow-sm"
+            >
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-medium">Choice {choice.label}</span>
                 <label className="flex items-center gap-2 text-sm font-medium text-neutral-700">
@@ -1079,10 +1090,10 @@ export default function ItemEditor() {
                               ...prev,
                               choices: prev.choices.map((c) => ({
                                 ...c,
-                                is_correct: c.id === choice.id
-                              }))
+                                is_correct: c.id === choice.id,
+                              })),
                             }
-                          : prev
+                          : prev,
                       )
                     }
                   />
@@ -1098,10 +1109,10 @@ export default function ItemEditor() {
                       ? {
                           ...prev,
                           choices: prev.choices.map((c) =>
-                            c.id === choice.id ? { ...c, text_md: e.target.value } : c
-                          )
+                            c.id === choice.id ? { ...c, text_md: e.target.value } : c,
+                          ),
                         }
-                      : prev
+                      : prev,
                   )
                 }
               />
@@ -1122,7 +1133,7 @@ export default function ItemEditor() {
         </select>
       </label>
       <Button type="button" onClick={save} disabled={saving}>
-        {saving ? "Saving…" : "Save"}
+        {saving ? 'Saving…' : 'Save'}
       </Button>
       {message ? <p className="text-sm text-neutral-600">{message}</p> : null}
     </div>

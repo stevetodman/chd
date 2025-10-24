@@ -1,5 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
-import { describe, expect, test } from "vitest";
+import { createClient } from '@supabase/supabase-js';
+import { describe, expect, test } from 'vitest';
 
 /**
  * This test ensures that Supabase row-level security (RLS) prevents anonymous
@@ -15,10 +15,9 @@ import { describe, expect, test } from "vitest";
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
-const describeOrSkip =
-  supabaseUrl && supabaseAnonKey ? describe : describe.skip;
+const describeOrSkip = supabaseUrl && supabaseAnonKey ? describe : describe.skip;
 
-describeOrSkip("analytics RLS policies", () => {
+describeOrSkip('analytics RLS policies', () => {
   const supabase = createClient(supabaseUrl!, supabaseAnonKey!, {
     auth: {
       persistSession: false,
@@ -31,9 +30,7 @@ describeOrSkip("analytics RLS policies", () => {
       (async () => {
         const { error } = await supabase.rpc(functionName);
         if (!error) {
-          throw new Error(
-            `Expected ${functionName} to reject anonymous access but it succeeded.`,
-          );
+          throw new Error(`Expected ${functionName} to reject anonymous access but it succeeded.`);
         }
 
         throw error;
@@ -41,15 +38,12 @@ describeOrSkip("analytics RLS policies", () => {
     ).rejects.toThrow();
   };
 
-  test("anonymous clients cannot call analytics RPCs", async () => {
-    await expectRpcToReject("analytics_heatmap_admin");
-    await expectRpcToReject("analytics_refresh_heatmap");
+  test('anonymous clients cannot call analytics RPCs', async () => {
+    await expectRpcToReject('analytics_heatmap_admin');
+    await expectRpcToReject('analytics_refresh_heatmap');
   });
 });
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  test.skip(
-    "analytics RLS policies",
-    () => {},
-  );
+  test.skip('analytics RLS policies', () => {});
 }

@@ -1,5 +1,5 @@
-import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
 type FeatureFlagsState = {
   tutorModeEnabled: boolean;
@@ -8,9 +8,9 @@ type FeatureFlagsState = {
   toggleDarkMode: () => void;
 };
 
-const defaultState: Pick<FeatureFlagsState, "tutorModeEnabled" | "darkModeEnabled"> = {
+const defaultState: Pick<FeatureFlagsState, 'tutorModeEnabled' | 'darkModeEnabled'> = {
   tutorModeEnabled: true,
-  darkModeEnabled: false
+  darkModeEnabled: false,
 };
 
 export const useFeatureFlagsStore = create<FeatureFlagsState>()(
@@ -18,14 +18,12 @@ export const useFeatureFlagsStore = create<FeatureFlagsState>()(
     (set) => ({
       ...defaultState,
       toggleTutorMode: () => set((state) => ({ tutorModeEnabled: !state.tutorModeEnabled })),
-      toggleDarkMode: () => set((state) => ({ darkModeEnabled: !state.darkModeEnabled }))
+      toggleDarkMode: () => set((state) => ({ darkModeEnabled: !state.darkModeEnabled })),
     }),
     {
-      name: "feature-flags",
+      name: 'feature-flags',
       storage:
-        typeof window !== "undefined"
-          ? createJSONStorage(() => window.localStorage)
-          : undefined
-    }
-  )
+        typeof window !== 'undefined' ? createJSONStorage(() => window.localStorage) : undefined,
+    },
+  ),
 );

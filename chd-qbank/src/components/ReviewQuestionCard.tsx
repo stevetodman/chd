@@ -1,14 +1,14 @@
-import { useState } from "react";
-import type { Choice } from "../lib/constants";
-import type { QuestionRow } from "../lib/practice";
-import ChoiceList from "./ChoiceList";
-import Explanation from "./Explanation";
-import StemHighlighter from "./StemHighlighter";
-import LabPanel from "./LabPanel";
-import FormulaPanel from "./FormulaPanel";
-import ContextPanel from "./ContextPanel";
-import { Button } from "./ui/Button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/Card";
+import { useState } from 'react';
+import type { Choice } from '../lib/constants';
+import type { QuestionRow } from '../lib/practice';
+import ChoiceList from './ChoiceList';
+import Explanation from './Explanation';
+import StemHighlighter from './StemHighlighter';
+import LabPanel from './LabPanel';
+import FormulaPanel from './FormulaPanel';
+import ContextPanel from './ContextPanel';
+import { Button } from './ui/Button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/Card';
 
 export type ReviewFlag = {
   id: string;
@@ -37,12 +37,12 @@ export default function ReviewQuestionCard({ flag, onMarkReviewed, processing = 
     setSelected(null);
   };
 
-  const attemptStatus = selected ? (selected.is_correct ? "correct" : "incorrect") : "idle";
+  const attemptStatus = selected ? (selected.is_correct ? 'correct' : 'incorrect') : 'idle';
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">{question.lead_in ?? "Practice question"}</CardTitle>
+        <CardTitle className="text-base">{question.lead_in ?? 'Practice question'}</CardTitle>
         <CardDescription className="text-xs">
           Added to review on {new Date(flag.created_at).toLocaleString()}
         </CardDescription>
@@ -56,22 +56,28 @@ export default function ReviewQuestionCard({ flag, onMarkReviewed, processing = 
           disabled={!!selected}
           showFeedback={!!selected}
         />
-        {attemptStatus === "incorrect" ? (
-          <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700" role="alert">
+        {attemptStatus === 'incorrect' ? (
+          <div
+            className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700"
+            role="alert"
+          >
             Not quite right. Review the explanation and try again.
           </div>
         ) : null}
-        {attemptStatus === "correct" ? (
-          <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700" role="status">
+        {attemptStatus === 'correct' ? (
+          <div
+            className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700"
+            role="status"
+          >
             Great job! You got it correct.
           </div>
         ) : null}
         {(question.context_panels ?? []).map((panel) => {
           if (!panel) return null;
           switch (panel.kind) {
-            case "labs":
+            case 'labs':
               return <LabPanel key={panel.id} labs={panel.labs} title={panel.title} />;
-            case "formula":
+            case 'formula':
               return (
                 <FormulaPanel
                   key={panel.id}
@@ -80,7 +86,7 @@ export default function ReviewQuestionCard({ flag, onMarkReviewed, processing = 
                   bodyMd={panel.body_md}
                 />
               );
-            case "context":
+            case 'context':
               return <ContextPanel key={panel.id} title={panel.title} bodyMd={panel.body_md} />;
             default:
               return null;
@@ -90,7 +96,7 @@ export default function ReviewQuestionCard({ flag, onMarkReviewed, processing = 
           <Explanation brief={question.explanation_brief_md} deep={question.explanation_deep_md} />
         ) : null}
         <div className="flex flex-wrap items-center gap-3">
-          {attemptStatus === "incorrect" ? (
+          {attemptStatus === 'incorrect' ? (
             <Button type="button" variant="secondary" onClick={handleRetry}>
               Try again
             </Button>
@@ -103,7 +109,7 @@ export default function ReviewQuestionCard({ flag, onMarkReviewed, processing = 
             }}
             disabled={!selected?.is_correct || processing}
           >
-            {processing ? "Saving…" : "Mark as reviewed"}
+            {processing ? 'Saving…' : 'Mark as reviewed'}
           </Button>
         </div>
       </CardContent>

@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
-import { Outlet, useLocation } from "react-router-dom";
-import Navbar from "./Navbar";
-import Footer from "./Footer";
-import { useSettingsStore } from "../lib/settings";
-import { useSessionStore } from "../lib/auth";
-import { requireAdmin, signOut } from "../lib/auth";
-import { Button } from "./ui/Button";
+import { useEffect, useState } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
+import Navbar from './Navbar';
+import Footer from './Footer';
+import { useSettingsStore } from '../lib/settings';
+import { useSessionStore } from '../lib/auth';
+import { requireAdmin, signOut } from '../lib/auth';
+import { Button } from './ui/Button';
 
 export default function Layout() {
   const location = useLocation();
@@ -66,11 +66,17 @@ export default function Layout() {
               <div className="max-w-lg rounded-xl border border-neutral-200 bg-white p-6 text-center shadow-sm">
                 <h1 className="text-xl font-semibold">We&rsquo;re doing a quick tune-up</h1>
                 <p className="mt-2 text-neutral-600">
-                  The app is temporarily unavailable for students while we update things.
-                  Please check back soon.
+                  The app is temporarily unavailable for students while we update things. Please
+                  check back soon.
                 </p>
                 <div className="mt-4 flex justify-center">
-                  <Button onClick={() => { void signOut(); }}>Sign out</Button>
+                  <Button
+                    onClick={() => {
+                      void signOut();
+                    }}
+                  >
+                    Sign out
+                  </Button>
                 </div>
               </div>
             </div>
