@@ -9,12 +9,21 @@ type Cell = {
   correct_rate: number;
 };
 
-const palette = ["#f7fbff", "#deebf7", "#c6dbef", "#9ecae1", "#6baed6", "#4292c6", "#2171b5", "#084594"];
+const paletteClasses = [
+  "bg-[#f7fbff]",
+  "bg-[#deebf7]",
+  "bg-[#c6dbef]",
+  "bg-[#9ecae1]",
+  "bg-[#6baed6]",
+  "bg-[#4292c6] text-white",
+  "bg-[#2171b5] text-white",
+  "bg-[#084594] text-white"
+] as const;
 
-function colorFor(rate: number) {
+function classForRate(rate: number) {
   const clampedRate = Math.max(0, Math.min(1, rate));
-  const index = Math.min(palette.length - 1, Math.floor(clampedRate * palette.length));
-  return palette[index];
+  const index = Math.min(paletteClasses.length - 1, Math.floor(clampedRate * paletteClasses.length));
+  return paletteClasses[index];
 }
 
 type HeatmapData = {
@@ -133,8 +142,7 @@ export default function Heatmap() {
                 return (
                   <td
                     key={topic}
-                    className="px-2 py-1 text-center"
-                    style={{ backgroundColor: colorFor(rate), minWidth: "70px" }}
+                    className={`min-w-[70px] px-2 py-1 text-center text-sm font-medium text-neutral-900 ${classForRate(rate)}`}
                     title={cell ? `${cell.attempts} attempts` : "No attempts"}
                   >
                     {cell ? `${Math.round(rate * 100)}%` : "–"}
