@@ -6,7 +6,11 @@
   ],
   "scripts": {
     "sbom": "cyclonedx-npm --output sbom.xml",
-    "license:audit": "node scripts/generate-notice.mjs"
+    "license:audit": "node scripts/generate-notice.mjs",
+    "verify:policies": "node scripts/verify-policies.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.44.3"
   },
   "devDependencies": {
     "cyclonedx-npm": "^1.9.0",

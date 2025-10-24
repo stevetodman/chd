@@ -1,8 +1,8 @@
 # Supabase Policy Reference
 
 ## Row-level security overview
-- Row-level security (RLS) is enabled on every user-facing table, including question content, responses, leaderboard data, and supporting lookup tables. This ensures that PostgREST and RPC calls always enforce policy checks before returning or mutating data.【F:chd-qbank/schema.sql†L367-L384】【F:chd-qbank/schema.sql†L1070-L1073】
-- The helper function `is_admin()` evaluates whether the requester is using the `service_role` key or is mapped to an admin profile. Many policies defer to this helper so that administrators retain full access without duplicating logic across tables.【F:chd-qbank/schema.sql†L386-L398】
+- Row-level security (RLS) is enabled on every user-facing table, including question content, responses, analytics rollups, and leaderboard data. This ensures that PostgREST and RPC calls always enforce policy checks before returning or mutating data.【F:chd-qbank/schema.sql†L367-L384】【F:chd-qbank/schema.sql†L1070-L1073】
+- The helper function `is_admin()` evaluates whether the requester is using the `service_role` key or is mapped to an admin profile. Policies defer to this helper so that administrators retain full access without duplicating logic across tables, while students stay confined to their own rows.【F:chd-qbank/schema.sql†L386-L398】
 - Feature toggles such as the public leaderboard rely on `leaderboard_is_enabled()` to allow authenticated users to opt in only when the toggle is active, while still permitting administrators to audit data regardless of toggle state.【F:chd-qbank/schema.sql†L400-L491】
 
 ## Table policies
@@ -37,6 +37,11 @@ The following sections summarize effective read and write access for each table.
 - **Read:** Users can read their own responses; administrators can audit all history.【F:chd-qbank/schema.sql†L465-L466】
 - **Update/Delete:** Users can change or remove only their own responses, preventing tampering with peers’ data.【F:chd-qbank/schema.sql†L467-L470】
 
+### `answer_events`
+- **Write:** This audit log is populated exclusively by the `log_answer_event` trigger, which runs as a security definer whenever a response is created or updated, preventing clients from fabricating history.【F:chd-qbank/schema.sql†L217-L239】
+- **Read:** Administrators rely on analytics helper functions, such as `analytics_heatmap_admin()`, to fetch aggregated insights from the event stream without exposing raw rows to students.【F:chd-qbank/schema.sql†L386-L398】【F:chd-qbank/schema.sql†L984-L1059】
+- **Effect:** Centralizing writes and reads through privileged helpers keeps the event ledger tamper-resistant while maintaining a single source of truth for analytics refreshes.
+
 ### Analytics tables (`item_stats`, `distractor_stats`, `assessment_reliability`)
 - **Read:** World-readable to simplify in-app analytics for authenticated users.【F:chd-qbank/schema.sql†L472-L483】
 - **Write:** Restricted to administrators to prevent arbitrary stat manipulation.【F:chd-qbank/schema.sql†L474-L483】
@@ -63,6 +68,6 @@ The following sections summarize effective read and write access for each table.
 ## Security-definer analytics functions
 Several analytics entrypoints run as `SECURITY DEFINER` so clients can call them via RPC without needing direct table grants:
 - `analytics_refresh_heatmap()` and `analytics_refresh_reliability()` refresh materialized views after validating that the caller is an administrator or using the service role, preventing students from forcing expensive refreshes.【F:chd-qbank/schema.sql†L950-L983】
-- `analytics_heatmap_admin()` and `analytics_reliability_snapshot()` return aggregated analytics rows while performing the same admin/service-role gate. Because RLS blocks direct access to the underlying materialized views and tables, these functions provide the only sanctioned path for aggregated analytics queries.【F:chd-qbank/schema.sql†L984-L1059】【F:chd-qbank/schema.sql†L925-L946】
+- `analytics_heatmap_admin()` and `analytics_reliability_snapshot()` call `is_admin()` internally before returning aggregated analytics rows, letting staff review heatmaps and reliability snapshots without relaxing RLS on the underlying tables.【F:chd-qbank/schema.sql†L386-L398】【F:chd-qbank/schema.sql†L984-L1059】【F:chd-qbank/schema.sql†L925-L946】
 
 By combining RLS with tightly scoped `SECURITY DEFINER` helpers, the schema allows routine analytics and administrative maintenance while preventing unauthorized users from bypassing policy checks or reading unpublished content.
