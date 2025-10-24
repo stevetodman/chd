@@ -1,0 +1,6 @@
+[
+  { "name": "murmurs", "public": false },
+  { "name": "cxr", "public": false },
+  { "name": "ekg", "public": false },
+  { "name": "diagrams", "public": false }
+]
