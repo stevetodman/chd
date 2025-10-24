@@ -47,17 +47,31 @@ The CHD QBank is a static-first React application that delivers a congenital hea
 
 Provision both development and production Supabase projects:
 
-1. Run `schema.sql`, `storage-policies.sql`, and `cron.sql` in the Supabase SQL editor (or via `supabase db push`).
-2. Deploy the `signup-with-code` Edge Function from `supabase/functions/signup-with-code` and configure `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` for the function environment.
-3. Create storage buckets: `murmurs`, `cxr`, `ekg`, and `diagrams`.
-4. Configure SMTP (e.g., Resend) inside Supabase so invite emails can be delivered.
-5. Seed representative content once the schema exists:
+1. Export Supabase credentials:
+
+   ```bash
+   export SUPABASE_PROJECT_REF=<project-ref>
+   export SUPABASE_ACCESS_TOKEN=<personal-access-token>
+   export SUPABASE_URL=<https://xyzcompany.supabase.co>
+   export SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
+   ```
+
+   These can also live in a local `.env` file consumed by the provisioning script.
+
+2. Run the provisioning workflow to create storage buckets, apply the SQL schema, and deploy the Edge Function (requires the [Supabase CLI](https://supabase.com/docs/guides/cli/installation)):
+
+   ```bash
+   npm run provision:supabase
+   ```
+
+3. Configure SMTP (e.g., Resend) inside Supabase so invite emails can be delivered.
+4. Seed representative content once the schema exists:
 
    ```bash
    npm run seed:full
    ```
 
-6. Keep invite codes synchronized across environments:
+5. Keep invite codes synchronized across environments:
 
    ```bash
    npm run seed:invite

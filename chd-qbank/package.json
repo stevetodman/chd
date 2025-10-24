@@ -22,6 +22,7 @@
     "verify:analytics:heatmap": "node scripts/verify-analytics-heatmap.mjs",
     "verify:policies": "node scripts/verify-policies.mjs",
     "verify:storage": "node scripts/verify-storage-buckets.mjs",
+    "provision:supabase": "node scripts/provision-supabase.mjs",
     "migrate:qbank": "npm run build:scripts && node scripts/dist/migrate-qbank.js",
     "migrate:qbank:dry": "npm run build:scripts && DRY_RUN=1 node scripts/dist/migrate-qbank.js",
     "blueprint:coverage": "npm run build:scripts && node scripts/dist/blueprint-coverage.js"
