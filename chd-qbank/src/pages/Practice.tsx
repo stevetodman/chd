@@ -648,8 +648,8 @@ export default function Practice() {
                 </Button>
               </Dialog.Trigger>
               <Dialog.Portal>
-                <Dialog.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" />
-                <Dialog.Content className="fixed inset-0 z-50 flex flex-col bg-surface-base focus:outline-none">
+                <Dialog.Overlay className="dialog-overlay fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" />
+                <Dialog.Content className="dialog-content fixed inset-0 z-50 flex flex-col bg-surface-base focus:outline-none">
                   <div className="flex items-center justify-between border-b border-surface-muted px-4 py-4">
                     <Dialog.Title className="text-base font-semibold text-surface-inverted">
                       {formatMessage({ id: "practice.filters.title", defaultMessage: "Practice filters" })}
