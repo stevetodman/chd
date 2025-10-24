@@ -3,6 +3,7 @@ import { useRoutes, Navigate } from "react-router-dom";
 import { requireAdmin, useSessionStore } from "./lib/auth";
 import Layout from "./components/Layout";
 import { useSettingsStore } from "./lib/settings";
+import { PageState } from "./components/PageState";
 
 const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
@@ -31,14 +32,22 @@ function LeaderboardGuard() {
     void loadSettings();
   }, [loadSettings]);
 
-  if (settingsLoading || !settingsLoaded) return <div className="p-6 text-center">Loading…</div>;
+  if (settingsLoading || !settingsLoaded)
+    return (
+      <PageState
+        status="loading"
+        title="Loading leaderboard"
+        description="Hold tight&mdash;we&rsquo;re checking whether the leaderboard is available for your cohort."
+      />
+    );
   if (!leaderboardEnabled) return <Navigate to="/dashboard" replace />;
   return <Leaderboard />;
 }
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { session, loading, initialized } = useSessionStore();
-  if (loading || !initialized) return <div className="p-6 text-center">Loading…</div>;
+  if (loading || !initialized)
+    return <PageState status="loading" title="Checking your session" description="One moment while we confirm you&rsquo;re signed in." />;
   if (!session) return <Navigate to="/login" replace />;
   return children;
 }
@@ -55,9 +64,23 @@ function RequireAdmin({ children }: { children: JSX.Element }) {
       .catch(() => setAllowed(false));
   }, [session]);
 
-  if (loading || !initialized) return <div className="p-6 text-center">Loading…</div>;
+  if (loading || !initialized)
+    return (
+      <PageState
+        status="loading"
+        title="Checking your session"
+        description="We&rsquo;re making sure you have access before loading this page."
+      />
+    );
   if (!session) return <Navigate to="/login" replace />;
-  if (allowed === null) return <div className="p-6 text-center">Checking permissions…</div>;
+  if (allowed === null)
+    return (
+      <PageState
+        status="loading"
+        title="Checking permissions"
+        description="This page is limited to administrators. We&rsquo;ll take you there as soon as you&rsquo;re cleared."
+      />
+    );
   if (!allowed) return <Navigate to="/dashboard" replace />;
   return children;
 }
