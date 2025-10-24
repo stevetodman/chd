@@ -17,9 +17,20 @@ type Props = {
   onAnswer: (choice: Choice, durationMs: number, flagged: boolean) => Promise<void> | void;
   onFlagChange?: (flagged: boolean) => Promise<void> | void;
   initialFlagged?: boolean;
+  onNext?: () => void;
+  canAdvance?: boolean;
+  progress?: { current: number; total: number };
 };
 
-export default function QuestionCard({ question, onAnswer, onFlagChange, initialFlagged = false }: Props) {
+export default function QuestionCard({
+  question,
+  onAnswer,
+  onFlagChange,
+  initialFlagged = false,
+  onNext,
+  canAdvance = true,
+  progress
+}: Props) {
   const [selected, setSelected] = useState<Choice | null>(null);
   const [flagged, setFlagged] = useState(false);
   const [start, setStart] = useState<number>(() => performance.now());
@@ -107,19 +118,39 @@ export default function QuestionCard({ question, onAnswer, onFlagChange, initial
           </p>
         </CardContent>
         <CardFooter className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <FlagButton
-            flagged={flagged}
-            onToggle={toggleFlag}
-            className="w-full sm:w-auto"
-          />
-          <Button
-            type="button"
-            onClick={() => setShowExplanation(true)}
-            disabled={!selected}
-            className="w-full sm:w-auto"
-          >
-            Reveal explanation
-          </Button>
+          <div className="flex flex-col gap-3 sm:w-full sm:flex-row sm:items-center sm:justify-start">
+            <FlagButton
+              flagged={flagged}
+              onToggle={toggleFlag}
+              className="w-full sm:w-auto"
+            />
+            <Button
+              type="button"
+              onClick={() => setShowExplanation(true)}
+              disabled={!selected}
+              className="w-full sm:w-auto"
+            >
+              Reveal explanation
+            </Button>
+          </div>
+          {onNext ? (
+            <div className="flex flex-col items-stretch gap-3 text-sm text-neutral-600 sm:w-auto sm:flex-row sm:items-center">
+              {progress ? (
+                <span className="text-center sm:text-left">
+                  Q {progress.current} of {progress.total}
+                </span>
+              ) : null}
+              <Button
+                type="button"
+                onClick={onNext}
+                aria-keyshortcuts="n"
+                disabled={!canAdvance}
+                className="w-full sm:w-auto"
+              >
+                Next question
+              </Button>
+            </div>
+          ) : null}
         </CardFooter>
       </Card>
       <div className="space-y-4">
