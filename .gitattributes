@@ -5,7 +5,7 @@
 *.jpg binary
 *.jpeg binary
 *.gif binary
-*.svg binary
+*.svg text diff
 *.mp3 binary
 *.mp4 binary
 *.webm binary

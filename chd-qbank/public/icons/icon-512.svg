@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">CHD QBank Icon Large</title>
+  <desc id="desc">Rounded blue gradient square with the letters CHD in the center</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1d4ed8" />
+      <stop offset="100%" stop-color="#2563eb" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="rgba(15,23,42,0.25)" />
+    </filter>
+  </defs>
+  <rect width="448" height="448" x="32" y="32" rx="80" fill="url(#bg)" filter="url(#shadow)" />
+  <g fill="#f8fafc" font-family="'Inter', 'Segoe UI', sans-serif" font-size="224" font-weight="700" letter-spacing="12">
+    <text x="88" y="330">CHD</text>
+  </g>
+</svg>

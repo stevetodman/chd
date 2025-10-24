@@ -1,6 +1,11 @@
 /* eslint-env serviceworker */
 /// <reference lib="webworker" />
 
+import { registerRoute } from "workbox-routing";
+import { CacheFirst, NetworkFirst } from "workbox-strategies";
+import { CacheableResponsePlugin } from "workbox-cacheable-response";
+import { ExpirationPlugin } from "workbox-expiration";
+
 declare const self: ServiceWorkerGlobalScope;
 declare const __BUILD_HASH__: string;
 
@@ -17,9 +22,46 @@ const BUILD_HASH = typeof __BUILD_HASH__ === "string" ? __BUILD_HASH__ : "dev";
 const APP_SHELL_CACHE = `app-shell-v${BUILD_HASH}`;
 const STATIC_CACHE = `static-v${BUILD_HASH}`;
 const DYNAMIC_CACHE = `dynamic-v${BUILD_HASH}`;
-const EXPECTED_CACHES = new Set([APP_SHELL_CACHE, STATIC_CACHE, DYNAMIC_CACHE]);
+const SUPABASE_REST_CACHE = `supabase-rest-v${BUILD_HASH}`;
+const SUPABASE_STORAGE_CACHE = `supabase-storage-v${BUILD_HASH}`;
+const EXPECTED_CACHES = new Set([
+  APP_SHELL_CACHE,
+  STATIC_CACHE,
+  DYNAMIC_CACHE,
+  SUPABASE_REST_CACHE,
+  SUPABASE_STORAGE_CACHE
+]);
 const APP_SHELL_ASSETS = ["/", "/index.html", "/offline.html", "/manifest.json"];
 const STATIC_ASSET_PATTERN = /\.(?:css|js|woff2?|png|jpg|jpeg|svg|gif|webp|ico)$/i;
+const SUPABASE_HOST_SUFFIX = ".supabase.co";
+
+registerRoute(
+  ({ url, request }) =>
+    request.method === "GET" &&
+    url.hostname.endsWith(SUPABASE_HOST_SUFFIX) &&
+    url.pathname.startsWith("/rest/v1/"),
+  new NetworkFirst({
+    cacheName: SUPABASE_REST_CACHE,
+    plugins: [
+      new CacheableResponsePlugin({ statuses: [0, 200] }),
+      new ExpirationPlugin({ maxEntries: 100, maxAgeSeconds: 5 * 60 })
+    ]
+  })
+);
+
+registerRoute(
+  ({ url, request }) =>
+    request.method === "GET" &&
+    url.hostname.endsWith(SUPABASE_HOST_SUFFIX) &&
+    url.pathname.startsWith("/storage/v1/object/public/"),
+  new CacheFirst({
+    cacheName: SUPABASE_STORAGE_CACHE,
+    plugins: [
+      new CacheableResponsePlugin({ statuses: [0, 200] }),
+      new ExpirationPlugin({ maxEntries: 60, maxAgeSeconds: 24 * 60 * 60 })
+    ]
+  })
+);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
