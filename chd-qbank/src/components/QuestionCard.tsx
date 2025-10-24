@@ -22,11 +22,15 @@ export default function QuestionCard({ question, onAnswer, onFlagChange, initial
   const [flagged, setFlagged] = useState(false);
   const [start, setStart] = useState<number>(() => performance.now());
   const [showExplanation, setShowExplanation] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [answerCommitted, setAnswerCommitted] = useState(false);
 
   useEffect(() => {
     setStart(performance.now());
     setSelected(null);
     setShowExplanation(false);
+    setSubmitting(false);
+    setAnswerCommitted(false);
   }, [question.id]);
 
   useEffect(() => {
@@ -34,15 +38,20 @@ export default function QuestionCard({ question, onAnswer, onFlagChange, initial
   }, [question.id, initialFlagged]);
 
   const handleSelect = async (choice: Choice) => {
-    if (selected) return;
+    if (submitting || answerCommitted) return;
     const elapsed = clampMs(performance.now() - start);
+    setSubmitting(true);
     setSelected(choice);
     setShowExplanation(true);
     try {
       await onAnswer(choice, elapsed, flagged);
+      setAnswerCommitted(true);
     } catch {
       setSelected(null);
       setShowExplanation(false);
+      setAnswerCommitted(false);
+    } finally {
+      setSubmitting(false);
     }
   };
 
