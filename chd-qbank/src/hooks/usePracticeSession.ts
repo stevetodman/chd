@@ -83,10 +83,22 @@ export function usePracticeSession() {
   const inFlightRequests = useRef(0);
   const loadedPages = useRef(new Set<number>());
   const [responses, setResponses] = useState<ResponseMap>({});
+  const updateResponses = useCallback((updater: (current: ResponseMap) => ResponseMap) => {
+    setResponses((prev) => {
+      const next = updater(prev);
+      responsesRef.current = next;
+      return next;
+    });
+  }, []);
   const responsesRef = useRef<ResponseMap>({});
   const filterVersionRef = useRef(0);
   const [filters, setFilters] = useState<PracticeFilters>({ ...DEFAULT_PRACTICE_FILTERS });
   const filtersRef = useRef<PracticeFilters>({ ...DEFAULT_PRACTICE_FILTERS });
+  const filterFieldSnapshotRef = useRef({
+    topic: DEFAULT_PRACTICE_FILTERS.topic,
+    lesion: DEFAULT_PRACTICE_FILTERS.lesion,
+    sessionLength: DEFAULT_PRACTICE_FILTERS.sessionLength
+  });
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({ topics: [], lesions: [] });
   const [filterOptionsLoading, setFilterOptionsLoading] = useState(false);
   const [filterOptionsError, setFilterOptionsError] = useState<string | null>(null);
@@ -113,44 +125,49 @@ export function usePracticeSession() {
     setFilterOptionsLoading(true);
     setFilterOptionsError(null);
 
-    supabase
-      .from("questions")
-      .select("topic, lesion")
-      .eq("status", "published")
-      .then(({ data, error }) => {
+    const loadFilterOptions = async () => {
+      try {
+        const [topicsResult, lesionsResult] = await Promise.all([
+          supabase
+            .from("questions")
+            .select("topic", { distinct: true })
+            .eq("status", "published"),
+          supabase
+            .from("questions")
+            .select("lesion", { distinct: true })
+            .eq("status", "published")
+        ]);
+
         if (!active) return;
-        if (error) {
+
+        if (topicsResult.error || lesionsResult.error) {
           setFilterOptions({ topics: [], lesions: [] });
           setFilterOptionsError("We couldn't load filter options. Try again later.");
           return;
         }
 
-        const topics = new Set<string>();
-        const lesions = new Set<string>();
-
-        for (const row of data ?? []) {
-          if (row.topic && row.topic.trim().length > 0) {
-            topics.add(row.topic.trim());
-          }
-          if (row.lesion && row.lesion.trim().length > 0) {
-            lesions.add(row.lesion.trim());
-          }
-        }
+        const topics = (topicsResult.data ?? [])
+          .map((row) => (row.topic ?? "").trim())
+          .filter((value) => value.length > 0);
+        const lesions = (lesionsResult.data ?? [])
+          .map((row) => (row.lesion ?? "").trim())
+          .filter((value) => value.length > 0);
 
         setFilterOptions({
-          topics: Array.from(topics).sort((a, b) => a.localeCompare(b)),
-          lesions: Array.from(lesions).sort((a, b) => a.localeCompare(b))
+          topics: Array.from(new Set(topics)).sort((a, b) => a.localeCompare(b)),
+          lesions: Array.from(new Set(lesions)).sort((a, b) => a.localeCompare(b))
         });
-      })
-      .catch(() => {
+      } catch {
         if (!active) return;
         setFilterOptions({ topics: [], lesions: [] });
         setFilterOptionsError("We couldn't load filter options. Try again later.");
-      })
-      .finally(() => {
+      } finally {
         if (!active) return;
         setFilterOptionsLoading(false);
-      });
+      }
+    };
+
+    void loadFilterOptions();
 
     return () => {
       active = false;
@@ -161,6 +178,7 @@ export function usePracticeSession() {
     if (!session) {
       flaggedIdsRef.current = new Set();
       seenIdsRef.current = new Set();
+      updateResponses(() => ({}));
       setFlaggedVersion((version) => version + 1);
       setSeenVersion((version) => version + 1);
       return;
@@ -170,7 +188,7 @@ export function usePracticeSession() {
 
     supabase
       .from("responses")
-      .select("question_id, flagged, choice_id")
+      .select("id, question_id, flagged, choice_id, is_correct, ms_to_answer")
       .eq("user_id", session.user.id)
       .then(({ data, error }) => {
         if (!active) return;
@@ -180,15 +198,19 @@ export function usePracticeSession() {
 
         const flagged = new Set<string>();
         const seen = new Set<string>();
+        const map: ResponseMap = {};
 
         for (const row of data ?? []) {
           if (!row?.question_id) continue;
           if (row.flagged) flagged.add(row.question_id);
           if (row.choice_id) seen.add(row.question_id);
+          map[row.question_id] = mapResponse(row as ResponseRow);
         }
 
         flaggedIdsRef.current = flagged;
         seenIdsRef.current = seen;
+        updateResponses(() => map);
+        syncSetsFromResponses((data ?? []) as ResponseRow[]);
         setFlaggedVersion((version) => version + 1);
         setSeenVersion((version) => version + 1);
       });
@@ -196,7 +218,7 @@ export function usePracticeSession() {
     return () => {
       active = false;
     };
-  }, [session]);
+  }, [session, syncSetsFromResponses, updateResponses]);
 
   const updateFlaggedSet = useCallback((questionId: string, isFlagged: boolean) => {
     const next = new Set(flaggedIdsRef.current);
@@ -281,8 +303,7 @@ export function usePracticeSession() {
         setHasMore(false);
         setPage(0);
         setIndex(0);
-        setResponses({});
-        responsesRef.current = {};
+        updateResponses(() => ({}));
         loadingRef.current = false;
         setLoading(false);
         return 0;
@@ -368,61 +389,26 @@ export function usePracticeSession() {
         const moreAvailable = determineHasMore(count, limited.length, normalized.length);
         setHasMore(!reachedLimit && moreAvailable);
 
-        if (session) {
-          const questionIds = randomized.map((question) => question.id);
-          if (replace && questionIds.length === 0) {
-            setResponses({});
-            responsesRef.current = {};
+        const questionIds = randomized.map((question) => question.id);
+        if (replace && questionIds.length === 0) {
+          updateResponses(() => ({}));
+        } else if (questionIds.length > 0) {
+          if (requestVersion !== filterVersionRef.current) {
+            return randomized.length;
           }
 
-          if (questionIds.length > 0) {
-            if (requestVersion !== filterVersionRef.current) {
-              return randomized.length;
-            }
-
-            setResponses((prev) => {
-              const base: ResponseMap = replace ? {} : { ...prev };
-              for (const id of questionIds) {
-                if (!(id in base)) {
-                  base[id] = null;
-                }
-              }
-
-              responsesRef.current = base;
-              return base;
-            });
-
-            const { data: responseRows, error: responsesError } = await supabase
-              .from("responses")
-              .select("id, flagged, choice_id, is_correct, ms_to_answer, question_id")
-              .eq("user_id", session.user.id)
-              .in("question_id", questionIds);
-
-            if (requestVersion !== filterVersionRef.current) {
-              return randomized.length;
-            }
-
-            if (!responsesError) {
-              const typedRows = (responseRows ?? []) as ResponseRow[];
-              if (typedRows.length > 0) {
-                syncSetsFromResponses(typedRows);
-                setResponses((prev) => {
-                  const base: ResponseMap = { ...prev };
-
-                  for (const row of typedRows) {
-                    if (!row.question_id) continue;
-                    base[row.question_id] = mapResponse(row);
-                  }
-
-                  responsesRef.current = base;
-                  return base;
-                });
+          const existingResponses = responsesRef.current;
+          updateResponses((prev) => {
+            const base: ResponseMap = replace ? {} : { ...prev };
+            for (const id of questionIds) {
+              if (!(id in base)) {
+                base[id] = existingResponses[id] ?? null;
               }
             }
-          }
+            return base;
+          });
         } else if (replace) {
-          setResponses({});
-          responsesRef.current = {};
+          updateResponses(() => ({}));
         }
 
         return Math.max(0, limited.length - base.length);
@@ -433,7 +419,7 @@ export function usePracticeSession() {
         setLoading(stillLoading);
       }
     },
-    [session, syncSetsFromResponses]
+    [updateResponses]
   );
 
   useEffect(() => {
@@ -441,6 +427,22 @@ export function usePracticeSession() {
   }, [loadPage]);
 
   useEffect(() => {
+    const previous = filterFieldSnapshotRef.current;
+    const changed =
+      previous.topic !== filters.topic ||
+      previous.lesion !== filters.lesion ||
+      previous.sessionLength !== filters.sessionLength;
+
+    filterFieldSnapshotRef.current = {
+      topic: filters.topic,
+      lesion: filters.lesion,
+      sessionLength: filters.sessionLength
+    };
+
+    if (!changed) {
+      return;
+    }
+
     void loadPage(0, true);
   }, [filters.topic, filters.lesion, filters.sessionLength, loadPage]);
 
@@ -519,7 +521,7 @@ export function usePracticeSession() {
         saved = mapResponse(data);
       }
 
-      setResponses((prev) => ({
+      updateResponses((prev) => ({
         ...prev,
         [current.id]: saved
       }));
@@ -540,7 +542,7 @@ export function usePracticeSession() {
 
       setError(null);
     },
-    [index, session, markQuestionSeen, updateFlaggedSet]
+    [index, session, markQuestionSeen, updateFlaggedSet, updateResponses]
   );
 
   const handleFlagChange = useCallback(
@@ -565,10 +567,10 @@ export function usePracticeSession() {
           fail("We couldn't update the flag. Please try again.");
         }
 
-      setResponses((prev) => ({
-        ...prev,
-        [current.id]: mapResponse(data)
-      }));
+        updateResponses((prev) => ({
+          ...prev,
+          [current.id]: mapResponse(data)
+        }));
 
       updateFlaggedSet(current.id, flagged);
     } else {
@@ -589,7 +591,7 @@ export function usePracticeSession() {
           fail("We couldn't save the flag. Please check your connection and try again.");
         }
 
-      setResponses((prev) => ({
+      updateResponses((prev) => ({
         ...prev,
         [current.id]: mapResponse(data)
       }));
@@ -599,7 +601,7 @@ export function usePracticeSession() {
 
       setError(null);
     },
-    [index, session, updateFlaggedSet]
+    [index, session, updateFlaggedSet, updateResponses]
   );
 
   useEffect(() => {
@@ -617,7 +619,7 @@ export function usePracticeSession() {
       .maybeSingle()
       .then(({ data, error }) => {
         if (error) return;
-        setResponses((prev) => ({
+        updateResponses((prev) => ({
           ...prev,
           [currentQuestion.id]: data ? mapResponse(data) : null
         }));
@@ -634,7 +636,7 @@ export function usePracticeSession() {
           ]);
         }
       });
-  }, [index, questions, session]);
+  }, [index, questions, session, syncSetsFromResponses, updateResponses]);
 
   const next = useCallback(() => {
     const nextIndex = index + 1;
