@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from "react";
-import type { ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { classNames } from "../lib/utils";
 
 type Props = {
@@ -9,6 +9,7 @@ type Props = {
   children: ReactNode;
   onToggle?: (open: boolean) => void;
   id?: string;
+  toggleButtonProps?: ButtonHTMLAttributes<HTMLButtonElement>;
 };
 
 export default function CollapsibleSection({
@@ -17,7 +18,8 @@ export default function CollapsibleSection({
   defaultOpen = false,
   children,
   onToggle,
-  id
+  id,
+  toggleButtonProps
 }: Props) {
   const generatedId = useId();
   const headingId = id ?? generatedId;
@@ -45,6 +47,7 @@ export default function CollapsibleSection({
         aria-expanded={open}
         aria-controls={contentId}
         id={headingId}
+        {...toggleButtonProps}
       >
         <div className="flex flex-1 flex-col gap-1">
           <span>{title}</span>

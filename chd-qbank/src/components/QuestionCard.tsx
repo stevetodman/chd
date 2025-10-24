@@ -3,13 +3,12 @@ import type { Choice, Question } from "../lib/constants";
 import ChoiceList from "./ChoiceList";
 import Explanation from "./Explanation";
 import FlagButton from "./FlagButton";
-import LabPanel from "./LabPanel";
-import FormulaPanel from "./FormulaPanel";
 import StemHighlighter from "./StemHighlighter";
 import { Button } from "./ui/Button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/Card";
 import { clampMs } from "../lib/utils";
 import CollapsibleSection from "./CollapsibleSection";
+import ContextPanelList from "./ContextPanelList";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 
 type Props = {
@@ -154,72 +153,11 @@ export default function QuestionCard({
         </CardFooter>
       </Card>
       <div className="space-y-4">
-        {(question.context_panels ?? []).map((panel, index) => {
-          if (!panel) return null;
-          const sectionId = panel.id ? `panel-${panel.id}` : `panel-${panel.kind}-${index}`;
-          const sectionTitle =
-            panel.title ?? (panel.kind === "labs" ? "Vitals & Labs" : "Formula Quick Ref");
-          let summary: string | undefined;
-          if (panel.kind === "labs") {
-            const count = panel.labs?.length ?? 0;
-            summary = count > 0 ? `${count} value${count === 1 ? "" : "s"}` : undefined;
-          }
-          if (panel.kind === "formula") {
-            const count = panel.formulas?.length ?? 0;
-            summary =
-              count > 0
-                ? `${count} formula${count === 1 ? "" : "s"}`
-                : panel.body_md
-                  ? "Reference notes"
-                  : undefined;
-          }
-          switch (panel.kind) {
-            case "labs":
-              return (
-                <section
-                  key={sectionId}
-                  role="complementary"
-                  aria-labelledby={sectionId}
-                  className="contents"
-                >
-                  <CollapsibleSection
-                    id={sectionId}
-                    title={sectionTitle}
-                    summary={summary}
-                    defaultOpen={isLargeScreen}
-                  >
-                    <LabPanel labs={panel.labs} showTitle={false} labelId={sectionId} />
-                  </CollapsibleSection>
-                </section>
-              );
-            case "formula":
-              return (
-                <section
-                  key={sectionId}
-                  role="complementary"
-                  aria-labelledby={sectionId}
-                  className="contents"
-                >
-                  <CollapsibleSection
-                    id={sectionId}
-                    title={sectionTitle}
-                    summary={summary}
-                    defaultOpen={isLargeScreen}
-                  >
-                    <FormulaPanel
-                      title={panel.title}
-                      formulas={panel.formulas}
-                      bodyMd={panel.body_md}
-                      showTitle={false}
-                      labelId={sectionId}
-                    />
-                  </CollapsibleSection>
-                </section>
-              );
-            default:
-              return null;
-          }
-        })}
+        <ContextPanelList
+          panels={question.context_panels}
+          defaultOpen={isLargeScreen}
+          idPrefix={`panel-${question.id}`}
+        />
         {showExplanation ? (
           <CollapsibleSection title="Explanation" defaultOpen id={explanationSectionId}>
             <Explanation
