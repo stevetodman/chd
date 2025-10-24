@@ -48,27 +48,50 @@ const nextId = () => {
 };
 
 vi.mock("../lib/supabaseClient", () => ({
-  supabase: {
-    auth: {
-      onAuthStateChange: vi.fn()
-    },
-    rpc: rpcMock,
-    from: vi.fn((table: string) => {
-      if (table === "questions") {
-        return {
-          select: () => ({
-            eq: () => ({
-              order: () => ({
-                range: async (from: number) => ({
-                  data: questions.slice(from),
-                  error: null,
-                  count: questions.length
+    supabase: {
+      auth: {
+        onAuthStateChange: vi.fn()
+      },
+      rpc: rpcMock,
+      from: vi.fn((table: string) => {
+        if (table === "questions") {
+          return {
+            select: () => {
+              const filters: Partial<Record<"status" | "topic" | "subtopic", string>> = {};
+              const builder = {
+                eq: (column: string, value: string) => {
+                  if (column === "status" || column === "topic" || column === "subtopic") {
+                    filters[column] = value;
+                  }
+                  return builder;
+                },
+                order: () => ({
+                  range: async (from: number, to?: number) => {
+                    const filtered = questions.filter((question) => {
+                      if (filters.status && filters.status !== "published") {
+                        return false;
+                      }
+                      if (filters.topic && question.topic !== filters.topic) {
+                        return false;
+                      }
+                      if (filters.subtopic && question.subtopic !== filters.subtopic) {
+                        return false;
+                      }
+                      return true;
+                    });
+                    const end = typeof to === "number" ? to + 1 : filtered.length;
+                    return {
+                      data: filtered.slice(from, end),
+                      error: null,
+                      count: filtered.length
+                    };
+                  }
                 })
-              })
-            })
-          })
-        };
-      }
+              };
+              return builder;
+            }
+          };
+        }
 
       if (table === "responses") {
         return {

@@ -49,6 +49,8 @@ export function usePracticeSession() {
   const loadedPages = useRef(new Set<number>());
   const [responses, setResponses] = useState<ResponseMap>({});
   const responsesRef = useRef<ResponseMap>({});
+  const [topicFilter, setTopicFilterState] = useState("");
+  const [subtopicFilter, setSubtopicFilterState] = useState("");
   const { session } = useSessionStore();
 
   useEffect(() => {
@@ -70,13 +72,23 @@ export function usePracticeSession() {
 
       const from = pageToLoad * PRACTICE_PAGE_SIZE;
       const to = from + PRACTICE_PAGE_SIZE - 1;
-      const { data, error: fetchError, count } = await supabase
+      let query = supabase
         .from("questions")
         .select(
           "id, slug, stem_md, lead_in, explanation_brief_md, explanation_deep_md, topic, subtopic, lesion, context_panels, media_bundle:media_bundles(id, murmur_url, cxr_url, ekg_url, diagram_url, alt_text), choices(id,label,text_md,is_correct)",
           { count: "exact" }
         )
-        .eq("status", "published")
+        .eq("status", "published");
+
+      if (topicFilter) {
+        query = query.eq("topic", topicFilter);
+      }
+
+      if (subtopicFilter) {
+        query = query.eq("subtopic", subtopicFilter);
+      }
+
+      const { data, error: fetchError, count } = await query
         .order("id", { ascending: true })
         .range(from, to);
 
@@ -98,6 +110,8 @@ export function usePracticeSession() {
       if (replace) {
         loadedPages.current = new Set([pageToLoad]);
         setIndex(0);
+        setResponses({});
+        responsesRef.current = {};
       } else {
         loadedPages.current.add(pageToLoad);
       }
@@ -109,7 +123,7 @@ export function usePracticeSession() {
       loadingRef.current = false;
       return randomized.length;
     },
-    []
+    [subtopicFilter, topicFilter]
   );
 
   useEffect(() => {
@@ -326,6 +340,15 @@ export function usePracticeSession() {
     return responses[currentQuestion.id] ?? null;
   }, [currentQuestion, responses]);
 
+  const setTopicFilter = useCallback((topic: string) => {
+    setTopicFilterState(topic);
+    setSubtopicFilterState("");
+  }, []);
+
+  const setSubtopicFilter = useCallback((subtopic: string) => {
+    setSubtopicFilterState(subtopic);
+  }, []);
+
   return {
     questions,
     currentQuestion,
@@ -336,6 +359,10 @@ export function usePracticeSession() {
     hasMore,
     next,
     handleAnswer,
-    handleFlagChange
+    handleFlagChange,
+    topicFilter,
+    subtopicFilter,
+    setTopicFilter,
+    setSubtopicFilter
   } as const;
 }
