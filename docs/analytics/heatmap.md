@@ -9,9 +9,12 @@ The `analytics_heatmap_agg` materialized view powers the admin heatmap that summ
 | `analytics_heatmap_agg` | Materialized view grouped by `(question_id, lesion, topic, week_start)` with aggregate counts and timing statistics. |
 | `analytics_heatmap_admin()` | SECURITY DEFINER function that returns the aggregated rows to authorized callers. |
 | `analytics_refresh_heatmap()` | SECURITY DEFINER helper that issues `REFRESH MATERIALIZED VIEW CONCURRENTLY` on the heatmap view. |
+| `analytics_export_cohort()` | SECURITY DEFINER helper that exposes anonymized per-learner aggregates for CSV export. |
 | `analytics_heatmap_agg_idx` | Composite index on `(week_start, question_id)` that keeps refreshes and lookups fast. |
 
 The definitions live in [`chd-qbank/schema.sql`](../../chd-qbank/schema.sql). Non-admin roles never access the materialized view directly; they must call the `analytics_heatmap_admin()` function which enforces service-role or admin access.
+
+`analytics_export_cohort()` mirrors the same privilege check and hashes `responses.user_id` before returning aggregate counts and timestamps. The Admin UI calls it when generating the cohort CSV so PHI never leaves the database.
 
 ### Columns
 

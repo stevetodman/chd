@@ -6,6 +6,7 @@ type Cell = {
   lesion: string;
   topic: string;
   attempts: number;
+  correct_attempts: number;
   correct_rate: number;
 };
 
@@ -75,6 +76,7 @@ export default function Heatmap() {
             lesion: entry.lesion,
             topic: entry.topic,
             attempts: entry.attempts,
+            correct_attempts: entry.correct,
             correct_rate: entry.attempts > 0 ? entry.correct / entry.attempts : 0
           }))
           .sort((a, b) => a.lesion.localeCompare(b.lesion) || a.topic.localeCompare(b.topic));
@@ -106,6 +108,60 @@ export default function Heatmap() {
       map.set(`${cell.lesion}__${cell.topic}`, cell);
     }
     return map;
+  }, [data.cells]);
+
+  const recommendations = useMemo(() => {
+    const topicTotals = new Map<
+      string,
+      { topic: string; attempts: number; correct: number }
+    >();
+
+    for (const cell of data.cells) {
+      const entry = topicTotals.get(cell.topic) ?? {
+        topic: cell.topic,
+        attempts: 0,
+        correct: 0
+      };
+      entry.attempts += cell.attempts;
+      entry.correct += cell.correct_attempts;
+      topicTotals.set(cell.topic, entry);
+    }
+
+    const MIN_TOPIC_ATTEMPTS = 20;
+    const WEAKNESS_THRESHOLD = 0.7;
+    const MAX_RECOMMENDATIONS = 3;
+
+    return Array.from(topicTotals.values())
+      .map((entry) => ({
+        topic: entry.topic,
+        attempts: entry.attempts,
+        correct: entry.correct,
+        correct_rate: entry.attempts > 0 ? entry.correct / entry.attempts : 0
+      }))
+      .filter((entry) => entry.attempts >= MIN_TOPIC_ATTEMPTS && entry.correct_rate <= WEAKNESS_THRESHOLD)
+      .sort((a, b) => {
+        if (a.correct_rate === b.correct_rate) {
+          return b.attempts - a.attempts;
+        }
+        return a.correct_rate - b.correct_rate;
+      })
+      .slice(0, MAX_RECOMMENDATIONS)
+      .map((entry) => {
+        const severityAction = (() => {
+          if (entry.correct_rate < 0.4) {
+            return "Schedule a faculty-led remediation session with targeted practice questions.";
+          }
+          if (entry.correct_rate < 0.55) {
+            return "Assign a focused quiz and follow up with a small-group case discussion.";
+          }
+          return "Share curated review resources and encourage spaced repetition drills.";
+        })();
+
+        return {
+          ...entry,
+          recommendation: severityAction
+        };
+      });
   }, [data.cells]);
 
   return (
@@ -143,7 +199,11 @@ export default function Heatmap() {
                   <td
                     key={topic}
                     className={`min-w-[70px] px-2 py-1 text-center text-sm font-medium text-neutral-900 ${classForRate(rate)}`}
-                    title={cell ? `${cell.attempts} attempts` : "No attempts"}
+                    title={
+                      cell
+                        ? `${cell.attempts} attempts • ${cell.correct_attempts} correct`
+                        : "No attempts"
+                    }
                   >
                     {cell ? `${Math.round(rate * 100)}%` : "–"}
                   </td>
@@ -153,6 +213,37 @@ export default function Heatmap() {
           ))}
         </tbody>
       </table>
+      <div className="mt-6 border-t border-neutral-200 pt-4">
+        <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+          Next steps
+        </h4>
+        {recommendations.length === 0 ? (
+          <p className="text-xs text-neutral-500">
+            No topics meet the threshold for targeted recommendations yet. Encourage more
+            practice to surface actionable trends.
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {recommendations.map((topic) => {
+              const ratePercent = Math.round(topic.correct_rate * 100);
+              return (
+                <li
+                  key={topic.topic}
+                  className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-neutral-700"
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                    <span className="font-semibold text-neutral-800">{topic.topic}</span>
+                    <span className="text-[11px] uppercase tracking-wide text-amber-600">
+                      {ratePercent}% correct across {topic.attempts} attempts
+                    </span>
+                  </div>
+                  <p className="mt-1 leading-5 text-neutral-700">{topic.recommendation}</p>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
