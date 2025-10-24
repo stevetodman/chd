@@ -1,6 +1,21 @@
-// supabase/functions/signup-with-code/index.ts
-// Deno Edge Function: validates invite code server-side, creates user, seeds alias.
-// Requires: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY set in Supabase Function env.
+/**
+ * Supabase Edge Function: `signup-with-code`
+ *
+ * This function implements an idempotent invite-signup flow for the CHD Qbank.
+ * Each client request must include an `Idempotency-Key`. When a request arrives we:
+ *
+ * 1. Reuse any cached response for the key if it is younger than ten minutes.
+ * 2. Otherwise attempt to "claim" the key so only one concurrent mutation runs.
+ * 3. Validate the invite code using a salted hash stored in `app_settings` and enforce
+ *    an optional expiration timestamp.
+ * 4. Create the user via the Supabase Admin API, trigger the confirmation email, and
+ *    claim a unique alias via a stored procedure.
+ * 5. Persist the response payload for subsequent retries under the same key.
+ *
+ * The function relies on the `idempotency_keys` table for coordination and will
+ * respond with a stored result when duplicate requests arrive. Environment
+ * variables `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` must be configured.
+ */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
@@ -25,6 +40,13 @@ type IdempotencyRow = {
   created_at: string;
 };
 
+/**
+ * Derive a SHA-256 hash for the invite code using the supplied salt.
+ *
+ * @param code - Plain-text invite code submitted by the user.
+ * @param salt - Unique per-install salt stored in `app_settings`.
+ * @returns Hex encoded hash string that can be compared with the stored hash.
+ */
 async function hashInviteCode(code: string, salt: string): Promise<string> {
   const encoder = new TextEncoder();
   const payload = encoder.encode(`${salt}:${code}`);
@@ -34,6 +56,13 @@ async function hashInviteCode(code: string, salt: string): Promise<string> {
     .join("");
 }
 
+/**
+ * Compare two strings in constant-time to avoid leaking timing information.
+ *
+ * @param a - First string operand.
+ * @param b - Second string operand.
+ * @returns True when the strings are identical.
+ */
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) {
     return false;
@@ -45,6 +74,11 @@ function timingSafeEqual(a: string, b: string): boolean {
   return mismatch === 0;
 }
 
+/**
+ * Generate a pseudo-random alias consisting of an adjective, a bird, and a suffix.
+ *
+ * @returns Friendly alias such as `Swift-Ibis-428` used as a default username.
+ */
 function genAlias(): string {
   const adjectives = ["Brisk","Calm","Keen","Nimble","Quiet","Spry","Sturdy","Swift","Tidy","Witty"];
   const birds = ["Sparrow","Finch","Wren","Robin","Heron","Swift","Kite","Tern","Lark","Ibis"];
@@ -54,14 +88,31 @@ function genAlias(): string {
   return `${a}-${b}-${n}`;
 }
 
+/**
+ * Utility helper that resolves after a given number of milliseconds.
+ *
+ * @param ms - Milliseconds to wait before resolving.
+ */
 async function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * Determine whether the stored idempotency response is still fresh enough to reuse.
+ *
+ * @param row - Row fetched from `idempotency_keys`.
+ * @returns True when the row is younger than the 10 minute TTL.
+ */
 function withinTtl(row: IdempotencyRow): boolean {
   return Date.now() - new Date(row.created_at).getTime() < TEN_MINUTES_MS;
 }
 
+/**
+ * Load the idempotency row for the supplied key if it exists.
+ *
+ * @param key - Idempotency token provided by the client.
+ * @returns The matching row or `null` when the key has not been seen.
+ */
 async function fetchIdempotencyRow(key: string): Promise<IdempotencyRow | null> {
   const { data, error } = await sb
     .from("idempotency_keys")
@@ -76,6 +127,12 @@ async function fetchIdempotencyRow(key: string): Promise<IdempotencyRow | null> 
   return (data as IdempotencyRow | null) ?? null;
 }
 
+/**
+ * Convert a serialized response payload into a native `Response` object.
+ *
+ * @param stored - Response metadata captured in the database.
+ * @returns A `Response` suitable for returning from the Edge Function.
+ */
 function buildResponse(stored: StoredResponse): Response {
   const headers = new Headers(stored.headers ?? {});
   if (!headers.has("content-type")) {
@@ -87,6 +144,12 @@ function buildResponse(stored: StoredResponse): Response {
   });
 }
 
+/**
+ * Poll the table for a stored response while another request finalizes.
+ *
+ * @param key - Idempotency key currently being processed by another worker.
+ * @returns The stored response if it materializes before the timeout, otherwise `null`.
+ */
 async function waitForStoredResponse(key: string): Promise<Response | null> {
   const MAX_WAIT_MS = 10000;
   const POLL_INTERVAL_MS = 200;
@@ -109,6 +172,12 @@ async function waitForStoredResponse(key: string): Promise<Response | null> {
   return null;
 }
 
+/**
+ * Delete idempotency rows that have aged past the TTL to allow reprocessing.
+ *
+ * @param key - Idempotency key that should be released.
+ * @param cutoffIso - ISO timestamp representing the minimum creation date to keep.
+ */
 async function removeExpiredKey(key: string, cutoffIso: string) {
   const { error } = await sb
     .from("idempotency_keys")
@@ -120,6 +189,12 @@ async function removeExpiredKey(key: string, cutoffIso: string) {
   }
 }
 
+/**
+ * Attempt to claim ownership of an idempotency key for the current request.
+ *
+ * @param key - Idempotency key provided by the client.
+ * @returns True when the insert succeeds, false when another process already claimed it.
+ */
 async function claimIdempotencyKey(key: string): Promise<boolean> {
   const { error } = await sb.from("idempotency_keys").insert({ key });
   if (!error) {
@@ -131,6 +206,12 @@ async function claimIdempotencyKey(key: string): Promise<boolean> {
   throw error;
 }
 
+/**
+ * Persist the computed response for the idempotent request.
+ *
+ * @param key - Idempotency key that should be associated with the result.
+ * @param stored - Response payload, headers, and status code to store.
+ */
 async function storeResponseForKey(key: string, stored: StoredResponse) {
   const { error } = await sb
     .from("idempotency_keys")
@@ -145,6 +226,12 @@ async function storeResponseForKey(key: string, stored: StoredResponse) {
   }
 }
 
+/**
+ * Coerce arbitrary thrown values into a consistent status/message shape.
+ *
+ * @param err - Unknown error raised during request handling.
+ * @returns Normalized status code and error message suitable for JSON output.
+ */
 function normalizeError(err: unknown): { status: number; message: string } {
   if (typeof err === "object" && err !== null) {
     const status = typeof (err as { status?: unknown }).status === "number" ? (err as { status: number }).status : 400;
@@ -156,6 +243,13 @@ function normalizeError(err: unknown): { status: number; message: string } {
   return { status: 400, message: String(err) };
 }
 
+/**
+ * Handle the HTTP request, enforcing idempotency while validating the invite code
+ * and provisioning a new user record when allowed.
+ *
+ * @param req - Incoming HTTP request from Supabase Edge runtime.
+ * @returns HTTP response describing success or failure of the signup attempt.
+ */
 serve(async (req) => {
   const idempotencyKey = req.headers.get("Idempotency-Key")?.trim();
   if (!idempotencyKey) {

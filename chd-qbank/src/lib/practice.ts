@@ -19,6 +19,12 @@ export type QuestionQueryRow = {
 
 export const PRACTICE_PAGE_SIZE = 10;
 
+/**
+ * Normalize raw question rows returned from Supabase into the shape used in the app.
+ *
+ * @param rows - Records retrieved from the practice view including nullable arrays.
+ * @returns Questions with sorted choices and null-safe fields.
+ */
 export function normalizeQuestionRows(rows: QuestionQueryRow[]): QuestionRow[] {
   return rows.map((item) => ({
     id: item.id,
@@ -38,6 +44,13 @@ export function normalizeQuestionRows(rows: QuestionQueryRow[]): QuestionRow[] {
   }));
 }
 
+/**
+ * Merge two pages of questions, ensuring the latest copy for each id is retained.
+ *
+ * @param existing - Questions that have already been loaded locally.
+ * @param incoming - Questions from the newly fetched page.
+ * @returns Combined list deduplicated by question id.
+ */
 export function mergeQuestionPages(existing: QuestionRow[], incoming: QuestionRow[]): QuestionRow[] {
   if (existing.length === 0) {
     return incoming.slice();
@@ -50,6 +63,13 @@ export function mergeQuestionPages(existing: QuestionRow[], incoming: QuestionRo
   return Array.from(map.values());
 }
 
+/**
+ * Shuffle questions using the Fisher-Yates algorithm.
+ *
+ * @param questions - Array that should be randomized.
+ * @param rng - Optional deterministic RNG used for testing.
+ * @returns New array with elements reordered.
+ */
 export function shuffleQuestions<T>(questions: T[], rng: () => number = Math.random): T[] {
   const copy = questions.slice();
   for (let i = copy.length - 1; i > 0; i -= 1) {
@@ -61,6 +81,15 @@ export function shuffleQuestions<T>(questions: T[], rng: () => number = Math.ran
   return copy;
 }
 
+/**
+ * Determine whether there are more questions available to fetch for infinite scrolling.
+ *
+ * @param totalCount - Total number of questions reported by Supabase, when available.
+ * @param totalLoaded - Count of questions currently in memory.
+ * @param lastPageLength - Number of questions returned in the most recent page.
+ * @param pageSize - Expected number of questions per page.
+ * @returns True when another page should be requested.
+ */
 export function determineHasMore(
   totalCount: number | null | undefined,
   totalLoaded: number,
@@ -73,6 +102,14 @@ export function determineHasMore(
   return lastPageLength === pageSize;
 }
 
+/**
+ * Decide whether the UI should begin loading the next page based on scroll position.
+ *
+ * @param index - Index of the question currently being rendered.
+ * @param totalQuestions - Total questions loaded in the list component.
+ * @param hasMore - Whether additional pages exist.
+ * @returns True when the caller should request the subsequent page.
+ */
 export function shouldLoadNextPage(index: number, totalQuestions: number, hasMore: boolean): boolean {
   if (!hasMore) return false;
   if (totalQuestions === 0) return false;
