@@ -26,7 +26,23 @@ export default function Terms() {
       <p>We aim for reliable service, but downtime or maintenance may occur.</p>
 
       <h2>Liability</h2>
-      <p>This is an educational tool. It does not provide medical advice. Use clinical judgment and official guidelines.</p>
+      <p>
+        <strong>Disclaimers &amp; Scope:</strong> education vs. medical advice boundaries,
+        emergency language.
+      </p>
+      <p>
+        This platform delivers educational content only. It does not establish a
+        physician-patient relationship, diagnose conditions, or replace clinical
+        training. Always rely on institutional policies, supervising clinicians,
+        and official guidelines when making patient care decisions.
+      </p>
+      <p>
+        Do not use the app for real-time medical decision-making. If you have a
+        question about a real patient, consult a licensed provider. If you or
+        someone near you is experiencing a medical emergency, call emergency
+        services (for example, 911 in the United States) or go to the nearest
+        emergency department immediately.
+      </p>
 
       <h2>Contact</h2>
       <p>Email: <a href="mailto:stevetodman@hotmail.com">stevetodman@hotmail.com</a></p>
