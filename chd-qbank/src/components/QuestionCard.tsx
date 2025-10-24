@@ -145,33 +145,45 @@ export default function QuestionCard({ question, onAnswer, onFlagChange, initial
           switch (panel.kind) {
             case "labs":
               return (
-                <CollapsibleSection
+                <section
                   key={sectionId}
-                  id={sectionId}
-                  title={sectionTitle}
-                  summary={summary}
-                  defaultOpen={isLargeScreen}
+                  role="complementary"
+                  aria-labelledby={sectionId}
+                  className="contents"
                 >
-                  <LabPanel labs={panel.labs} showTitle={false} labelId={sectionId} />
-                </CollapsibleSection>
+                  <CollapsibleSection
+                    id={sectionId}
+                    title={sectionTitle}
+                    summary={summary}
+                    defaultOpen={isLargeScreen}
+                  >
+                    <LabPanel labs={panel.labs} showTitle={false} labelId={sectionId} />
+                  </CollapsibleSection>
+                </section>
               );
             case "formula":
               return (
-                <CollapsibleSection
+                <section
                   key={sectionId}
-                  id={sectionId}
-                  title={sectionTitle}
-                  summary={summary}
-                  defaultOpen={isLargeScreen}
+                  role="complementary"
+                  aria-labelledby={sectionId}
+                  className="contents"
                 >
-                  <FormulaPanel
-                    title={panel.title}
-                    formulas={panel.formulas}
-                    bodyMd={panel.body_md}
-                    showTitle={false}
-                    labelId={sectionId}
-                  />
-                </CollapsibleSection>
+                  <CollapsibleSection
+                    id={sectionId}
+                    title={sectionTitle}
+                    summary={summary}
+                    defaultOpen={isLargeScreen}
+                  >
+                    <FormulaPanel
+                      title={panel.title}
+                      formulas={panel.formulas}
+                      bodyMd={panel.body_md}
+                      showTitle={false}
+                      labelId={sectionId}
+                    />
+                  </CollapsibleSection>
+                </section>
               );
             default:
               return null;
