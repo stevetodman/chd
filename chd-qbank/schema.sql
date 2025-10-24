@@ -816,8 +816,30 @@ as $$
   order by points desc, user_id;
 $$;
 
-create or replace view leaderboard_weekly as
+drop view if exists leaderboard_weekly;
+
+create materialized view if not exists leaderboard_weekly_cache
+as
 select * from leaderboard_weekly_entries();
+
+create unique index if not exists leaderboard_weekly_cache_user_id_idx
+  on leaderboard_weekly_cache(user_id);
+
+create or replace view leaderboard_weekly as
+select * from leaderboard_weekly_cache;
+
+create or replace function leaderboard_refresh_weekly()
+returns void
+language plpgsql
+security definer
+set search_path = public as $$
+begin
+  refresh materialized view concurrently leaderboard_weekly_cache;
+end;
+$$;
+
+grant execute on function leaderboard_refresh_weekly() to authenticated;
+grant execute on function leaderboard_refresh_weekly() to service_role;
 
 create or replace view item_stats_public as
 select question_id,
@@ -1064,7 +1086,7 @@ create table if not exists leaderboard_events (
   source text not null,
   source_id uuid not null,
   created_at timestamptz not null default now(),
-  unique (source, source_id)
+  unique (user_id, source, source_id)
 );
 
 alter table leaderboard_events enable row level security;
