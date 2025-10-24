@@ -65,6 +65,14 @@ This monorepo packages everything required to operate the **CHD QBank**: a conge
 
 4. Visit [http://localhost:5173](http://localhost:5173) and sign in with an invited account. Initial content can be loaded by running the seeding scripts after your database is provisioned.
 
+## Usage example
+
+![Practice session and analytics overview](./docs/images/usage-dashboard.svg)
+
+1. **Receive an invite and sign up.** Administrators share single-use codes managed via `app_settings`. Learners redeem a code through the Supabase Edge Function to activate their account and profile preferences.
+2. **Launch a practice session.** The dashboard presents multiple-choice questions drawn from the congenital heart disease bank and highlights supporting media (imaging, audio). Learners submit answers, review explanations, and move through a curated session or topic drill.
+3. **Review analytics.** After each session the analytics heatmap aggregates performance, streaks, and suggested focus areas so learners can target weak domains and instructors can monitor cohort progress.
+
 ## Supabase & data model
 
 The application relies on a Postgres schema defined in [`chd-qbank/schema.sql`](./chd-qbank/schema.sql). Key tables include:
