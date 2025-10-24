@@ -8,6 +8,14 @@ import type { DashboardMetrics } from "../lib/constants";
 import { EMPTY_DASHBOARD_METRICS, fetchDashboardMetrics } from "../lib/dashboard";
 import PracticeTrendChart, { type PracticeTrendDatum } from "../components/Charts/PracticeTrendChart";
 
+type TopicInsight = {
+  topic: string;
+  attempts: number;
+  correct: number;
+  accuracy: number;
+  lastActivity: Date | null;
+};
+
 interface FeaturedQuestion {
   id: string;
   lead_in: string | null;
@@ -37,6 +45,9 @@ export default function Dashboard() {
   const [trendData, setTrendData] = useState<PracticeTrendDatum[]>([]);
   const [trendLoading, setTrendLoading] = useState(false);
   const [trendError, setTrendError] = useState<string | null>(null);
+  const [topicInsights, setTopicInsights] = useState<TopicInsight[]>([]);
+  const [topicLoading, setTopicLoading] = useState(false);
+  const [topicError, setTopicError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session) return;
@@ -122,12 +133,18 @@ export default function Dashboard() {
       setTrendData([]);
       setTrendError(null);
       setTrendLoading(false);
+      setTopicInsights([]);
+      setTopicError(null);
+      setTopicLoading(false);
       return;
     }
 
     let active = true;
     setTrendLoading(true);
     setTrendError(null);
+
+    setTopicLoading(true);
+    setTopicError(null);
 
     const weeksToShow = 8;
     const toUtcWeekStart = (value: Date): Date => {
@@ -198,6 +215,67 @@ export default function Dashboard() {
         setTrendLoading(false);
       });
 
+    supabase
+      .from("responses")
+      .select("is_correct, created_at, question:questions(topic)")
+      .eq("user_id", session.user.id)
+      .order("created_at", { ascending: false })
+      .limit(200)
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) {
+          setTopicError("Topic insights are unavailable right now.");
+          setTopicInsights([]);
+          return;
+        }
+
+        const aggregates = new Map<string, { attempts: number; correct: number; lastActivity: Date | null }>();
+        for (const row of data ?? []) {
+          const rawTopic =
+            (row as { question?: { topic?: string | null } | null })?.question?.topic?.trim() ?? "General practice";
+          const topic = rawTopic.length > 0 ? rawTopic : "General practice";
+          const existing = aggregates.get(topic) ?? { attempts: 0, correct: 0, lastActivity: null };
+          existing.attempts += 1;
+          if ((row as { is_correct?: boolean | null })?.is_correct) {
+            existing.correct += 1;
+          }
+          const createdAt = (row as { created_at?: string | null })?.created_at;
+          if (createdAt) {
+            const createdDate = new Date(createdAt);
+            if (!existing.lastActivity || existing.lastActivity < createdDate) {
+              existing.lastActivity = createdDate;
+            }
+          }
+          aggregates.set(topic, existing);
+        }
+
+        const insights: TopicInsight[] = Array.from(aggregates.entries()).map(([topic, summary]) => ({
+          topic,
+          attempts: summary.attempts,
+          correct: summary.correct,
+          accuracy: summary.attempts > 0 ? Math.round((summary.correct / summary.attempts) * 100) : 0,
+          lastActivity: summary.lastActivity
+        }));
+
+        insights.sort((a, b) => {
+          if (b.attempts === a.attempts) {
+            return (b.lastActivity?.getTime() ?? 0) - (a.lastActivity?.getTime() ?? 0);
+          }
+          return b.attempts - a.attempts;
+        });
+
+        setTopicInsights(insights);
+      })
+      .catch(() => {
+        if (!active) return;
+        setTopicError("Topic insights are unavailable right now.");
+        setTopicInsights([]);
+      })
+      .finally(() => {
+        if (!active) return;
+        setTopicLoading(false);
+      });
+
     return () => {
       active = false;
     };
@@ -225,6 +303,75 @@ export default function Dashboard() {
     metrics.total_attempts > 0
       ? `${metrics.correct_attempts} correct answers logged`
       : "Create momentum with weekly practice";
+
+  const latestTrendPoint = trendData.length > 0 ? trendData[trendData.length - 1] : null;
+  const weeklyGoalAttempts = 40;
+  const weeklyAttempts = latestTrendPoint?.attempts ?? 0;
+  const goalProgress = Math.min(1, weeklyAttempts / weeklyGoalAttempts);
+  const goalProgressPercent = Math.round(goalProgress * 100);
+  const goalStatusMessage =
+    weeklyAttempts >= weeklyGoalAttempts
+      ? "Goal met—lock in your knowledge with a review session."
+      : weeklyAttempts >= weeklyGoalAttempts * 0.5
+        ? "You're halfway there. A short quiz will keep the streak alive."
+        : "Schedule two quick sessions to close the gap this week.";
+
+  const milestones = [25, 50, 100, 250, 500, 750, 1000];
+  const completedMilestone = milestones
+    .slice()
+    .reverse()
+    .find((value) => metrics.total_attempts >= value);
+  const nextMilestone = milestones.find((value) => metrics.total_attempts < value) ?? null;
+  const milestoneMessage = completedMilestone
+    ? `You've crossed ${completedMilestone} total questions—fantastic dedication!`
+    : "Your first milestone is 25 total questions. Let's get there!";
+  const milestoneNextMessage =
+    nextMilestone !== null
+      ? `Only ${Math.max(0, nextMilestone - metrics.total_attempts)} more to reach ${nextMilestone}.`
+      : "You've completed every milestone we track. Keep leading the pack!";
+
+  const strengths = topicInsights
+    .filter((topic) => topic.attempts >= 3 && topic.accuracy >= 80)
+    .slice(0, 2);
+  const growthAreas = topicInsights
+    .filter((topic) => topic.attempts >= 2 && topic.accuracy < 70)
+    .slice(0, 2);
+  const recentTopics = topicInsights.slice(0, 3);
+
+  const readinessMessage = (() => {
+    if (accuracy >= 85 && goalProgress >= 1) {
+      return "On track for exam readiness—consider a timed mock to simulate test day.";
+    }
+    if (accuracy >= 75 && goalProgress >= 0.75) {
+      return "Solid fundamentals. Keep reinforcing weaker topics to push accuracy into the 80s.";
+    }
+    if (goalProgress < 0.5) {
+      return "Focus on consistent weekly practice to build confidence before tackling full-length exams.";
+    }
+    return "Mix in targeted review sessions to balance speed and accuracy.";
+  })();
+
+  const cta = (() => {
+    if (metrics.flagged_count > 0) {
+      return {
+        label: "Review flagged questions",
+        description: "Clear out tricky items while the explanations are fresh.",
+        href: "/review"
+      };
+    }
+    if (weeklyAttempts < weeklyGoalAttempts) {
+      return {
+        label: "Schedule a focused quiz",
+        description: "A 10-question tutor mode session will nudge you toward this week's goal.",
+        href: "/practice"
+      };
+    }
+    return {
+      label: "Sharpen with learning games",
+      description: "Switch it up with Murmurs or CXR Match to reinforce pattern recognition.",
+      href: "/games"
+    };
+  })();
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
@@ -353,6 +500,114 @@ export default function Dashboard() {
             {metricsLoading ? "Refreshing…" : "Refresh stats"}
           </Button>
         </CardFooter>
+      </Card>
+      <Card className="md:col-span-2">
+        <CardHeader>
+          <CardTitle>Personalized insights</CardTitle>
+          <p className="text-sm text-neutral-600">Adaptive goals and recommendations based on your recent activity.</p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <section className="space-y-3 rounded-2xl border border-brand-100 bg-brand-50/60 p-4 text-sm text-brand-900">
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-brand-700">Weekly goal</h3>
+                <p className="text-xs text-brand-700/80">{weeklyAttempts} of {weeklyGoalAttempts} practice attempts logged.</p>
+              </div>
+              <div className="h-2 w-full rounded-full bg-white/60" role="progressbar" aria-valuenow={goalProgressPercent} aria-valuemin={0} aria-valuemax={100}>
+                <div
+                  className="h-2 rounded-full bg-brand-500 transition-all"
+                  style={{
+                    width:
+                      goalProgressPercent > 0
+                        ? `${Math.min(100, Math.max(goalProgressPercent, 6))}%`
+                        : "0%"
+                  }}
+                  aria-hidden="true"
+                />
+              </div>
+              <p>{goalStatusMessage}</p>
+            </section>
+            <section className="space-y-3 rounded-2xl border border-amber-100 bg-amber-50/70 p-4 text-sm text-amber-900">
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-amber-700">Milestones</h3>
+                <p className="text-xs text-amber-700/80">{milestoneMessage}</p>
+              </div>
+              <p>
+                {milestoneNextMessage}
+              </p>
+              <p className="text-xs text-amber-700/70">Next celebration unlocks automatically once you cross the threshold.</p>
+            </section>
+            <section className="space-y-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4 text-sm text-emerald-900">
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Readiness check</h3>
+                <p className="text-xs text-emerald-700/80">Lifetime accuracy {accuracy}%</p>
+              </div>
+              <p>{readinessMessage}</p>
+              <p className="text-xs text-emerald-700/70">Combine high accuracy with steady practice to maximize exam confidence.</p>
+            </section>
+          </div>
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            <section className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-neutral-800">Topic strengths</h3>
+                <span className="text-xs text-neutral-500">Last 200 attempts</span>
+              </div>
+              {topicError ? (
+                <p className="text-sm text-red-600">{topicError}</p>
+              ) : topicLoading ? (
+                <p className="text-sm text-neutral-500">Analyzing your topics…</p>
+              ) : strengths.length > 0 ? (
+                <ul className="space-y-2 text-sm text-neutral-700">
+                  {strengths.map((topic) => (
+                    <li key={topic.topic} className="flex items-center justify-between">
+                      <span>{topic.topic}</span>
+                      <span className="text-xs text-emerald-600">{topic.accuracy}% accuracy</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-neutral-500">Practice a few more questions to unlock personalized strengths.</p>
+              )}
+            </section>
+            <section className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-neutral-800">Growth opportunities</h3>
+                <span className="text-xs text-neutral-500">Focus for upcoming sessions</span>
+              </div>
+              {topicError ? (
+                <p className="text-sm text-red-600">{topicError}</p>
+              ) : topicLoading ? (
+                <p className="text-sm text-neutral-500">Surfacing recommendations…</p>
+              ) : growthAreas.length > 0 ? (
+                <ul className="space-y-2 text-sm text-neutral-700">
+                  {growthAreas.map((topic) => (
+                    <li key={topic.topic} className="flex items-center justify-between">
+                      <span>{topic.topic}</span>
+                      <span className="text-xs text-amber-600">{topic.accuracy}% accuracy</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-neutral-500">Your accuracy is balanced. Rotate topics to stay sharp.</p>
+              )}
+            </section>
+          </div>
+          <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-sky-100 bg-sky-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-sky-700">Next best action</h3>
+              <p className="text-sm text-sky-900">{cta.description}</p>
+            </div>
+            <Link to={cta.href} className="inline-flex items-center gap-2 self-start rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700">
+              {cta.label}
+              <span aria-hidden="true">→</span>
+            </Link>
+          </div>
+          {recentTopics.length > 0 ? (
+            <div className="mt-4 text-xs text-neutral-500">
+              Recently practiced topics: {recentTopics.map((topic) => topic.topic).join(", ")}
+            </div>
+          ) : null}
+        </CardContent>
       </Card>
       <Card>
         <CardHeader>
