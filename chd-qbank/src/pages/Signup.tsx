@@ -23,7 +23,7 @@ export default function Signup() {
       });
       if (fnError) throw fnError;
       if (!data?.ok) throw new Error(data?.error ?? "Failed to create account");
-      setSuccess("Account created. Please sign in.");
+      setSuccess("Account created. Check your email to confirm before signing in.");
       setTimeout(() => navigate("/login"), 800);
     } catch (err) {
       setError(getErrorMessage(err, "Unable to sign up"));

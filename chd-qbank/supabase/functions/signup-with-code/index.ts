@@ -25,6 +25,26 @@ type IdempotencyRow = {
   created_at: string;
 };
 
+async function hashInviteCode(code: string, salt: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const payload = encoder.encode(`${salt}:${code}`);
+  const digest = await crypto.subtle.digest("SHA-256", payload);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return mismatch === 0;
+}
+
 function genAlias(): string {
   const adjectives = ["Brisk","Calm","Keen","Nimble","Quiet","Spry","Sturdy","Swift","Tidy","Witty"];
   const birds = ["Sparrow","Finch","Wren","Robin","Heron","Swift","Kite","Tern","Lark","Ibis"];
@@ -176,17 +196,28 @@ serve(async (req) => {
   try {
     const { email, password, invite_code, desired_alias } = await req.json();
 
+    if (typeof invite_code !== "string" || invite_code.trim() === "") {
+      throw new Error("Invite code required");
+    }
+
     const { data: settings, error: settingsErr } = await sb
       .from("app_settings")
-      .select("key,value");
+      .select("key,value")
+      .in("key", ["invite_code_hash", "invite_code_salt", "invite_expires"]);
     if (settingsErr) throw settingsErr;
 
-    const code = settings?.find((s) => s.key === "invite_code")?.value;
+    const inviteCodeHash = settings?.find((s) => s.key === "invite_code_hash")?.value;
+    const inviteCodeSalt = settings?.find((s) => s.key === "invite_code_salt")?.value;
     const expires = settings?.find((s) => s.key === "invite_expires")?.value;
-    if (!code || !expires) {
-      throw new Error("Invite not configured");
+    if (!inviteCodeHash || !inviteCodeSalt) {
+      throw new Error("Invite not configured securely");
     }
-    if (invite_code !== code) {
+    if (!expires) {
+      throw new Error("Invite expiration missing");
+    }
+
+    const submittedHash = await hashInviteCode(invite_code.trim(), inviteCodeSalt);
+    if (!timingSafeEqual(inviteCodeHash, submittedHash)) {
       storedResponse = {
         status: 403,
         body: { ok: false, error: "Invalid invite code" },
@@ -207,11 +238,16 @@ serve(async (req) => {
 
     const { data: created, error: createErr } = await sb.auth.admin.createUser({
       email,
-      password,
-      email_confirm: true
+      password
     });
     if (createErr) throw createErr;
     const user = created.user;
+
+    const { error: resendError } = await sb.auth.admin.resend({
+      type: "signup",
+      email
+    });
+    if (resendError) throw resendError;
 
     let attemptAlias = (desired_alias ?? genAlias()).slice(0, 40);
     let finalAlias: string | null = null;
