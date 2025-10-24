@@ -58,6 +58,9 @@ create table if not exists idempotency_keys (
   created_at timestamptz not null default now()
 );
 
+revoke all on table idempotency_keys from anon;
+revoke all on table idempotency_keys from authenticated;
+
 create or replace function claim_user_alias(p_user_id uuid, p_alias text, p_alias_locked boolean default false)
 returns text
 language plpgsql
@@ -321,6 +324,7 @@ create table if not exists cxr_attempts (
   created_at timestamptz not null default now()
 );
 
+alter table idempotency_keys enable row level security;
 alter table app_users enable row level security;
 alter table app_settings enable row level security;
 alter table media_bundles enable row level security;
@@ -380,6 +384,10 @@ for select using (
 );
 create policy "settings update admin" on app_settings
 for update using (is_admin());
+
+create policy "idempotency keys service role" on idempotency_keys
+for all using (auth.role() = 'service_role')
+  with check (auth.role() = 'service_role');
 
 create policy "media read" on media_bundles
 for select using (

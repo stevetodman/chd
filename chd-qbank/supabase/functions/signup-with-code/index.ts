@@ -208,7 +208,7 @@ serve(async (req) => {
     const { data: created, error: createErr } = await sb.auth.admin.createUser({
       email,
       password,
-      email_confirm: true
+      email_confirm: false
     });
     if (createErr) throw createErr;
     const user = created.user;
