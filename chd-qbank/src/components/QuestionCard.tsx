@@ -8,9 +8,10 @@ import FormulaPanel from "./FormulaPanel";
 import StemHighlighter from "./StemHighlighter";
 import { Button } from "./ui/Button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/Card";
-import { clampMs } from "../lib/utils";
+import { clampMs, classNames } from "../lib/utils";
 import CollapsibleSection from "./CollapsibleSection";
 import { useMediaQuery } from "../hooks/useMediaQuery";
+import { useFeatureFlagsStore } from "../store/featureFlags";
 
 type Props = {
   question: Question;
@@ -41,6 +42,8 @@ export default function QuestionCard({
   const explanationRef = useRef<HTMLDivElement | null>(null);
   const isLargeScreen = useMediaQuery("(min-width: 1024px)");
   const explanationSectionId = useMemo(() => `explanation-${question.id}`, [question.id]);
+  const tutorModeEnabled = useFeatureFlagsStore((state) => state.tutorModeEnabled);
+  const showTutorRail = tutorModeEnabled;
 
   useEffect(() => {
     setStart(performance.now());
@@ -65,11 +68,16 @@ export default function QuestionCard({
     const elapsed = clampMs(performance.now() - start);
     setSubmitting(true);
     setSelected(choice);
-    setShowExplanation(true);
+    const shouldShowExplanation = showTutorRail;
+    setShowExplanation(shouldShowExplanation);
     setFeedbackAnnouncement(
       choice.is_correct
-        ? `${choice.label} is correct. The explanation is now focused.`
-        : `${choice.label} is incorrect. The explanation is now focused for more details.`
+        ? shouldShowExplanation
+          ? `${choice.label} is correct. The explanation is now focused.`
+          : `${choice.label} is correct.`
+        : shouldShowExplanation
+          ? `${choice.label} is incorrect. The explanation is now focused for more details.`
+          : `${choice.label} is incorrect.`
     );
     try {
       await onAnswer(choice, elapsed, flagged);
@@ -96,7 +104,12 @@ export default function QuestionCard({
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div
+      className={classNames(
+        "grid gap-6",
+        showTutorRail ? "lg:grid-cols-[minmax(0,1fr)_320px]" : undefined
+      )}
+    >
       <div aria-live="assertive" role="status" className="sr-only">
         {feedbackAnnouncement}
       </div>
@@ -124,14 +137,16 @@ export default function QuestionCard({
               onToggle={toggleFlag}
               className="w-full sm:w-auto"
             />
-            <Button
-              type="button"
-              onClick={() => setShowExplanation(true)}
-              disabled={!selected}
-              className="w-full sm:w-auto"
-            >
-              Reveal explanation
-            </Button>
+            {showTutorRail ? (
+              <Button
+                type="button"
+                onClick={() => setShowExplanation(true)}
+                disabled={!selected}
+                className="w-full sm:w-auto"
+              >
+                Reveal explanation
+              </Button>
+            ) : null}
           </div>
           {onNext ? (
             <div className="flex flex-col items-stretch gap-3 text-sm text-neutral-600 sm:w-auto sm:flex-row sm:items-center">
@@ -153,86 +168,88 @@ export default function QuestionCard({
           ) : null}
         </CardFooter>
       </Card>
-      <div className="space-y-4">
-        {(question.context_panels ?? []).map((panel, index) => {
-          if (!panel) return null;
-          const sectionId = panel.id ? `panel-${panel.id}` : `panel-${panel.kind}-${index}`;
-          const sectionTitle =
-            panel.title ?? (panel.kind === "labs" ? "Vitals & Labs" : "Formula Quick Ref");
-          let summary: string | undefined;
-          if (panel.kind === "labs") {
-            const count = panel.labs?.length ?? 0;
-            summary = count > 0 ? `${count} value${count === 1 ? "" : "s"}` : undefined;
-          }
-          if (panel.kind === "formula") {
-            const count = panel.formulas?.length ?? 0;
-            summary =
-              count > 0
-                ? `${count} formula${count === 1 ? "" : "s"}`
-                : panel.body_md
-                  ? "Reference notes"
-                  : undefined;
-          }
-          switch (panel.kind) {
-            case "labs":
-              return (
-                <section
-                  key={sectionId}
-                  role="complementary"
-                  aria-labelledby={sectionId}
-                  className="contents"
-                >
-                  <CollapsibleSection
-                    id={sectionId}
-                    title={sectionTitle}
-                    summary={summary}
-                    defaultOpen={isLargeScreen}
+      {showTutorRail ? (
+        <div className="space-y-4">
+          {(question.context_panels ?? []).map((panel, index) => {
+            if (!panel) return null;
+            const sectionId = panel.id ? `panel-${panel.id}` : `panel-${panel.kind}-${index}`;
+            const sectionTitle =
+              panel.title ?? (panel.kind === "labs" ? "Vitals & Labs" : "Formula Quick Ref");
+            let summary: string | undefined;
+            if (panel.kind === "labs") {
+              const count = panel.labs?.length ?? 0;
+              summary = count > 0 ? `${count} value${count === 1 ? "" : "s"}` : undefined;
+            }
+            if (panel.kind === "formula") {
+              const count = panel.formulas?.length ?? 0;
+              summary =
+                count > 0
+                  ? `${count} formula${count === 1 ? "" : "s"}`
+                  : panel.body_md
+                    ? "Reference notes"
+                    : undefined;
+            }
+            switch (panel.kind) {
+              case "labs":
+                return (
+                  <section
+                    key={sectionId}
+                    role="complementary"
+                    aria-labelledby={sectionId}
+                    className="contents"
                   >
-                    <LabPanel labs={panel.labs} showTitle={false} labelId={sectionId} />
-                  </CollapsibleSection>
-                </section>
-              );
-            case "formula":
-              return (
-                <section
-                  key={sectionId}
-                  role="complementary"
-                  aria-labelledby={sectionId}
-                  className="contents"
-                >
-                  <CollapsibleSection
-                    id={sectionId}
-                    title={sectionTitle}
-                    summary={summary}
-                    defaultOpen={isLargeScreen}
+                    <CollapsibleSection
+                      id={sectionId}
+                      title={sectionTitle}
+                      summary={summary}
+                      defaultOpen={isLargeScreen}
+                    >
+                      <LabPanel labs={panel.labs} showTitle={false} labelId={sectionId} />
+                    </CollapsibleSection>
+                  </section>
+                );
+              case "formula":
+                return (
+                  <section
+                    key={sectionId}
+                    role="complementary"
+                    aria-labelledby={sectionId}
+                    className="contents"
                   >
-                    <FormulaPanel
-                      title={panel.title}
-                      formulas={panel.formulas}
-                      bodyMd={panel.body_md}
-                      showTitle={false}
-                      labelId={sectionId}
-                    />
-                  </CollapsibleSection>
-                </section>
-              );
-            default:
-              return null;
-          }
-        })}
-        {showExplanation ? (
-          <CollapsibleSection title="Explanation" defaultOpen id={explanationSectionId}>
-            <Explanation
-              ref={explanationRef}
-              brief={question.explanation_brief_md}
-              deep={question.explanation_deep_md}
-              tabIndex={-1}
-              showHeader={false}
-              labelId={explanationSectionId}
-            />
-          </CollapsibleSection>
-        ) : null}
-      </div>
+                    <CollapsibleSection
+                      id={sectionId}
+                      title={sectionTitle}
+                      summary={summary}
+                      defaultOpen={isLargeScreen}
+                    >
+                      <FormulaPanel
+                        title={panel.title}
+                        formulas={panel.formulas}
+                        bodyMd={panel.body_md}
+                        showTitle={false}
+                        labelId={sectionId}
+                      />
+                    </CollapsibleSection>
+                  </section>
+                );
+              default:
+                return null;
+            }
+          })}
+          {showExplanation ? (
+            <CollapsibleSection title="Explanation" defaultOpen id={explanationSectionId}>
+              <Explanation
+                ref={explanationRef}
+                brief={question.explanation_brief_md}
+                deep={question.explanation_deep_md}
+                tabIndex={-1}
+                showHeader={false}
+                labelId={explanationSectionId}
+              />
+            </CollapsibleSection>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
