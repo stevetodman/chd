@@ -20,7 +20,10 @@
     "verify:seed": "npm run build:scripts && node scripts/dist/verifySeed.js",
     "verify:analytics:heatmap": "node scripts/verify-analytics-heatmap.mjs",
     "migrate:qbank": "npm run build:scripts && node scripts/dist/migrate-qbank.js",
-    "migrate:qbank:dry": "npm run build:scripts && DRY_RUN=1 node scripts/dist/migrate-qbank.js"
+    "migrate:qbank:dry": "npm run build:scripts && DRY_RUN=1 node scripts/dist/migrate-qbank.js",
+    "prepare:artifacts": "node -e \"require('fs').mkdirSync('artifacts', { recursive: true })\"",
+    "sbom": "node scripts/generate-sbom.mjs",
+    "license:audit": "node scripts/license-audit.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.0.5",
