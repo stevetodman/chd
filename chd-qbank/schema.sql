@@ -746,8 +746,7 @@ as $$
     select user_id, points from cxr_points
   ) e
   group by user_id
-  order by points desc, user_id
-  limit 100;
+  order by points desc, user_id;
 $$;
 
 create or replace view leaderboard_weekly as
