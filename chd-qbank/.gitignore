@@ -1,10 +1,23 @@
+# Dependencies
 node_modules
-.DS_Store
-/coverage
-/playwright-report
+
+# Environment files
 .env
 .env.*
+!.env.example
+
+# Build outputs
 .vite
 dist
 scripts/dist
+
+# Test and report artifacts
+/coverage
+/playwright-report
+
+# Logs
 *.log
+npm-debug.log*
+
+# System files
+.DS_Store
