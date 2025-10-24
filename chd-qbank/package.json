@@ -23,7 +23,8 @@
     "verify:storage": "node scripts/verify-storage-buckets.mjs",
     "migrate:qbank": "npm run build:scripts && node scripts/dist/migrate-qbank.js",
     "migrate:qbank:dry": "npm run build:scripts && DRY_RUN=1 node scripts/dist/migrate-qbank.js",
-    "blueprint:coverage": "npm run build:scripts && node scripts/dist/blueprint-coverage.js"
+    "blueprint:coverage": "npm run build:scripts && node scripts/dist/blueprint-coverage.js",
+    "i18n:extract": "tsc -p scripts/tsconfig.i18n.json && node scripts/i18n/dist/extract.js"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.0.5",
@@ -60,6 +61,7 @@
     "@testing-library/react": "^14.2.1",
     "@testing-library/user-event": "^14.5.2",
     "jsdom": "^24.0.0",
+    "@babel/parser": "^7.28.4",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-react": "^7.33.2",

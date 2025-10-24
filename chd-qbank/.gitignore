@@ -2,6 +2,7 @@ node_modules
 .DS_Store
 dist
 scripts/dist
+scripts/i18n/dist
 .env
 .vite
 coverage

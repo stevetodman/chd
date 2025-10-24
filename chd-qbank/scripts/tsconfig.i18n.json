@@ -1,0 +1,17 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "i18n/dist",
+    "rootDir": "i18n",
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "types": ["node"],
+    "allowJs": false,
+    "noEmit": false,
+    "declaration": false,
+    "emitDeclarationOnly": false,
+    "sourceMap": false,
+    "resolveJsonModule": false
+  },
+  "include": ["i18n/**/*.ts"]
+}
