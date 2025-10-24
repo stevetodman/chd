@@ -46,7 +46,7 @@ jobs:
           mkdir -p compliance-artifacts
           npm audit --json > compliance-artifacts/npm-audit.json || true
       - name: Upload compliance artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@65403d292b69ca99566f9f8213238b1462f9aa0e # v4.3.3
         with:
           name: compliance-artifacts
           path: chd-qbank/compliance-artifacts
