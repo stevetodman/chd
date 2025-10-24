@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../co
 import { Button } from "../components/ui/Button";
 import PageState from "../components/PageState";
 import ReviewQuestionCard, { type ReviewFlag } from "../components/ReviewQuestionCard";
+import { useFeatureFlagsStore } from "../store/featureFlags";
 
 type FlaggedResponseRow = {
   id: string;
@@ -21,6 +22,10 @@ export default function Review() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const { tutorModeEnabled, learningGamesEnabled } = useFeatureFlagsStore((state) => ({
+    tutorModeEnabled: state.tutorModeEnabled,
+    learningGamesEnabled: state.learningGamesEnabled
+  }));
 
   const loadFlags = useCallback(async () => {
     if (!session) return;
@@ -97,6 +102,18 @@ export default function Review() {
   );
 
   const emptyState = useMemo(() => !loading && !flags.length && !fetchError, [flags.length, fetchError, loading]);
+  const emptyStateMessage = useMemo(() => {
+    if (tutorModeEnabled && learningGamesEnabled) {
+      return "Visit tutor mode or a learning game to flag tricky questions and build your personal review set.";
+    }
+    if (tutorModeEnabled) {
+      return "Visit tutor mode to flag tricky questions and build your personal review set.";
+    }
+    if (learningGamesEnabled) {
+      return "Play a learning game to flag tricky questions and build your personal review set.";
+    }
+    return "Flag questions in available activities to build your personal review set.";
+  }, [learningGamesEnabled, tutorModeEnabled]);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -160,7 +177,7 @@ export default function Review() {
             <CardDescription>Flag items during practice to revisit them here.</CardDescription>
           </CardHeader>
           <CardContent className="text-sm text-neutral-600">
-            Visit tutor mode or a learning game to flag tricky questions and build your personal review set.
+            {emptyStateMessage}
           </CardContent>
         </Card>
       ) : null}

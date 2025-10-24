@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import classNames from "classnames";
 import { Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
@@ -6,6 +7,7 @@ import { useSettingsStore } from "../lib/settings";
 import { useSessionStore } from "../lib/auth";
 import { requireAdmin, signOut } from "../lib/auth";
 import { Button } from "./ui/Button";
+import { useFeatureFlagsStore } from "../store/featureFlags";
 
 export default function Layout() {
   const loadSettings = useSettingsStore((s) => s.loadSettings);
@@ -13,6 +15,7 @@ export default function Layout() {
   const { session, loading: sessionLoading, initialized } = useSessionStore();
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkedAdminFor, setCheckedAdminFor] = useState<string | null>(null);
+  const darkModeEnabled = useFeatureFlagsStore((state) => state.darkModeEnabled);
 
   useEffect(() => {
     if (sessionLoading || !initialized || !session) {
@@ -55,8 +58,24 @@ export default function Layout() {
 
   const showMaintenance = !!session && maintenanceMode && !isAdmin;
 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    root.classList.toggle("dark", darkModeEnabled);
+    root.style.colorScheme = darkModeEnabled ? "dark" : "light";
+    return () => {
+      root.classList.remove("dark");
+      root.style.colorScheme = "light";
+    };
+  }, [darkModeEnabled]);
+
+  const containerClasses = classNames(
+    "min-h-screen transition-colors",
+    darkModeEnabled ? "bg-neutral-950 text-neutral-100" : "bg-neutral-50 text-neutral-900"
+  );
+
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className={containerClasses}>
       <Navbar />
       <main className="mx-auto max-w-6xl px-4 py-6">
         {showMaintenance ? (
