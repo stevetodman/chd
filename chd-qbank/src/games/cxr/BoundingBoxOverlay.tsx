@@ -20,7 +20,11 @@ export function BoundingBoxOverlay({ labels, naturalSize, displaySize, visible }
   }
 
   return (
-    <div className="pointer-events-none absolute inset-0 select-none">
+    <svg
+      className="pointer-events-none absolute inset-0 h-full w-full select-none"
+      viewBox={`0 0 ${displaySize.width} ${displaySize.height}`}
+      preserveAspectRatio="none"
+    >
       {labels.map((label) => {
         if (!isBoundingBox(label.bbox)) {
           return null;
@@ -28,27 +32,59 @@ export function BoundingBoxOverlay({ labels, naturalSize, displaySize, visible }
 
         const naturalRect = bboxToNaturalRect(label.bbox, naturalSize);
         const displayRect = naturalRectToDisplayRect(naturalRect, naturalSize, displaySize);
+        const { x, y, width, height } = displayRect;
+
+        const labelTagWidth = Math.min(width, Math.max(36, label.label.length * 6 + 8));
+        const idText = label.id.slice(0, 6);
+        const idTagWidth = Math.min(width, Math.max(28, idText.length * 6 + 8));
+        const tagHeight = 16;
 
         return (
-          <div
-            key={label.id}
-            style={{
-              left: `${displayRect.x}px`,
-              top: `${displayRect.y}px`,
-              width: `${displayRect.width}px`,
-              height: `${displayRect.height}px`
-            }}
-            className="absolute border border-sky-500 bg-sky-500/10"
-          >
-            <span className="absolute left-0 top-0 bg-sky-500 px-1 text-[10px] font-semibold leading-4 text-white">
+          <g key={label.id}>
+            <rect
+              x={x}
+              y={y}
+              width={width}
+              height={height}
+              fill="#38bdf8"
+              fillOpacity={0.15}
+              stroke="#0ea5e9"
+              strokeWidth={1}
+            />
+            <rect x={x} y={y} width={labelTagWidth} height={tagHeight} fill="#0ea5e9" />
+            <text
+              x={x + 4}
+              y={y + 3}
+              fill="#fff"
+              fontSize={10}
+              fontFamily="Inter, system-ui, sans-serif"
+              fontWeight={600}
+              dominantBaseline="hanging"
+            >
               {label.label}
-            </span>
-            <span className="absolute right-0 bottom-0 bg-sky-500/80 px-1 text-[10px] font-mono text-white">
-              {label.id.slice(0, 6)}
-            </span>
-          </div>
+            </text>
+            <rect
+              x={x + width - idTagWidth}
+              y={y + height - tagHeight}
+              width={idTagWidth}
+              height={tagHeight}
+              fill="#0ea5e9"
+              fillOpacity={0.8}
+            />
+            <text
+              x={x + width - idTagWidth + 4}
+              y={y + height - 4}
+              fill="#fff"
+              fontSize={10}
+              fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace"
+              fontWeight={500}
+              textAnchor="start"
+            >
+              {idText}
+            </text>
+          </g>
         );
       })}
-    </div>
+    </svg>
   );
 }

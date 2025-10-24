@@ -111,7 +111,7 @@ INVITE_CODE=<optional-invite-code>
 INVITE_EXPIRES=<optional-iso-date>
 ```
 
-The automation helpers load `.env` automatically. When deploying Edge Functions, configure their environment variables separately inside Supabase.
+The automation helpers load `.env` automatically. Invite codes are only written to the `app_settings` table via `npm run seed:invite`—do **not** expose them through Vite environment variables. When deploying Edge Functions, configure their environment variables separately inside Supabase.
 
 ## Testing expectations
 

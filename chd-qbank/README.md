@@ -63,6 +63,8 @@ Provision both development and production Supabase projects:
    npm run seed:invite
    ```
 
+   The script stores the active invite code and expiry in Supabase—keep these values out of the Vite (`VITE_*`) environment.
+
 The seed utilities read from `data/templates/` and enforce idempotency, so re-running them updates existing rows safely.
 
 ## Available scripts

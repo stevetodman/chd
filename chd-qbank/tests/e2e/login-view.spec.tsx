@@ -31,8 +31,6 @@ import { MemoryRouter } from "react-router-dom";
 describe("login helpers", () => {
   beforeEach(() => {
     vi.unstubAllEnvs();
-    vi.stubEnv("VITE_INVITE_CODE", "CHD2025FALL");
-    vi.stubEnv("VITE_INVITE_EXPIRES", "2025-12-31");
     supabaseMock.auth.resetPasswordForEmail.mockReset();
     supabaseMock.auth.resetPasswordForEmail.mockResolvedValue({ data: null, error: null });
   });
@@ -61,18 +59,15 @@ describe("login helpers", () => {
     await screen.findByText(/password reset email sent/i);
   });
 
-  it("reveals the configured invite code for self-service", async () => {
+  it("directs users to request invite codes from administrators", async () => {
     render(
       <MemoryRouter>
         <Login />
       </MemoryRouter>
     );
 
-    const user = userEvent.setup();
-
-    await user.click(screen.getByRole("button", { name: /need your invite code again/i }));
-
-    await screen.findByText("CHD2025FALL");
-    expect(screen.getByText(/valid through/i).textContent).toContain("2025");
+    expect(
+      screen.getByText(/invite codes are issued by administrators/i)
+    ).toBeInTheDocument();
   });
 });
