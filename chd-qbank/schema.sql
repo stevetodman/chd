@@ -732,10 +732,15 @@ $$;
 
 create or replace function leaderboard_weekly_entries()
 returns table(user_id uuid, points bigint)
-language sql
+language plpgsql
 security definer
-set search_path = public
-as $$
+set search_path = public as $$
+begin
+  if auth.role() <> 'service_role' and not is_admin() and not leaderboard_is_enabled() then
+    raise exception 'Leaderboard disabled';
+  end if;
+
+  return query
   with week_bounds as (
     select
       date_trunc('week', timezone('utc', now())) as start_at,
@@ -771,6 +776,7 @@ as $$
   ) e
   group by user_id
   order by points desc, user_id;
+end;
 $$;
 
 create or replace view leaderboard_weekly as
@@ -809,6 +815,10 @@ declare
   v_score_variance double precision;
   v_alpha double precision;
 begin
+  if not is_admin() and auth.role() <> 'service_role' then
+    raise exception 'Admin privileges required';
+  end if;
+
   with latest_responses as (
     select distinct on (ae.user_id, ae.question_id)
       ae.user_id,
