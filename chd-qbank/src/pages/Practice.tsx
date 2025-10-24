@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Link } from "react-router-dom";
+import ErrorAlert from "../components/ErrorAlert";
 import PageState from "../components/PageState";
 import QuestionCard from "../components/QuestionCard";
 import { Button } from "../components/ui/Button";
@@ -8,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card"
 import { FilterChip } from "../components/ui/FilterChip";
 import { FormField, FormFieldset } from "../components/ui/FormField";
 import { Select } from "../components/ui/Select";
+import { Skeleton } from "../components/ui/Skeleton";
 import {
   DEFAULT_PRACTICE_FILTERS,
   type PracticeFilters,
@@ -273,129 +275,166 @@ export default function Practice() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [canAdvance, next]);
 
-  const renderFilterFields = () => (
-    <>
-      {filterOptionsError ? (
-        <div className="rounded-xl border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-700" role="alert">
-          {filterOptionsError}
+  const showFilterSkeleton =
+    filterOptionsLoading && filterOptions.topics.length === 0 && filterOptions.lesions.length === 0;
+
+  const renderFilterFields = () => {
+    if (showFilterSkeleton) {
+      return (
+        <div className="space-y-5">
+          <div className="grid gap-5 sm:grid-cols-2">
+            {Array.from({ length: 2 }).map((_, index) => (
+              <div key={index} className="space-y-2">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ))}
+          </div>
+          <div className="space-y-3">
+            <Skeleton className="h-4 w-36" />
+            <div className="grid gap-2 sm:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Skeleton key={index} className="h-9 rounded-full" />
+              ))}
+            </div>
+          </div>
+          <Skeleton className="h-9 w-60 rounded-full" />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          </div>
         </div>
-      ) : null}
-      <div className="grid gap-5 sm:grid-cols-2">
-        <FormField label={formatMessage({ id: "practice.filters.topic", defaultMessage: "Topic" })}>
-          <Select
-            value={pendingFilters.topic ?? ""}
-            onChange={(event) =>
-              setPendingFilters((prev) => ({
-                ...prev,
-                topic: event.target.value ? event.target.value : null
-              }))
-            }
-            disabled={filterOptionsLoading}
-          >
-            <option value="">
-              {formatMessage({ id: "practice.filters.topic.all", defaultMessage: "All topics" })}
-            </option>
-            {filterOptions.topics.map((topic) => (
-              <option key={topic} value={topic}>
-                {topic}
-              </option>
-            ))}
-          </Select>
-        </FormField>
-        <FormField label={formatMessage({ id: "practice.filters.lesion", defaultMessage: "Lesion" })}>
-          <Select
-            value={pendingFilters.lesion ?? ""}
-            onChange={(event) =>
-              setPendingFilters((prev) => ({
-                ...prev,
-                lesion: event.target.value ? event.target.value : null
-              }))
-            }
-            disabled={filterOptionsLoading}
-          >
-            <option value="">
-              {formatMessage({ id: "practice.filters.lesion.all", defaultMessage: "All lesions" })}
-            </option>
-            {filterOptions.lesions.map((lesion) => (
-              <option key={lesion} value={lesion}>
-                {lesion}
-              </option>
-            ))}
-          </Select>
-        </FormField>
-      </div>
-      <FormFieldset
-        legend={formatMessage({ id: "practice.filters.status", defaultMessage: "Question status" })}
-        contentClassName="sm:grid-cols-3"
-      >
-        {[
-          {
-            value: "all",
-            label: formatMessage({ id: "practice.filters.status.all", defaultMessage: "All questions" })
-          },
-          {
-            value: "new",
-            label: formatMessage({ id: "practice.filters.status.new", defaultMessage: "New to me" })
-          },
-          {
-            value: "seen",
-            label: formatMessage({ id: "practice.filters.status.seen", defaultMessage: "Seen before" })
-          }
-        ].map((option) => (
-          <FilterChip key={option.value} active={pendingFilters.status === option.value}>
-            <input
-              type="radio"
-              name="question-status"
-              value={option.value}
-              checked={pendingFilters.status === option.value}
-              onChange={() =>
+      );
+    }
+
+    return (
+      <>
+        {filterOptionsError ? (
+          <ErrorAlert title="Unable to load filter options" description={filterOptionsError} />
+        ) : null}
+        <div className="grid gap-5 sm:grid-cols-2">
+          <FormField label={formatMessage({ id: "practice.filters.topic", defaultMessage: "Topic" })}>
+            <Select
+              value={pendingFilters.topic ?? ""}
+              onChange={(event) =>
                 setPendingFilters((prev) => ({
                   ...prev,
-                  status: option.value as PracticeFilters["status"]
+                  topic: event.target.value ? event.target.value : null
                 }))
               }
-              className="sr-only"
-            />
-            <span>{option.label}</span>
-          </FilterChip>
-        ))}
-      </FormFieldset>
-      <FilterChip tone="brand" active={pendingFilters.flagged === "flagged"}>
-        <input
-          type="checkbox"
-          checked={pendingFilters.flagged === "flagged"}
-          onChange={(event) =>
-            setPendingFilters((prev) => ({
-              ...prev,
-              flagged: event.target.checked ? "flagged" : "all"
-            }))
-          }
-          className="sr-only"
-        />
-        <span>{formatMessage({ id: "practice.filters.flaggedOnly", defaultMessage: "Show only questions I’ve flagged" })}</span>
-      </FilterChip>
-      <FormField label={formatMessage({ id: "practice.filters.sessionLengthLabel", defaultMessage: "Session length" })}>
-        <Select
-          value={pendingFilters.sessionLength}
-          onChange={(event) =>
-            setPendingFilters((prev) => ({
-              ...prev,
-              sessionLength: Number.parseInt(event.target.value, 10)
-            }))
-          }
+              disabled={filterOptionsLoading}
+            >
+              <option value="">
+                {formatMessage({ id: "practice.filters.topic.all", defaultMessage: "All topics" })}
+              </option>
+              {filterOptions.topics.map((topic) => (
+                <option key={topic} value={topic}>
+                  {topic}
+                </option>
+              ))}
+            </Select>
+          </FormField>
+          <FormField label={formatMessage({ id: "practice.filters.lesion", defaultMessage: "Lesion" })}>
+            <Select
+              value={pendingFilters.lesion ?? ""}
+              onChange={(event) =>
+                setPendingFilters((prev) => ({
+                  ...prev,
+                  lesion: event.target.value ? event.target.value : null
+                }))
+              }
+              disabled={filterOptionsLoading}
+            >
+              <option value="">
+                {formatMessage({ id: "practice.filters.lesion.all", defaultMessage: "All lesions" })}
+              </option>
+              {filterOptions.lesions.map((lesion) => (
+                <option key={lesion} value={lesion}>
+                  {lesion}
+                </option>
+              ))}
+            </Select>
+          </FormField>
+        </div>
+        <FormFieldset
+          legend={formatMessage({ id: "practice.filters.status", defaultMessage: "Question status" })}
+          contentClassName="sm:grid-cols-3"
         >
-          {[10, 20, 40, 60].map((length) => (
-            <option key={length} value={length}>
-              {formatMessage(
-                { id: "practice.filters.sessionLengthOption", defaultMessage: "{count} questions" },
-                { count: length }
-              )}
-            </option>
+          {[
+            {
+              value: "all",
+              label: formatMessage({ id: "practice.filters.status.all", defaultMessage: "All questions" })
+            },
+            {
+              value: "new",
+              label: formatMessage({ id: "practice.filters.status.new", defaultMessage: "New to me" })
+            },
+            {
+              value: "seen",
+              label: formatMessage({ id: "practice.filters.status.seen", defaultMessage: "Seen before" })
+            }
+          ].map((option) => (
+            <FilterChip key={option.value} active={pendingFilters.status === option.value}>
+              <input
+                type="radio"
+                name="question-status"
+                value={option.value}
+                checked={pendingFilters.status === option.value}
+                onChange={() =>
+                  setPendingFilters((prev) => ({
+                    ...prev,
+                    status: option.value as PracticeFilters["status"]
+                  }))
+                }
+                className="sr-only"
+              />
+              <span>{option.label}</span>
+            </FilterChip>
           ))}
-        </Select>
-      </FormField>
-    </>
-  );
+        </FormFieldset>
+        <FilterChip tone="brand" active={pendingFilters.flagged === "flagged"}>
+          <input
+            type="checkbox"
+            checked={pendingFilters.flagged === "flagged"}
+            onChange={(event) =>
+              setPendingFilters((prev) => ({
+                ...prev,
+                flagged: event.target.checked ? "flagged" : "all"
+              }))
+            }
+            className="sr-only"
+          />
+          <span>{formatMessage({ id: "practice.filters.flaggedOnly", defaultMessage: "Show only questions I’ve flagged" })}</span>
+        </FilterChip>
+        <FormField label={formatMessage({ id: "practice.filters.sessionLengthLabel", defaultMessage: "Session length" })}>
+          <Select
+            value={pendingFilters.sessionLength}
+            onChange={(event) =>
+              setPendingFilters((prev) => ({
+                ...prev,
+                sessionLength: Number.parseInt(event.target.value, 10)
+              }))
+            }
+          >
+            {[10, 20, 40, 60].map((length) => (
+              <option key={length} value={length}>
+                {formatMessage(
+                  { id: "practice.filters.sessionLengthOption", defaultMessage: "{count} questions" },
+                  { count: length }
+                )}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+      </>
+    );
+  };
 
   const SessionRailCard = ({ className }: { className?: string }) => (
     <Card variant="secondary" className={className}>
@@ -592,11 +631,6 @@ export default function Practice() {
             {formatMessage({ id: "practice.filters.reset", defaultMessage: "Reset to defaults" })}
           </Button>
         </div>
-        {filterOptionsLoading ? (
-          <span className="block text-xs text-neutral-500">
-            {formatMessage({ id: "practice.filters.loading", defaultMessage: "Loading filter options…" })}
-          </span>
-        ) : null}
       </CardContent>
     </Card>
   );
@@ -686,11 +720,6 @@ export default function Practice() {
                     >
                       {formatMessage({ id: "practice.filters.reset", defaultMessage: "Reset to defaults" })}
                     </Button>
-                    {filterOptionsLoading ? (
-                      <span className="block text-center text-xs text-neutral-500">
-                        {formatMessage({ id: "practice.filters.loading", defaultMessage: "Loading filter options…" })}
-                      </span>
-                    ) : null}
                   </div>
                 </Dialog.Content>
               </Dialog.Portal>

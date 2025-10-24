@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import ErrorAlert from "../../components/ErrorAlert";
 import { Button } from "../../components/ui/Button";
-import { supabase } from "../../lib/supabaseClient";
+import { Skeleton } from "../../components/ui/Skeleton";
 import { useSessionStore } from "../../lib/auth";
+import { supabase } from "../../lib/supabaseClient";
 import { markdownRemarkPlugins, markdownRehypePlugins } from "../../lib/markdown";
 import {
   feedbackForMurmurOption,
@@ -22,48 +24,52 @@ export default function Murmurs() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
-
-    const fetchItems = async () => {
+  const fetchItems = useCallback(
+    async (isActive?: () => boolean) => {
       setLoading(true);
       setError(null);
-      const { data, error: fetchError } = await supabase
-        .from("murmur_items")
-        .select(
-          "id, prompt_md, rationale_md, media_url, murmur_options(id,label,text_md,is_correct)"
-        )
-        .eq("status", "published")
-        .order("updated_at", { ascending: false })
-        .limit(20);
+      try {
+        const { data, error: fetchError } = await supabase
+          .from("murmur_items")
+          .select(
+            "id, prompt_md, rationale_md, media_url, murmur_options(id,label,text_md,is_correct)"
+          )
+          .eq("status", "published")
+          .order("updated_at", { ascending: false })
+          .limit(20);
 
-      if (!active) return;
+        if (isActive && !isActive()) return;
 
-      if (fetchError) {
-        setError(fetchError.message);
-        setItems([]);
+        if (fetchError) {
+          setError(fetchError.message);
+          setItems([]);
+          setIndex(0);
+          setSelected(null);
+          setFeedback(null);
+          return;
+        }
+
+        const normalized = normalizeMurmurItems((data ?? []) as MurmurItemRow[]);
+
+        setItems(normalized);
         setIndex(0);
         setSelected(null);
         setFeedback(null);
+      } finally {
+        if (isActive && !isActive()) return;
         setLoading(false);
-        return;
       }
+    },
+    []
+  );
 
-      const normalized = normalizeMurmurItems((data ?? []) as MurmurItemRow[]);
-
-      setItems(normalized);
-      setIndex(0);
-      setSelected(null);
-      setFeedback(null);
-      setLoading(false);
-    };
-
-    void fetchItems();
-
+  useEffect(() => {
+    let active = true;
+    void fetchItems(() => active);
     return () => {
       active = false;
     };
-  }, []);
+  }, [fetchItems]);
 
   const current = items[index] ?? null;
 
@@ -111,11 +117,35 @@ export default function Murmurs() {
     setIndex((prev) => getNextMurmurIndex(prev, items.length));
   };
 
+  const initialLoading = loading && items.length === 0;
+  const initialError = error && items.length === 0;
+  const inlineError = error && items.length > 0;
+
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Guess the Murmur</h1>
-      {loading ? <p className="text-sm text-neutral-500">Loading murmur clips…</p> : null}
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {initialLoading ? (
+        <div className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm">
+          <Skeleton className="mb-4 h-40 w-full rounded-lg" />
+          <div className="space-y-3">
+            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-4 w-32" />
+            <div className="grid gap-3 sm:grid-cols-2">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <Skeleton key={index} className="h-10 rounded-lg" />
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {initialError ? (
+        <ErrorAlert
+          title="Unable to load murmur clips"
+          description={error}
+          onRetry={() => void fetchItems()}
+        />
+      ) : null}
+      {inlineError ? <ErrorAlert description={error} /> : null}
       {current ? (
         <div className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm">
           <audio controls src={current.media_url} className="mb-4 w-full" />
@@ -163,7 +193,7 @@ export default function Murmurs() {
             Next clip
           </Button>
         </div>
-      ) : !loading && !error ? (
+      ) : !initialLoading && !initialError ? (
         <div className="rounded-lg border border-dashed border-neutral-300 bg-white p-4 text-sm text-neutral-600">
           No published murmur items available yet.
         </div>

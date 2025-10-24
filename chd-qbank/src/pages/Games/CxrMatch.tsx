@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent, SyntheticEvent } from "react";
 import ReactMarkdown from "react-markdown";
 import { useLocation } from "react-router-dom";
+import ErrorAlert from "../../components/ErrorAlert";
 import { Button } from "../../components/ui/Button";
+import { Skeleton } from "../../components/ui/Skeleton";
 import { supabase } from "../../lib/supabaseClient";
 import { useSessionStore } from "../../lib/auth";
 import { markdownRemarkPlugins, markdownRehypePlugins } from "../../lib/markdown";
@@ -69,20 +71,28 @@ export default function CxrMatch() {
   const [naturalSize, setNaturalSize] = useState<Size | null>(null);
   const [displaySize, setDisplaySize] = useState<Size | null>(null);
 
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    supabase
-      .from("cxr_items")
-      .select("id, image_url, caption_md, cxr_labels(id,label,is_correct,x,y,w,h)")
-      .eq("status", "published")
-      .limit(20)
-      .then(({ data, error: fetchError }) => {
+  const fetchItems = useCallback(
+    async (isActive?: () => boolean) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const { data, error: fetchError } = await supabase
+          .from("cxr_items")
+          .select("id, image_url, caption_md, cxr_labels(id,label,is_correct,x,y,w,h)")
+          .eq("status", "published")
+          .limit(20);
+
+        if (isActive && !isActive()) return;
+
         if (fetchError) {
           setError(fetchError.message);
           setItems([]);
+          setIndex(0);
+          setSelected(null);
+          setMessage(null);
           return;
         }
+
         const normalized: CxrItem[] = ((data ?? []) as CxrItemRow[]).map((item) => ({
           id: item.id,
           image_url: item.image_url,
@@ -94,11 +104,26 @@ export default function CxrMatch() {
             bbox: mapBoundingBox(label)
           })))
         }));
+
         setItems(shuffle(normalized));
         setIndex(0);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+        setSelected(null);
+        setMessage(null);
+      } finally {
+        if (isActive && !isActive()) return;
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    let active = true;
+    void fetchItems(() => active);
+    return () => {
+      active = false;
+    };
+  }, [fetchItems]);
 
   const current = items[index];
   const correctLabel = useMemo(() => current?.labels.find((label) => label.is_correct) ?? null, [current]);
@@ -284,81 +309,110 @@ export default function CxrMatch() {
     [current]
   );
 
-  if (!current) {
-    if (loading) return <div>Loading radiographs…</div>;
-    if (error) return <div className="text-red-600">{error}</div>;
-    return <div>No CXR match items configured.</div>;
-  }
+  const initialLoading = loading && items.length === 0;
+  const initialError = error && items.length === 0;
+  const inlineError = error && items.length > 0;
 
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">CXR Sign Match</h1>
-      {loading ? <p className="text-sm text-neutral-500">Loading radiographs…</p> : null}
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
-      <div className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row">
-          <div
-            ref={imageContainerRef}
-            className={`relative w-full max-w-xl overflow-hidden rounded border ${
-              isDropActive ? "border-brand-500 ring-4 ring-brand-200" : "border-neutral-200"
-            }`}
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onDragEnter={handleDragEnter}
-            onDragLeave={handleDragLeave}
-            role="button"
-            tabIndex={0}
-            aria-label="Drop a lesion label on the matching region"
-          >
-            <img src={current.image_url} alt="CXR" className="block h-auto w-full" onLoad={handleImageLoad} />
-            {!selectedLabel ? (
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
-                <span className="rounded bg-neutral-900/80 px-3 py-1 text-sm font-medium text-white">
-                  Drag a label onto the lesion.
-                </span>
+      {initialLoading ? (
+        <div className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row">
+            <Skeleton className="h-64 w-full rounded-lg lg:max-w-xl" />
+            <div className="flex-1 space-y-3">
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-4 w-32" />
+              <div className="grid gap-3 sm:grid-cols-2">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <Skeleton key={index} className="h-10 rounded-lg" />
+                ))}
               </div>
-            ) : null}
-            <BoundingBoxOverlay
-              labels={overlayLabels}
-              naturalSize={naturalSize}
-              displaySize={displaySize}
-              visible={showBoundingBoxes}
-            />
-          </div>
-          <div className="flex-1 space-y-2 text-sm text-neutral-700">
-            <ReactMarkdown
-              remarkPlugins={markdownRemarkPlugins}
-              rehypePlugins={markdownRehypePlugins}
-              className="prose prose-sm max-w-none"
-            >
-              {current.caption_md ?? "Match the imaging sign with the lesion."}
-            </ReactMarkdown>
-            <p className="text-xs text-neutral-500">
-              Drop the label onto the lesion (or click a label) to submit. Labels remain keyboard accessible—use space
-              or enter to select.
-            </p>
-            <div className="grid gap-2">
-              {current.labels.map((label) => (
-                <Button
-                  key={label.id}
-                  variant={selected === label.id ? "primary" : "secondary"}
-                  draggable={!selected}
-                  onDragStart={(event) => handleDragStart(event, label)}
-                  onDragEnd={handleDragEnd}
-                  onClick={() => submit(label)}
-                  disabled={Boolean(selected)}
-                >
-                  {label.label}
-                </Button>
-              ))}
             </div>
           </div>
         </div>
-        {message ? <p className="mt-4 text-sm font-semibold">{message}</p> : null}
-        <Button type="button" className="mt-4" onClick={next} disabled={items.length === 0}>
-          Next image
-        </Button>
-      </div>
+      ) : null}
+      {initialError ? (
+        <ErrorAlert
+          title="Unable to load radiographs"
+          description={error}
+          onRetry={() => void fetchItems()}
+        />
+      ) : null}
+      {inlineError ? <ErrorAlert description={error} /> : null}
+      {current ? (
+        <div className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row">
+            <div
+              ref={imageContainerRef}
+              className={`relative w-full max-w-xl overflow-hidden rounded border ${
+                isDropActive ? "border-brand-500 ring-4 ring-brand-200" : "border-neutral-200"
+              }`}
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              role="button"
+              tabIndex={0}
+              aria-label="Drop a lesion label on the matching region"
+            >
+              <img src={current.image_url} alt="CXR" className="block h-auto w-full" onLoad={handleImageLoad} />
+              {!selectedLabel ? (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
+                  <span className="rounded bg-neutral-900/80 px-3 py-1 text-sm font-medium text-white">
+                    Drag a label onto the lesion.
+                  </span>
+                </div>
+              ) : null}
+              <BoundingBoxOverlay
+                labels={overlayLabels}
+                naturalSize={naturalSize}
+                displaySize={displaySize}
+                visible={showBoundingBoxes}
+              />
+            </div>
+            <div className="flex-1 space-y-2 text-sm text-neutral-700">
+              <ReactMarkdown
+                remarkPlugins={markdownRemarkPlugins}
+                rehypePlugins={markdownRehypePlugins}
+                className="prose prose-sm max-w-none"
+              >
+                {current.caption_md ?? "Match the imaging sign with the lesion."}
+              </ReactMarkdown>
+              <p className="text-xs text-neutral-500">
+                Drop the label onto the lesion (or click a label) to submit. Labels remain keyboard accessible—use space
+                or enter to select.
+              </p>
+              <div className="grid gap-2">
+                {current.labels.map((label) => (
+                  <Button
+                    key={label.id}
+                    variant={selected === label.id ? "primary" : "secondary"}
+                    draggable={!selected}
+                    onDragStart={(event) => handleDragStart(event, label)}
+                    onDragEnd={handleDragEnd}
+                    onClick={() => submit(label)}
+                    disabled={Boolean(selected)}
+                  >
+                    {label.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+          {message ? <p className="mt-4 text-sm font-semibold">{message}</p> : null}
+          <Button type="button" className="mt-4" onClick={next} disabled={items.length === 0}>
+            Next image
+          </Button>
+        </div>
+      ) : !initialLoading && !initialError ? (
+        <div className="rounded-lg border border-dashed border-neutral-300 bg-white p-4 text-sm text-neutral-600">
+          No CXR match items configured.
+        </div>
+      ) : null}
+      {loading && items.length > 0 ? (
+        <p className="text-sm text-neutral-500">Refreshing radiographs…</p>
+      ) : null}
     </div>
   );
 }

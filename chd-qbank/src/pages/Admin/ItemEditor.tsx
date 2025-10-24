@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { supabase } from "../../lib/supabaseClient";
+import ErrorAlert from "../../components/ErrorAlert";
 import { Button } from "../../components/ui/Button";
+import { Skeleton } from "../../components/ui/Skeleton";
+import { supabase } from "../../lib/supabaseClient";
 
 interface EditableChoice {
   id: string;
@@ -140,25 +142,36 @@ export default function ItemEditor() {
     }
   };
 
-  if (loading) return <div>Loading item…</div>;
+  if (loading) {
+    return (
+      <div className="space-y-5">
+        <Skeleton className="h-8 w-48" />
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div key={index} className="space-y-2">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        ))}
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </div>
+    );
+  }
 
   if (loadError)
     return (
-      <div className="space-y-4">
-        <p className="text-sm text-red-600">Failed to load item: {loadError}</p>
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" onClick={() => void loadItem()}>
-            Retry
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => navigate("/admin/items")}
-          >
+      <ErrorAlert
+        title="Failed to load item"
+        description={loadError}
+        onRetry={() => void loadItem()}
+        actions={
+          <Button type="button" variant="secondary" onClick={() => navigate("/admin/items") }>
             Back to list
           </Button>
-        </div>
-      </div>
+        }
+      />
     );
 
   if (!item) return null;

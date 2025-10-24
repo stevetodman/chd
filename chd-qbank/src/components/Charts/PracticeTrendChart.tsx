@@ -11,6 +11,8 @@ import {
   Filler
 } from "chart.js";
 import { Chart } from "react-chartjs-2";
+import ErrorAlert from "../ErrorAlert";
+import { Skeleton } from "../ui/Skeleton";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend, Filler);
 
@@ -159,15 +161,16 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
   };
 
   if (error) {
-    return (
-      <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
-        {error}
-      </div>
-    );
+    return <ErrorAlert title="Unable to load practice trends" description={error} />;
   }
 
   if (loading) {
-    return <p className="text-sm text-neutral-500">Loading your practice trends…</p>;
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-4 w-48" />
+        <Skeleton className="h-64 w-full rounded-xl" />
+      </div>
+    );
   }
 
   if (labels.length === 0) {

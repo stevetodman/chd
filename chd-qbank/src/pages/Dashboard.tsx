@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../components/ui/Card";
+import ErrorAlert from "../components/ErrorAlert";
+import PracticeTrendChart, { type PracticeTrendDatum } from "../components/Charts/PracticeTrendChart";
 import { Button } from "../components/ui/Button";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../components/ui/Card";
+import { Skeleton, SkeletonCard } from "../components/ui/Skeleton";
 import { supabase } from "../lib/supabaseClient";
 import { useSessionStore } from "../lib/auth";
 import type { DashboardMetrics } from "../lib/constants";
 import { EMPTY_DASHBOARD_METRICS, fetchDashboardMetrics } from "../lib/dashboard";
-import PracticeTrendChart, { type PracticeTrendDatum } from "../components/Charts/PracticeTrendChart";
 
 type TopicInsight = {
   topic: string;
@@ -103,7 +105,7 @@ export default function Dashboard() {
     };
   }, [session, metricsReloadKey]);
 
-  useEffect(() => {
+  const loadFeatured = useCallback(() => {
     setLoadingFeatured(true);
     setFeaturedError(null);
     supabase
@@ -124,6 +126,10 @@ export default function Dashboard() {
         setLoadingFeatured(false);
       });
   }, []);
+
+  useEffect(() => {
+    loadFeatured();
+  }, [loadFeatured]);
 
   const refreshMetrics = () => {
     setMetricsReloadKey((key) => key + 1);
@@ -556,6 +562,10 @@ export default function Dashboard() {
     };
   })();
 
+  const showMetricsSkeleton = !metricsLoaded && metricsLoading;
+  const showTopicSkeleton = topicLoading && strengths.length === 0 && growthAreas.length === 0;
+  const showFeaturedSkeleton = loadingFeatured && featured.length === 0;
+
   return (
     <div className="grid gap-6 md:grid-cols-2">
       <section className="relative overflow-hidden rounded-3xl border border-brand-200 bg-gradient-to-r from-brand-600 via-brand-500 to-indigo-500 p-6 text-white shadow-sm md:col-span-2">
@@ -624,12 +634,39 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent className="space-y-6">
           {metricsError ? (
-            <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
-              {metricsError}
-            </div>
+            <ErrorAlert
+              title="Unable to load progress"
+              description={metricsError}
+              onRetry={refreshMetrics}
+            />
           ) : null}
-          {!metricsLoaded && metricsLoading ? (
-            <p className="text-sm text-neutral-500">Loading progress…</p>
+          {showMetricsSkeleton ? (
+            <div className="space-y-6">
+              <section className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-700">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-3 w-56" />
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <article key={index} className="rounded-xl border border-white/60 bg-white p-3 shadow-sm">
+                      <Skeleton className="h-3 w-1/2" />
+                      <Skeleton className="mt-2 h-5 w-2/3" />
+                      <Skeleton className="mt-2 h-3 w-3/4" />
+                    </article>
+                  ))}
+                </div>
+              </section>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <SkeletonCard key={index} className="p-4" bodyLines={2} />
+                ))}
+              </div>
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-64" />
+                <Skeleton className="h-64 w-full rounded-xl" />
+              </div>
+            </div>
           ) : (
             <>
               <section className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-700">
@@ -790,50 +827,87 @@ export default function Dashboard() {
             </section>
           </div>
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
-            <section className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-neutral-800">Topic strengths</h3>
-                <span className="text-xs text-neutral-500">Last 200 attempts</span>
+            {topicError ? (
+              <div className="lg:col-span-2">
+                <ErrorAlert title="Topic insights unavailable" description={topicError} />
               </div>
-              {topicError ? (
-                <p className="text-sm text-red-600">{topicError}</p>
-              ) : topicLoading ? (
-                <p className="text-sm text-neutral-500">Analyzing your topics…</p>
-              ) : strengths.length > 0 ? (
-                <ul className="space-y-2 text-sm text-neutral-700">
-                  {strengths.map((topic) => (
-                    <li key={topic.topic} className="flex items-center justify-between">
-                      <span>{topic.topic}</span>
-                      <span className="text-xs text-emerald-600">{topic.accuracy}% accuracy</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-neutral-500">Practice a few more questions to unlock personalized strengths.</p>
-              )}
-            </section>
-            <section className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-neutral-800">Growth opportunities</h3>
-                <span className="text-xs text-neutral-500">Focus for upcoming sessions</span>
-              </div>
-              {topicError ? (
-                <p className="text-sm text-red-600">{topicError}</p>
-              ) : topicLoading ? (
-                <p className="text-sm text-neutral-500">Surfacing recommendations…</p>
-              ) : growthAreas.length > 0 ? (
-                <ul className="space-y-2 text-sm text-neutral-700">
-                  {growthAreas.map((topic) => (
-                    <li key={topic.topic} className="flex items-center justify-between">
-                      <span>{topic.topic}</span>
-                      <span className="text-xs text-amber-600">{topic.accuracy}% accuracy</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-neutral-500">Your accuracy is balanced. Rotate topics to stay sharp.</p>
-              )}
-            </section>
+            ) : (
+              <>
+                {showTopicSkeleton ? (
+                  <>
+                    <section className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-4">
+                      <div className="flex items-center justify-between">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-20" />
+                      </div>
+                      <div className="space-y-2">
+                        {Array.from({ length: 3 }).map((_, index) => (
+                          <div key={index} className="flex items-center justify-between">
+                            <Skeleton className="h-3 w-1/2" />
+                            <Skeleton className="h-3 w-16" />
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                    <section className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-4">
+                      <div className="flex items-center justify-between">
+                        <Skeleton className="h-4 w-36" />
+                        <Skeleton className="h-3 w-28" />
+                      </div>
+                      <div className="space-y-2">
+                        {Array.from({ length: 3 }).map((_, index) => (
+                          <div key={index} className="flex items-center justify-between">
+                            <Skeleton className="h-3 w-1/2" />
+                            <Skeleton className="h-3 w-20" />
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  </>
+                ) : (
+                  <>
+                    <section className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-neutral-800">Topic strengths</h3>
+                        <span className="text-xs text-neutral-500">Last 200 attempts</span>
+                      </div>
+                      {strengths.length > 0 ? (
+                        <ul className="space-y-2 text-sm text-neutral-700">
+                          {strengths.map((topic) => (
+                            <li key={topic.topic} className="flex items-center justify-between">
+                              <span>{topic.topic}</span>
+                              <span className="text-xs text-emerald-600">{topic.accuracy}% accuracy</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm text-neutral-500">
+                          Practice a few more questions to unlock personalized strengths.
+                        </p>
+                      )}
+                    </section>
+                    <section className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-neutral-800">Growth opportunities</h3>
+                        <span className="text-xs text-neutral-500">Focus for upcoming sessions</span>
+                      </div>
+                      {growthAreas.length > 0 ? (
+                        <ul className="space-y-2 text-sm text-neutral-700">
+                          {growthAreas.map((topic) => (
+                            <li key={topic.topic} className="flex items-center justify-between">
+                              <span>{topic.topic}</span>
+                              <span className="text-xs text-amber-600">{topic.accuracy}% accuracy</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm text-neutral-500">Your accuracy is balanced. Rotate topics to stay sharp.</p>
+                      )}
+                    </section>
+                  </>
+                )}
+              </>
+            )}
           </div>
           <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-sky-100 bg-sky-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -868,14 +942,28 @@ export default function Dashboard() {
           <CardTitle>Published content</CardTitle>
         </CardHeader>
         <CardContent>
-          <ul className="list-disc space-y-1 pl-6 text-sm text-neutral-700">
-            {featured.map((q) => (
-              <li key={q.id}>{q.lead_in ?? "Practice question"}</li>
-            ))}
-          </ul>
-          {loadingFeatured ? <p className="mt-2 text-xs text-neutral-500">Loading fresh questions…</p> : null}
-          {featuredError ? <p className="mt-2 text-xs text-red-600">{featuredError}</p> : null}
-          {!loadingFeatured && featured.length === 0 && !featuredError ? (
+          {showFeaturedSkeleton ? (
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Skeleton key={index} className="h-3 w-3/4" />
+              ))}
+            </div>
+          ) : featured.length > 0 ? (
+            <ul className="list-disc space-y-1 pl-6 text-sm text-neutral-700">
+              {featured.map((q) => (
+                <li key={q.id}>{q.lead_in ?? "Practice question"}</li>
+              ))}
+            </ul>
+          ) : null}
+          {featuredError ? (
+            <ErrorAlert
+              title="Unable to load published content"
+              description={featuredError}
+              onRetry={loadFeatured}
+              className="mt-3 sm:flex-col sm:items-start sm:gap-2"
+            />
+          ) : null}
+          {!showFeaturedSkeleton && featured.length === 0 && !featuredError ? (
             <p className="mt-2 text-xs text-neutral-500">No published questions yet.</p>
           ) : null}
         </CardContent>
