@@ -14,6 +14,8 @@ import {
   usePracticeSession
 } from "../hooks/usePracticeSession";
 import { useI18n } from "../i18n";
+import { useSessionStore } from "../lib/auth";
+import { fetchBadgeStatuses, type BadgeStatus } from "../lib/badges";
 
 export default function Practice() {
   const {
@@ -36,10 +38,14 @@ export default function Practice() {
     filterOptionsError
   } = usePracticeSession();
   const { formatMessage, formatNumber } = useI18n();
+  const { session } = useSessionStore();
   const [sessionStart, setSessionStart] = useState(() => Date.now());
   const [elapsedMs, setElapsedMs] = useState(0);
   const [pendingFilters, setPendingFilters] = useState<PracticeFilters>({ ...filters });
   const [filtersSheetOpen, setFiltersSheetOpen] = useState(false);
+  const [earnedBadges, setEarnedBadges] = useState<BadgeStatus[]>([]);
+  const [badgesLoading, setBadgesLoading] = useState(false);
+  const [badgesError, setBadgesError] = useState<string | null>(null);
 
   useEffect(() => {
     setPendingFilters({ ...filters });
@@ -58,6 +64,40 @@ export default function Practice() {
     setSessionStart(Date.now());
     setElapsedMs(0);
   }, [filters]);
+
+  useEffect(() => {
+    let active = true;
+    if (!session) {
+      setEarnedBadges([]);
+      setBadgesError(null);
+      setBadgesLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    setBadgesLoading(true);
+    setBadgesError(null);
+
+    fetchBadgeStatuses(session.user.id)
+      .then((badges) => {
+        if (!active) return;
+        setEarnedBadges(badges.filter((badge) => badge.earned));
+      })
+      .catch(() => {
+        if (!active) return;
+        setBadgesError("We couldn't load your badges. Try again soon.");
+        setEarnedBadges([]);
+      })
+      .finally(() => {
+        if (!active) return;
+        setBadgesLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [session]);
 
   const filterSummaryParts = useMemo(() => {
     const parts: string[] = [];
@@ -425,6 +465,39 @@ export default function Practice() {
             />
           </div>
         </div>
+        {session ? (
+          <div className="space-y-2 rounded-xl border border-emerald-100 bg-emerald-50/70 p-3 text-xs">
+            <div className="flex items-center justify-between text-emerald-700">
+              <span className="font-semibold uppercase tracking-wide">{formatMessage({ id: "practice.sessionRail.badges", defaultMessage: "Earned badges" })}</span>
+              {badgesLoading ? (
+                <span className="text-emerald-600">{formatMessage({ id: "practice.sessionRail.badgesLoading", defaultMessage: "Updating…" })}</span>
+              ) : null}
+            </div>
+            {badgesError ? (
+              <p className="text-xs text-red-600">{badgesError}</p>
+            ) : earnedBadges.length > 0 ? (
+              <ul className="flex flex-wrap gap-2 text-emerald-700">
+                {earnedBadges.map((badge) => (
+                  <li
+                    key={badge.id}
+                    className="flex items-center gap-2 rounded-full bg-white/80 px-2 py-1 font-medium shadow-sm"
+                  >
+                    <span aria-hidden="true" className="text-base">
+                      {badge.icon}
+                    </span>
+                    <span>{badge.label}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : badgesLoading ? (
+              <p className="text-xs text-emerald-700">{formatMessage({ id: "practice.sessionRail.badgesChecking", defaultMessage: "Checking your badges…" })}</p>
+            ) : (
+              <p className="text-xs text-emerald-700">
+                {formatMessage({ id: "practice.sessionRail.badgesEmpty", defaultMessage: "Keep practicing to unlock badges." })}
+              </p>
+            )}
+          </div>
+        ) : null}
         <dl className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-1">
           <div className="flex items-center justify-between gap-3">
             <dt className="text-neutral-500">

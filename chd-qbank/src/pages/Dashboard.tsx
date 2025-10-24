@@ -6,7 +6,10 @@ import { supabase } from "../lib/supabaseClient";
 import { useSessionStore } from "../lib/auth";
 import type { DashboardMetrics } from "../lib/constants";
 import { EMPTY_DASHBOARD_METRICS, fetchDashboardMetrics } from "../lib/dashboard";
-import PracticeTrendChart, { type PracticeTrendDatum } from "../components/Charts/PracticeTrendChart";
+import PracticeTrendChart from "../components/Charts/PracticeTrendChart";
+import type { PracticeTrendDatum } from "../types/practice";
+import { computeWeeklyStreak, fetchPracticeTrendData } from "../lib/practiceTrend";
+import { evaluateBadges } from "../lib/badges";
 
 type TopicInsight = {
   topic: string;
@@ -147,63 +150,9 @@ export default function Dashboard() {
     setTopicLoading(true);
     setTopicError(null);
 
-    const weeksToShow = 8;
-    const toUtcWeekStart = (value: Date): Date => {
-      const base = new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
-      const day = base.getUTCDay();
-      const diff = (day + 6) % 7;
-      base.setUTCDate(base.getUTCDate() - diff);
-      base.setUTCHours(0, 0, 0, 0);
-      return base;
-    };
-
-    const now = new Date();
-    const latestWeek = toUtcWeekStart(now);
-    const earliestWeek = new Date(latestWeek);
-    earliestWeek.setUTCDate(earliestWeek.getUTCDate() - (weeksToShow - 1) * 7);
-
-    supabase
-      .from("responses")
-      .select("created_at, is_correct")
-      .eq("user_id", session.user.id)
-      .gte("created_at", earliestWeek.toISOString())
-      .order("created_at", { ascending: true })
-      .then(({ data, error }) => {
+    fetchPracticeTrendData(session.user.id)
+      .then((points) => {
         if (!active) return;
-        if (error) {
-          setTrendError("We couldn't load your recent practice. Try again shortly.");
-          setTrendData([]);
-          return;
-        }
-
-        const aggregates = new Map<string, { attempts: number; correct: number }>();
-        for (const row of data ?? []) {
-          if (!row?.created_at) continue;
-          const createdAt = new Date(row.created_at);
-          const weekStart = toUtcWeekStart(createdAt);
-          const key = weekStart.toISOString().slice(0, 10);
-          const entry = aggregates.get(key) ?? { attempts: 0, correct: 0 };
-          entry.attempts += 1;
-          if (row.is_correct) entry.correct += 1;
-          aggregates.set(key, entry);
-        }
-
-        const formatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
-        const points: PracticeTrendDatum[] = [];
-
-        for (let i = 0; i < weeksToShow; i += 1) {
-          const cursor = new Date(earliestWeek);
-          cursor.setUTCDate(cursor.getUTCDate() + i * 7);
-          const key = cursor.toISOString().slice(0, 10);
-          const summary = aggregates.get(key) ?? { attempts: 0, correct: 0 };
-          const accuracy = summary.attempts > 0 ? (summary.correct / summary.attempts) * 100 : null;
-          points.push({
-            label: formatter.format(cursor),
-            attempts: summary.attempts,
-            accuracy
-          });
-        }
-
         setTrendData(points);
       })
       .catch(() => {
@@ -377,23 +326,23 @@ export default function Dashboard() {
     return `Accuracy ${direction} ${Math.abs(accuracyDelta).toFixed(1)} points versus last week.`;
   })();
 
-  const streakWeeks = (() => {
-    let streak = 0;
-    for (let index = trendData.length - 1; index >= 0; index -= 1) {
-      if (trendData[index]?.attempts > 0) {
-        streak += 1;
-      } else {
-        break;
-      }
-    }
-    return streak;
-  })();
+  const weeklyStreak = useMemo(() => computeWeeklyStreak(trendData), [trendData]);
 
-  const momentumDescription = streakWeeks > 0
-    ? streakWeeks >= 3
-      ? `You're on a ${streakWeeks}-week streak—keep it alive with a short session.`
-      : `${streakWeeks}-week streak in progress. Schedule your next quiz to extend it.`
+  const momentumDescription = weeklyStreak > 0
+    ? weeklyStreak >= 3
+      ? `You're on a ${weeklyStreak}-week streak—keep it alive with a short session.`
+      : `${weeklyStreak}-week streak in progress. Schedule your next quiz to extend it.`
     : "Start a fresh streak with a quick 10-question session.";
+
+  const badges = useMemo(
+    () => evaluateBadges({ totalAttempts: metrics.total_attempts, weeklyStreak }),
+    [metrics.total_attempts, weeklyStreak]
+  );
+  const earnedBadges = badges.filter((badge) => badge.earned);
+  const nextBadge = badges.find((badge) => !badge.earned) ?? null;
+  const badgeUnlockMessage = nextBadge
+    ? `Next badge: ${nextBadge.label} (${Math.max(0, nextBadge.progressTarget - Math.floor(nextBadge.progressCurrent))} to go).`
+    : "All milestone badges unlocked. Great job!";
 
   const narrativeSnapshots = useMemo(
     () => [
@@ -687,6 +636,34 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
               </dl>
+              <section className="space-y-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4 text-sm text-emerald-900">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Badges earned</h3>
+                  <p className="text-xs text-emerald-700/80">{badgeUnlockMessage}</p>
+                </div>
+                {earnedBadges.length > 0 ? (
+                  <ul className="flex flex-wrap gap-3">
+                    {earnedBadges.map((badge) => (
+                      <li
+                        key={badge.id}
+                        className="flex min-w-[11rem] flex-1 items-start gap-3 rounded-xl border border-emerald-200 bg-white/80 px-3 py-2 shadow-sm"
+                      >
+                        <span aria-hidden="true" className="text-xl">
+                          {badge.icon}
+                        </span>
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-emerald-900">{badge.label}</p>
+                          <p className="text-xs text-emerald-700/80">{badge.description}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-emerald-800">
+                    Answer 50 questions and maintain a 4-week streak to start unlocking badges.
+                  </p>
+                )}
+              </section>
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-neutral-700">Weekly trend (last 8 weeks)</h3>
                 <PracticeTrendChart data={trendData} loading={trendLoading} error={trendError} />
