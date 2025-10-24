@@ -7,6 +7,7 @@ import { useSessionStore } from "../lib/auth";
 import type { DashboardMetrics } from "../lib/constants";
 import { EMPTY_DASHBOARD_METRICS, fetchDashboardMetrics } from "../lib/dashboard";
 import PracticeTrendChart, { type PracticeTrendDatum } from "../components/Charts/PracticeTrendChart";
+import { StatTile, Tag } from "../design-system";
 
 type TopicInsight = {
   topic: string;
@@ -379,10 +380,14 @@ export default function Dashboard() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.25)_0,transparent_55%)]" aria-hidden="true" />
         <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="space-y-4">
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-xs font-medium uppercase tracking-wide">
-              <span className="block h-1.5 w-1.5 rounded-full bg-emerald-300" aria-hidden="true" />
+            <Tag
+              tone="accent"
+              size="sm"
+              className="border border-white/30 bg-white/20 text-white shadow-sm ring-0 ring-offset-0"
+              icon={<span className="block h-1.5 w-1.5 rounded-full bg-emerald-300" aria-hidden="true" />}
+            >
               {heroChip}
-            </span>
+            </Tag>
             <div className="space-y-2">
               <p className="text-sm uppercase tracking-wide text-white/80">Welcome back</p>
               <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{greetingName}</h1>
@@ -449,40 +454,39 @@ export default function Dashboard() {
             <p className="text-sm text-neutral-500">Loading progress…</p>
           ) : (
             <>
-              <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <Card elevation="flat" interactive status="default" className="p-0">
-                  <CardContent className="space-y-2">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Practice attempts</dt>
-                    <dd className="text-2xl font-semibold text-neutral-900">{metrics.total_attempts}</dd>
-                    <p className="text-xs text-neutral-500">{metrics.correct_attempts} correct</p>
-                  </CardContent>
-                </Card>
-                <Card elevation="flat" interactive status="success" className="p-0 text-emerald-900">
-                  <CardContent className="space-y-2">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Accuracy</dt>
-                    <dd className="text-2xl font-semibold">{accuracy}%</dd>
-                    <p className="text-xs text-emerald-700/80">Lifetime practice and games.</p>
-                  </CardContent>
-                </Card>
-                <Card elevation="flat" interactive status="warning" className="p-0 text-amber-900">
-                  <CardContent className="space-y-2">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-amber-700">Flagged for review</dt>
-                    <dd className="text-2xl font-semibold">{metrics.flagged_count}</dd>
-                    <p className="text-xs text-amber-700/80">
-                      <Link to="/review" className="font-medium underline">
-                        Review flagged questions
-                      </Link>
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card elevation="flat" interactive status="info" className="p-0 text-sky-900">
-                  <CardContent className="space-y-2">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-sky-700">Weekly points</dt>
-                    <dd className="text-2xl font-semibold">{metrics.weekly_points}</dd>
-                    <p className="text-xs text-sky-700/80">All-time total: {metrics.all_time_points}</p>
-                  </CardContent>
-                </Card>
-              </dl>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <StatTile
+                  label="Practice attempts"
+                  value={metrics.total_attempts}
+                  description={`${metrics.correct_attempts} correct`}
+                  interactive
+                />
+                <StatTile
+                  label="Accuracy"
+                  value={`${accuracy}%`}
+                  description="Lifetime practice and games."
+                  tone="success"
+                  interactive
+                />
+                <StatTile
+                  label="Flagged for review"
+                  value={metrics.flagged_count}
+                  tone="warning"
+                  interactive
+                  description={
+                    <Link to="/review" className="font-semibold text-current underline underline-offset-2">
+                      Review flagged questions
+                    </Link>
+                  }
+                />
+                <StatTile
+                  label="Weekly points"
+                  value={metrics.weekly_points}
+                  tone="info"
+                  interactive
+                  description={`All-time total: ${metrics.all_time_points}`}
+                />
+              </div>
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-neutral-700">Weekly trend (last 8 weeks)</h3>
                 <PracticeTrendChart data={trendData} loading={trendLoading} error={trendError} />

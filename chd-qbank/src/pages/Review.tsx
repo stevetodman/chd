@@ -4,6 +4,7 @@ import { useSessionStore } from "../lib/auth";
 import { normalizeQuestionRows, type QuestionQueryRow } from "../lib/practice";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
+import { SectionHeader } from "../design-system";
 import PageState from "../components/PageState";
 import ReviewQuestionCard, { type ReviewFlag } from "../components/ReviewQuestionCard";
 
@@ -100,21 +101,21 @@ export default function Review() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <div className="space-y-2">
-        <h1 className="text-2xl font-semibold">Review flagged questions</h1>
-        <p className="text-sm text-neutral-600">
-          Work through the items you saved during practice. Mark questions as reviewed to remove them from this list.
-        </p>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3 text-sm">
-        <Button type="button" variant="secondary" onClick={() => void loadFlags()} disabled={loading}>
-          {loading ? "Refreshing…" : "Refresh list"}
-        </Button>
-        <span className="text-neutral-500">
-          {flags.length === 1 ? "1 question awaiting review" : `${flags.length} questions awaiting review`}
-        </span>
-      </div>
+      <SectionHeader
+        title="Review flagged questions"
+        description="Work through the items you saved during practice. Mark questions as reviewed to remove them from this list."
+        spacing="compact"
+        actions={
+          <div className="flex flex-col items-start gap-3 text-sm text-neutral-500 sm:flex-row sm:items-center">
+            <Button type="button" variant="secondary" onClick={() => void loadFlags()} disabled={loading}>
+              {loading ? "Refreshing…" : "Refresh list"}
+            </Button>
+            <span className="sm:whitespace-nowrap">
+              {flags.length === 1 ? "1 question awaiting review" : `${flags.length} questions awaiting review`}
+            </span>
+          </div>
+        }
+      />
 
       {fetchError ? (
         <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert">
