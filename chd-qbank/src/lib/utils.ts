@@ -3,7 +3,20 @@ export function formatMs(ms?: number | null): string {
   const seconds = Math.max(0, Math.floor(ms / 1000));
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
-  return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+  const minuteFormatter = new Intl.NumberFormat(undefined, {
+    style: "unit",
+    unit: "minute",
+    unitDisplay: "narrow"
+  });
+  const secondFormatter = new Intl.NumberFormat(undefined, {
+    style: "unit",
+    unit: "second",
+    unitDisplay: "narrow"
+  });
+  if (mins > 0) {
+    return `${minuteFormatter.format(mins)} ${secondFormatter.format(secs)}`;
+  }
+  return secondFormatter.format(secs);
 }
 
 export function clampMs(ms: number): number {
@@ -11,8 +24,12 @@ export function clampMs(ms: number): number {
 }
 
 export function percentage(part: number, total: number): string {
-  if (total === 0) return "0%";
-  return `${Math.round((part / total) * 100)}%`;
+  const formatter = new Intl.NumberFormat(undefined, {
+    style: "percent",
+    maximumFractionDigits: 0
+  });
+  if (total === 0) return formatter.format(0);
+  return formatter.format(part / total);
 }
 
 export function classNames(...classes: Array<string | false | null | undefined>) {

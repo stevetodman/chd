@@ -10,6 +10,7 @@ import {
   type PracticeFilters,
   usePracticeSession
 } from "../hooks/usePracticeSession";
+import { useI18n } from "../i18n";
 
 export default function Practice() {
   const {
@@ -31,6 +32,7 @@ export default function Practice() {
     filterOptionsLoading,
     filterOptionsError
   } = usePracticeSession();
+  const { formatMessage, formatNumber } = useI18n();
   const [filtersOpen, setFiltersOpen] = useState(true);
   const [pendingFilters, setPendingFilters] = useState<PracticeFilters>({ ...filters });
   const [filtersSheetOpen, setFiltersSheetOpen] = useState(false);
@@ -43,12 +45,26 @@ export default function Practice() {
     const parts: string[] = [];
     if (filters.topic) parts.push(filters.topic);
     if (filters.lesion) parts.push(filters.lesion);
-    if (filters.flagged === "flagged") parts.push("Flagged only");
-    if (filters.status === "new") parts.push("New questions");
-    if (filters.status === "seen") parts.push("Seen questions");
-    parts.push(`${filters.sessionLength} question session`);
+    if (filters.flagged === "flagged") {
+      parts.push(formatMessage({ id: "practice.filters.flagged", defaultMessage: "Flagged only" }));
+    }
+    if (filters.status === "new") {
+      parts.push(formatMessage({ id: "practice.filters.new", defaultMessage: "New questions" }));
+    }
+    if (filters.status === "seen") {
+      parts.push(formatMessage({ id: "practice.filters.seen", defaultMessage: "Seen questions" }));
+    }
+    parts.push(
+      formatMessage(
+        {
+          id: "practice.filters.sessionLength",
+          defaultMessage: "{count, plural, one {# question session} other {# question session}}"
+        },
+        { count: filters.sessionLength }
+      )
+    );
     return parts;
-  }, [filters]);
+  }, [filters, formatMessage]);
 
   const filterSummary = useMemo(() => filterSummaryParts.join(" • "), [filterSummaryParts]);
 
@@ -75,8 +91,11 @@ export default function Practice() {
   if (loading && questions.length === 0) {
     return (
       <PageState
-        title="Loading practice session"
-        description="We’re generating the next set of questions for you."
+        title={formatMessage({ id: "practice.loading.title", defaultMessage: "Loading practice session" })}
+        description={formatMessage({
+          id: "practice.loading.description",
+          defaultMessage: "We’re generating the next set of questions for you."
+        })}
         fullHeight
       />
     );
@@ -85,7 +104,7 @@ export default function Practice() {
   if (error && questions.length === 0) {
     return (
       <PageState
-        title="We couldn’t load questions"
+        title={formatMessage({ id: "practice.error.title", defaultMessage: "We couldn’t load questions" })}
         description={error}
         variant="error"
         fullHeight
@@ -96,8 +115,11 @@ export default function Practice() {
   if (!currentQuestion)
     return (
       <PageState
-        title="No questions found"
-        description="Adjust your filters or try refreshing to start a new session."
+        title={formatMessage({ id: "practice.empty.title", defaultMessage: "No questions found" })}
+        description={formatMessage({
+          id: "practice.empty.description",
+          defaultMessage: "Adjust your filters or try refreshing to start a new session."
+        })}
         variant="empty"
         fullHeight
       />
@@ -369,7 +391,13 @@ export default function Practice() {
       <div className="sticky bottom-0 z-30 rounded-t-2xl border border-neutral-200 bg-white/95 p-4 shadow-[0_-10px_30px_rgba(15,23,42,0.08)] backdrop-blur-sm sm:static sm:rounded-lg sm:shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-sm text-neutral-600">
-            Q {index + 1} of {questions.length}
+            {formatMessage(
+              {
+                id: "practice.progress.counter",
+                defaultMessage: "Q {current, number, integer} of {total, number, integer}"
+              },
+              { current: index + 1, total: questions.length }
+            )}
           </div>
           <Button
             type="button"
@@ -378,56 +406,96 @@ export default function Practice() {
             disabled={!canAdvance}
             className="w-full sm:w-auto"
           >
-            Next question
+            {formatMessage({ id: "practice.actions.next", defaultMessage: "Next question" })}
           </Button>
         </div>
       </div>
       {sessionComplete ? (
         <Card className="border-emerald-200">
           <CardHeader>
-            <CardTitle className="text-base">Session complete</CardTitle>
+            <CardTitle className="text-base">
+              {formatMessage({ id: "practice.sessionComplete.title", defaultMessage: "Session complete" })}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-sm text-neutral-700">
             <p>
-              You worked through {sessionStats.totalAnswered} question{sessionStats.totalAnswered === 1 ? "" : "s"} this round.
-              Here’s how it went:
+              {formatMessage(
+                {
+                  id: "practice.sessionComplete.summary",
+                  defaultMessage:
+                    "You worked through {count, plural, one {# question} other {# questions}} this round. Here’s how it went:"
+                },
+                { count: sessionStats.totalAnswered }
+              )}
             </p>
             <dl className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-md bg-neutral-50 p-3">
-                <dt className="text-xs font-medium uppercase tracking-wide text-neutral-500">Accuracy</dt>
+                <dt className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                  {formatMessage({ id: "practice.sessionComplete.accuracyLabel", defaultMessage: "Accuracy" })}
+                </dt>
                 <dd className="text-lg font-semibold text-neutral-900">
-                  {sessionStats.accuracy !== null ? `${Math.round(sessionStats.accuracy * 100)}%` : "Not enough data"}
+                  {sessionStats.accuracy !== null
+                    ? formatNumber(sessionStats.accuracy, { style: "percent", maximumFractionDigits: 0 })
+                    : formatMessage({
+                        id: "practice.sessionComplete.accuracyEmpty",
+                        defaultMessage: "Not enough data"
+                      })}
                 </dd>
               </div>
               <div className="rounded-md bg-neutral-50 p-3">
-                <dt className="text-xs font-medium uppercase tracking-wide text-neutral-500">Correct answers</dt>
+                <dt className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                  {formatMessage({ id: "practice.sessionComplete.correctLabel", defaultMessage: "Correct answers" })}
+                </dt>
                 <dd className="text-lg font-semibold text-neutral-900">
-                  {sessionStats.totalCorrect} / {sessionStats.totalAnswered}
+                  {formatNumber(sessionStats.totalCorrect)} / {formatNumber(sessionStats.totalAnswered)}
                 </dd>
               </div>
               <div className="rounded-md bg-neutral-50 p-3">
-                <dt className="text-xs font-medium uppercase tracking-wide text-neutral-500">Avg. time</dt>
+                <dt className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                  {formatMessage({ id: "practice.sessionComplete.averageTimeLabel", defaultMessage: "Avg. time" })}
+                </dt>
                 <dd className="text-lg font-semibold text-neutral-900">
                   {sessionStats.averageMs !== null
-                    ? `${(sessionStats.averageMs / 1000).toFixed(1)}s`
-                    : "Not recorded"}
+                    ? formatNumber(sessionStats.averageMs / 1000, {
+                        style: "unit",
+                        unit: "second",
+                        unitDisplay: "narrow",
+                        maximumFractionDigits: 1
+                      })
+                    : formatMessage({ id: "practice.sessionComplete.averageTimeEmpty", defaultMessage: "Not recorded" })}
                 </dd>
               </div>
             </dl>
             {sessionStats.flagged > 0 ? (
               <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-amber-800">
                 <p className="font-medium">
-                  {sessionStats.flagged} question{sessionStats.flagged === 1 ? "" : "s"} saved for spaced review.
+                  {formatMessage(
+                    {
+                      id: "practice.sessionComplete.flagged",
+                      defaultMessage:
+                        "{count, plural, one {# question saved for spaced review.} other {# questions saved for spaced review.}}"
+                    },
+                    { count: sessionStats.flagged }
+                  )}
                 </p>
                 <p className="text-sm">
-                  Revisit them on the <Link to="/review" className="font-semibold underline">review page</Link> tomorrow to lock in the learning.
+                  {formatMessage({ id: "practice.sessionComplete.reviewPrompt.before", defaultMessage: "Revisit them on the " })}
+                  <Link to="/review" className="font-semibold underline">
+                    {formatMessage({ id: "practice.sessionComplete.reviewLink", defaultMessage: "review page" })}
+                  </Link>
+                  {formatMessage({ id: "practice.sessionComplete.reviewPrompt.after", defaultMessage: " tomorrow to lock in the learning." })}
                 </p>
               </div>
             ) : (
               <div className="rounded-md border border-neutral-200 bg-neutral-50 p-4 text-neutral-700">
-                <p className="font-medium">No flagged questions yet.</p>
+                <p className="font-medium">
+                  {formatMessage({ id: "practice.sessionComplete.noFlagged", defaultMessage: "No flagged questions yet." })}
+                </p>
                 <p className="text-sm">
-                  Flag tricky items during practice so they’ll show up in your spaced-review queue.
+                  {formatMessage({
+                    id: "practice.sessionComplete.noFlaggedDescription",
+                    defaultMessage: "Flag tricky items during practice so they’ll show up in your spaced-review queue."
+                  })}
                 </p>
               </div>
             )}

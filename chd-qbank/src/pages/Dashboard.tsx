@@ -7,6 +7,7 @@ import { useSessionStore } from "../lib/auth";
 import type { DashboardMetrics } from "../lib/constants";
 import { EMPTY_DASHBOARD_METRICS, fetchDashboardMetrics } from "../lib/dashboard";
 import PracticeTrendChart, { type PracticeTrendDatum } from "../components/Charts/PracticeTrendChart";
+import { useI18n } from "../i18n";
 
 interface FeaturedQuestion {
   id: string;
@@ -37,6 +38,7 @@ export default function Dashboard() {
   const [trendData, setTrendData] = useState<PracticeTrendDatum[]>([]);
   const [trendLoading, setTrendLoading] = useState(false);
   const [trendError, setTrendError] = useState<string | null>(null);
+  const { locale, formatMessage, formatNumber } = useI18n();
 
   useEffect(() => {
     if (!session) return;
@@ -76,7 +78,13 @@ export default function Dashboard() {
       })
       .catch((error) => {
         if (!active) return;
-        const message = error instanceof Error ? error.message : "Unable to load progress.";
+        const message =
+          error instanceof Error && error.message
+            ? error.message
+            : formatMessage({
+                id: "dashboard.progress.loadError",
+                defaultMessage: "Unable to load progress."
+              });
         setMetrics({ ...EMPTY_DASHBOARD_METRICS });
         setMetricsLoaded(true);
         setMetricsError(message);
@@ -89,7 +97,7 @@ export default function Dashboard() {
     return () => {
       active = false;
     };
-  }, [session, metricsReloadKey]);
+  }, [session, metricsReloadKey, formatMessage]);
 
   useEffect(() => {
     setLoadingFeatured(true);
@@ -153,7 +161,12 @@ export default function Dashboard() {
       .then(({ data, error }) => {
         if (!active) return;
         if (error) {
-          setTrendError("We couldn't load your recent practice. Try again shortly.");
+          setTrendError(
+            formatMessage({
+              id: "dashboard.trend.error",
+              defaultMessage: "We couldn't load your recent practice. Try again shortly."
+            })
+          );
           setTrendData([]);
           return;
         }
@@ -170,7 +183,7 @@ export default function Dashboard() {
           aggregates.set(key, entry);
         }
 
-        const formatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
+        const formatter = new Intl.DateTimeFormat(locale, { month: "short", day: "numeric" });
         const points: PracticeTrendDatum[] = [];
 
         for (let i = 0; i < weeksToShow; i += 1) {
@@ -190,7 +203,12 @@ export default function Dashboard() {
       })
       .catch(() => {
         if (!active) return;
-        setTrendError("We couldn't load your recent practice. Try again shortly.");
+        setTrendError(
+          formatMessage({
+            id: "dashboard.trend.error",
+            defaultMessage: "We couldn't load your recent practice. Try again shortly."
+          })
+        );
         setTrendData([]);
       })
       .finally(() => {
@@ -201,9 +219,14 @@ export default function Dashboard() {
     return () => {
       active = false;
     };
-  }, [session, metricsReloadKey]);
+  }, [session, metricsReloadKey, formatMessage, locale]);
 
-  const accuracy = metrics.total_attempts > 0 ? Math.round((metrics.correct_attempts / metrics.total_attempts) * 100) : 0;
+  const accuracyRatio =
+    metrics.total_attempts > 0 ? metrics.correct_attempts / metrics.total_attempts : null;
+  const accuracyDisplay =
+    accuracyRatio !== null
+      ? formatNumber(accuracyRatio, { style: "percent", maximumFractionDigits: 0 })
+      : formatMessage({ id: "dashboard.metrics.accuracyEmpty", defaultMessage: "–" });
 
   const userMetadata = session?.user?.user_metadata as Record<string, unknown> | undefined;
   const fromMetadata = (key: string) => {
@@ -214,17 +237,40 @@ export default function Dashboard() {
   };
   const metadataAlias = fromMetadata("alias");
   const metadataName = fromMetadata("full_name") ?? fromMetadata("name");
-  const defaultHandle = session?.user?.email ? session.user.email.split("@")[0] : "there";
-  const greetingName = aliasLabel ?? metadataAlias ?? metadataName ?? defaultHandle;
-  const heroCtaLabel = metrics.total_attempts > 0 ? "Resume practice" : "Start your first quiz";
-  const heroSummary =
+  const fallbackGreeting = formatMessage({ id: "dashboard.hero.fallbackName", defaultMessage: "there" });
+  const defaultHandle = session?.user?.email ? session.user.email.split("@")[0] : fallbackGreeting;
+  const greetingName = aliasLabel ?? metadataAlias ?? metadataName ?? defaultHandle ?? fallbackGreeting;
+  const heroCtaLabel =
     metrics.total_attempts > 0
-      ? `You've answered ${metrics.total_attempts} questions with ${accuracy}% accuracy.`
-      : "Kick off your CHD prep with guided tutor mode sessions.";
+      ? formatMessage({ id: "dashboard.hero.cta.resume", defaultMessage: "Resume practice" })
+      : formatMessage({ id: "dashboard.hero.cta.start", defaultMessage: "Start your first quiz" });
+  const heroSummary =
+    metrics.total_attempts > 0 && accuracyRatio !== null
+      ? formatMessage(
+          {
+            id: "dashboard.hero.summary.metrics",
+            defaultMessage:
+              "You've answered {questions, number} questions with {accuracy, number, percent} accuracy."
+          },
+          { questions: metrics.total_attempts, accuracy: accuracyRatio }
+        )
+      : formatMessage({
+          id: "dashboard.hero.summary.start",
+          defaultMessage: "Kick off your CHD prep with guided tutor mode sessions."
+        });
   const heroChip =
     metrics.total_attempts > 0
-      ? `${metrics.correct_attempts} correct answers logged`
-      : "Create momentum with weekly practice";
+      ? formatMessage(
+          {
+            id: "dashboard.hero.chip.progress",
+            defaultMessage: "{count, number} correct answers logged"
+          },
+          { count: metrics.correct_attempts }
+        )
+      : formatMessage({
+          id: "dashboard.hero.chip.momentum",
+          defaultMessage: "Create momentum with weekly practice"
+        });
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
@@ -237,7 +283,9 @@ export default function Dashboard() {
               {heroChip}
             </span>
             <div className="space-y-2">
-              <p className="text-sm uppercase tracking-wide text-white/80">Welcome back</p>
+              <p className="text-sm uppercase tracking-wide text-white/80">
+                {formatMessage({ id: "dashboard.hero.welcome", defaultMessage: "Welcome back" })}
+              </p>
               <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{greetingName}</h1>
             </div>
             <p className="max-w-xl text-sm text-white/80 sm:text-base">{heroSummary}</p>
@@ -250,18 +298,22 @@ export default function Dashboard() {
                 <span aria-hidden="true">→</span>
               </Link>
               <Link to="/games" className="text-sm font-medium text-white/80 underline-offset-4 hover:text-white hover:underline">
-                Explore learning games
+                {formatMessage({ id: "dashboard.hero.exploreGames", defaultMessage: "Explore learning games" })}
               </Link>
             </div>
           </div>
           <dl className="grid min-w-[220px] gap-3 rounded-2xl border border-white/20 bg-white/10 p-4 text-sm">
             <div className="flex flex-col gap-1">
-              <dt className="text-white/70">Lifetime accuracy</dt>
-              <dd className="text-2xl font-semibold text-white">{accuracy}%</dd>
+              <dt className="text-white/70">
+                {formatMessage({ id: "dashboard.hero.lifetimeAccuracy", defaultMessage: "Lifetime accuracy" })}
+              </dt>
+              <dd className="text-2xl font-semibold text-white">{accuracyDisplay}</dd>
             </div>
             <div className="flex flex-col gap-1">
-              <dt className="text-white/70">Weekly points</dt>
-              <dd className="text-2xl font-semibold text-white">{metrics.weekly_points}</dd>
+              <dt className="text-white/70">
+                {formatMessage({ id: "dashboard.hero.weeklyPoints", defaultMessage: "Weekly points" })}
+              </dt>
+              <dd className="text-2xl font-semibold text-white">{formatNumber(metrics.weekly_points)}</dd>
             </div>
           </dl>
         </div>
@@ -269,19 +321,24 @@ export default function Dashboard() {
       {aliasNeeded ? (
         <Card className="md:col-span-2" status="info">
           <CardHeader className="border-b border-white/40">
-            <CardTitle>Choose your alias</CardTitle>
+            <CardTitle>
+              {formatMessage({ id: "dashboard.alias.title", defaultMessage: "Choose your alias" })}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-sky-900">
             <p>
-              Set your leaderboard alias in profile settings to participate. Aliases are visible to peers and locked after first
-              save.
+              {formatMessage({
+                id: "dashboard.alias.description",
+                defaultMessage:
+                  "Set your leaderboard alias in profile settings to participate. Aliases are visible to peers and locked after first save."
+              })}
             </p>
             <div className="flex items-center gap-4">
               <Link to="/profile/alias" className="font-medium text-brand-600 underline">
-                Go to alias settings
+                {formatMessage({ id: "dashboard.alias.link.settings", defaultMessage: "Go to alias settings" })}
               </Link>
               <Link to="/leaderboard" className="font-medium text-brand-600 underline">
-                View leaderboard guidance
+                {formatMessage({ id: "dashboard.alias.link.leaderboard", defaultMessage: "View leaderboard guidance" })}
               </Link>
             </div>
           </CardContent>
@@ -289,8 +346,13 @@ export default function Dashboard() {
       ) : null}
       <Card className="md:col-span-2">
         <CardHeader>
-          <CardTitle>Your progress</CardTitle>
-          <p className="text-sm text-neutral-600">Real-time metrics from tutor mode and learning games.</p>
+          <CardTitle>{formatMessage({ id: "dashboard.progress.title", defaultMessage: "Your progress" })}</CardTitle>
+          <p className="text-sm text-neutral-600">
+            {formatMessage({
+              id: "dashboard.progress.subtitle",
+              defaultMessage: "Real-time metrics from tutor mode and learning games."
+            })}
+          </p>
         </CardHeader>
         <CardContent className="space-y-6">
           {metricsError ? (
@@ -299,45 +361,75 @@ export default function Dashboard() {
             </div>
           ) : null}
           {!metricsLoaded && metricsLoading ? (
-            <p className="text-sm text-neutral-500">Loading progress…</p>
+            <p className="text-sm text-neutral-500">
+              {formatMessage({ id: "dashboard.progress.loading", defaultMessage: "Loading progress…" })}
+            </p>
           ) : (
             <>
               <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <Card elevation="flat" interactive status="default" className="p-0">
                   <CardContent className="space-y-2">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Practice attempts</dt>
-                    <dd className="text-2xl font-semibold text-neutral-900">{metrics.total_attempts}</dd>
-                    <p className="text-xs text-neutral-500">{metrics.correct_attempts} correct</p>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                      {formatMessage({ id: "dashboard.metrics.attempts", defaultMessage: "Practice attempts" })}
+                    </dt>
+                    <dd className="text-2xl font-semibold text-neutral-900">{formatNumber(metrics.total_attempts)}</dd>
+                    <p className="text-xs text-neutral-500">
+                      {formatMessage(
+                        {
+                          id: "dashboard.metrics.correctCount",
+                          defaultMessage: "{count, number} correct"
+                        },
+                        { count: metrics.correct_attempts }
+                      )}
+                    </p>
                   </CardContent>
                 </Card>
                 <Card elevation="flat" interactive status="success" className="p-0 text-emerald-900">
                   <CardContent className="space-y-2">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Accuracy</dt>
-                    <dd className="text-2xl font-semibold">{accuracy}%</dd>
-                    <p className="text-xs text-emerald-700/80">Lifetime practice and games.</p>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                      {formatMessage({ id: "dashboard.metrics.accuracyLabel", defaultMessage: "Accuracy" })}
+                    </dt>
+                    <dd className="text-2xl font-semibold">{accuracyDisplay}</dd>
+                    <p className="text-xs text-emerald-700/80">
+                      {formatMessage({ id: "dashboard.metrics.accuracyHint", defaultMessage: "Lifetime practice and games." })}
+                    </p>
                   </CardContent>
                 </Card>
                 <Card elevation="flat" interactive status="warning" className="p-0 text-amber-900">
                   <CardContent className="space-y-2">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-amber-700">Flagged for review</dt>
-                    <dd className="text-2xl font-semibold">{metrics.flagged_count}</dd>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                      {formatMessage({ id: "dashboard.metrics.flagged", defaultMessage: "Flagged for review" })}
+                    </dt>
+                    <dd className="text-2xl font-semibold">{formatNumber(metrics.flagged_count)}</dd>
                     <p className="text-xs text-amber-700/80">
                       <Link to="/review" className="font-medium underline">
-                        Review flagged questions
+                        {formatMessage({ id: "dashboard.metrics.flaggedLink", defaultMessage: "Review flagged questions" })}
                       </Link>
                     </p>
                   </CardContent>
                 </Card>
                 <Card elevation="flat" interactive status="info" className="p-0 text-sky-900">
                   <CardContent className="space-y-2">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-sky-700">Weekly points</dt>
-                    <dd className="text-2xl font-semibold">{metrics.weekly_points}</dd>
-                    <p className="text-xs text-sky-700/80">All-time total: {metrics.all_time_points}</p>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-sky-700">
+                      {formatMessage({ id: "dashboard.metrics.weeklyPoints", defaultMessage: "Weekly points" })}
+                    </dt>
+                    <dd className="text-2xl font-semibold">{formatNumber(metrics.weekly_points)}</dd>
+                    <p className="text-xs text-sky-700/80">
+                      {formatMessage(
+                        {
+                          id: "dashboard.metrics.weeklyPointsTotal",
+                          defaultMessage: "All-time total: {count, number}"
+                        },
+                        { count: metrics.all_time_points }
+                      )}
+                    </p>
                   </CardContent>
                 </Card>
               </dl>
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-neutral-700">Weekly trend (last 8 weeks)</h3>
+                <h3 className="text-sm font-semibold text-neutral-700">
+                  {formatMessage({ id: "dashboard.metrics.trendTitle", defaultMessage: "Weekly trend (last 8 weeks)" })}
+                </h3>
                 <PracticeTrendChart data={trendData} loading={trendLoading} error={trendError} />
               </div>
             </>
@@ -346,52 +438,71 @@ export default function Dashboard() {
         <CardFooter className="flex flex-col gap-3 bg-neutral-50 text-xs text-neutral-500 sm:flex-row sm:items-center sm:justify-between">
           <span>
             {metricsError
-              ? "Unable to refresh automatically. Try again after checking your connection."
-              : "Stats refresh automatically after you answer questions or play games."}
+              ? formatMessage({
+                  id: "dashboard.metrics.refreshError",
+                  defaultMessage: "Unable to refresh automatically. Try again after checking your connection."
+                })
+              : formatMessage({
+                  id: "dashboard.metrics.refreshHint",
+                  defaultMessage: "Stats refresh automatically after you answer questions or play games."
+                })}
           </span>
           <Button type="button" variant="secondary" onClick={refreshMetrics} disabled={metricsLoading}>
-            {metricsLoading ? "Refreshing…" : "Refresh stats"}
+            {metricsLoading
+              ? formatMessage({ id: "dashboard.metrics.refreshing", defaultMessage: "Refreshing…" })
+              : formatMessage({ id: "dashboard.metrics.refreshAction", defaultMessage: "Refresh stats" })}
           </Button>
         </CardFooter>
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Next up</CardTitle>
+          <CardTitle>{formatMessage({ id: "dashboard.nextUp.title", defaultMessage: "Next up" })}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-neutral-700">
-          <p>Practice from a curated set of 250 CHD questions in tutor mode.</p>
+          <p>
+            {formatMessage({
+              id: "dashboard.nextUp.description",
+              defaultMessage: "Practice from a curated set of 250 CHD questions in tutor mode."
+            })}
+          </p>
           <Link to="/practice" className="text-brand-600 underline">
-            Resume practice
+            {formatMessage({ id: "dashboard.nextUp.cta", defaultMessage: "Resume practice" })}
           </Link>
         </CardContent>
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Published content</CardTitle>
+          <CardTitle>{formatMessage({ id: "dashboard.published.title", defaultMessage: "Published content" })}</CardTitle>
         </CardHeader>
         <CardContent>
           <ul className="list-disc space-y-1 pl-6 text-sm text-neutral-700">
             {featured.map((q) => (
-              <li key={q.id}>{q.lead_in ?? "Practice question"}</li>
+              <li key={q.id}>{q.lead_in ?? formatMessage({ id: "dashboard.published.fallback", defaultMessage: "Practice question" })}</li>
             ))}
           </ul>
-          {loadingFeatured ? <p className="mt-2 text-xs text-neutral-500">Loading fresh questions…</p> : null}
+          {loadingFeatured ? (
+            <p className="mt-2 text-xs text-neutral-500">
+              {formatMessage({ id: "dashboard.published.loading", defaultMessage: "Loading fresh questions…" })}
+            </p>
+          ) : null}
           {featuredError ? <p className="mt-2 text-xs text-red-600">{featuredError}</p> : null}
           {!loadingFeatured && featured.length === 0 && !featuredError ? (
-            <p className="mt-2 text-xs text-neutral-500">No published questions yet.</p>
+            <p className="mt-2 text-xs text-neutral-500">
+              {formatMessage({ id: "dashboard.published.empty", defaultMessage: "No published questions yet." })}
+            </p>
           ) : null}
         </CardContent>
       </Card>
       <Card className="md:col-span-2">
         <CardHeader>
-          <CardTitle>Games</CardTitle>
+          <CardTitle>{formatMessage({ id: "dashboard.games.title", defaultMessage: "Games" })}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <Link to="/games/murmurs" className="rounded-lg border border-neutral-200 p-4 hover:border-brand-500">
-            Guess the Murmur →
+            {formatMessage({ id: "dashboard.games.murmur", defaultMessage: "Guess the Murmur" })} →
           </Link>
           <Link to="/games/cxr" className="rounded-lg border border-neutral-200 p-4 hover:border-brand-500">
-            CXR Sign Match →
+            {formatMessage({ id: "dashboard.games.cxr", defaultMessage: "CXR Sign Match" })} →
           </Link>
         </CardContent>
       </Card>

@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { EXPECTED_STORAGE_BUCKETS } from "./config/storageBuckets";
 import { supabase } from "./lib/supabaseClient";
+import { DEFAULT_LOCALE, getMessages, I18nProvider, resolveLocale } from "./i18n";
 import "./styles/globals.css";
 
 async function verifyStorageBuckets() {
@@ -66,11 +67,17 @@ if (!root) {
   throw new Error("Root element not found");
 }
 
+const browserLocale = typeof navigator !== "undefined" ? navigator.language : DEFAULT_LOCALE;
+const locale = resolveLocale(browserLocale);
+const messages = getMessages(locale);
+
 ReactDOM.createRoot(root).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <I18nProvider locale={locale} messages={messages}>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </I18nProvider>
   </React.StrictMode>
 );
 

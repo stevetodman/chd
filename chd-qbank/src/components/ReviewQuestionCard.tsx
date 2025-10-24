@@ -8,6 +8,7 @@ import LabPanel from "./LabPanel";
 import FormulaPanel from "./FormulaPanel";
 import { Button } from "./ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/Card";
+import { useI18n } from "../i18n";
 
 export type ReviewFlag = {
   id: string;
@@ -25,6 +26,7 @@ export default function ReviewQuestionCard({ flag, onMarkReviewed, processing = 
   const { question } = flag;
   const [selected, setSelected] = useState<Choice | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
+  const { formatMessage } = useI18n();
 
   const handleSelect = (choice: Choice) => {
     if (selected) return;
@@ -41,9 +43,17 @@ export default function ReviewQuestionCard({ flag, onMarkReviewed, processing = 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">{question.lead_in ?? "Practice question"}</CardTitle>
+        <CardTitle className="text-base">
+          {question.lead_in ?? formatMessage({ id: "review.practiceQuestion", defaultMessage: "Practice question" })}
+        </CardTitle>
         <CardDescription className="text-xs">
-          Added to review on {new Date(flag.created_at).toLocaleString()}
+          {formatMessage(
+            {
+              id: "review.addedTimestamp",
+              defaultMessage: "Added to review on {timestamp, date, medium} at {timestamp, time, short}"
+            },
+            { timestamp: flag.created_at }
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 text-sm text-neutral-700">
@@ -57,12 +67,15 @@ export default function ReviewQuestionCard({ flag, onMarkReviewed, processing = 
         />
         {attemptStatus === "incorrect" ? (
           <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700" role="alert">
-            Not quite right. Review the explanation and try again.
+            {formatMessage({
+              id: "review.feedback.incorrect",
+              defaultMessage: "Not quite right. Review the explanation and try again."
+            })}
           </div>
         ) : null}
         {attemptStatus === "correct" ? (
           <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700" role="status">
-            Great job! You got it correct.
+            {formatMessage({ id: "review.feedback.correct", defaultMessage: "Great job! You got it correct." })}
           </div>
         ) : null}
         {(question.context_panels ?? []).map((panel) => {
@@ -89,7 +102,7 @@ export default function ReviewQuestionCard({ flag, onMarkReviewed, processing = 
         <div className="flex flex-wrap items-center gap-3">
           {attemptStatus === "incorrect" ? (
             <Button type="button" variant="secondary" onClick={handleRetry}>
-              Try again
+              {formatMessage({ id: "review.actions.retry", defaultMessage: "Try again" })}
             </Button>
           ) : null}
           <Button
@@ -100,7 +113,9 @@ export default function ReviewQuestionCard({ flag, onMarkReviewed, processing = 
             }}
             disabled={!selected?.is_correct || processing}
           >
-            {processing ? "Saving…" : "Mark as reviewed"}
+            {processing
+              ? formatMessage({ id: "review.actions.saving", defaultMessage: "Saving…" })
+              : formatMessage({ id: "review.actions.markReviewed", defaultMessage: "Mark as reviewed" })}
           </Button>
         </div>
       </CardContent>

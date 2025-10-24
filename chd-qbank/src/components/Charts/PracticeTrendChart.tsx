@@ -11,6 +11,7 @@ import {
   Filler
 } from "chart.js";
 import { Chart } from "react-chartjs-2";
+import { useI18n } from "../../i18n";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend, Filler);
 
@@ -87,7 +88,12 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
     borderColors,
     maxAttemptIndex
   } = chartData;
-  const numberFormatter = useMemo(() => new Intl.NumberFormat("en-US"), []);
+  const { locale, formatMessage } = useI18n();
+  const numberFormatter = useMemo(() => new Intl.NumberFormat(locale), [locale]);
+  const percentFormatter = useMemo(
+    () => new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 1 }),
+    [locale]
+  );
   const mostRecentIndex = Math.max(0, labels.length - 1);
   const currentStreak = useMemo(() => {
     let streak = 0;
@@ -106,13 +112,25 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
       return null;
     }
     if (currentStreak >= 3) {
-      return `You're on a ${currentStreak}-week practice streak—keep it going!`;
+      return formatMessage(
+        {
+          id: "chart.practiceTrend.streak.strong",
+          defaultMessage: "You're on a {count, number}‑week practice streak—keep it going!"
+        },
+        { count: currentStreak }
+      );
     }
     if (currentStreak === 2) {
-      return "Nice momentum—two weeks of consistent practice.";
+      return formatMessage({
+        id: "chart.practiceTrend.streak.medium",
+        defaultMessage: "Nice momentum—two weeks of consistent practice."
+      });
     }
-    return "Great job getting back into practice this week.";
-  }, [attemptValues.length, currentStreak]);
+    return formatMessage({
+      id: "chart.practiceTrend.streak.light",
+      defaultMessage: "Great job getting back into practice this week."
+    });
+  }, [attemptValues.length, currentStreak, formatMessage]);
 
   if (error) {
     return (
@@ -140,7 +158,7 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
             datasets: [
               {
                 type: "bar" as const,
-                label: "Attempts",
+                label: formatMessage({ id: "chart.practiceTrend.dataset.attempts", defaultMessage: "Attempts" }),
                 data: attemptValues,
                 backgroundColor: backgroundColors,
                 borderColor: borderColors,
@@ -150,7 +168,7 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
               },
               {
                 type: "line" as const,
-                label: "Accuracy %",
+                label: formatMessage({ id: "chart.practiceTrend.dataset.accuracy", defaultMessage: "Accuracy (%)" }),
                 data: accuracyValues,
                 borderColor: "rgba(16,185,129,1)",
                 backgroundColor: "rgba(16,185,129,0.15)",
@@ -186,14 +204,31 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
                       const value = typeof context.parsed.y === "number" && Number.isFinite(context.parsed.y)
                         ? context.parsed.y
                         : 0;
-                      return `Attempts: ${numberFormatter.format(value)}`;
+                      return formatMessage(
+                        {
+                          id: "chart.practiceTrend.tooltip.attempts",
+                          defaultMessage: "Attempts: {value, number, integer}"
+                        },
+                        { value }
+                      );
                     }
                     if (context.datasetIndex === 1) {
                       const value =
                         typeof context.parsed.y === "number" && Number.isFinite(context.parsed.y)
                           ? context.parsed.y
                           : null;
-                      return value === null ? "Accuracy: –" : `Accuracy: ${value.toFixed(1)}%`;
+                      return value === null
+                        ? formatMessage({
+                            id: "chart.practiceTrend.tooltip.accuracyEmpty",
+                            defaultMessage: "Accuracy: –"
+                          })
+                        : formatMessage(
+                            {
+                              id: "chart.practiceTrend.tooltip.accuracy",
+                              defaultMessage: "Accuracy: {value}"
+                            },
+                            { value: percentFormatter.format(value / 100) }
+                          );
                     }
                     return null;
                   },
@@ -203,13 +238,25 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
                       const delta = attemptDeltas[index];
                       if (delta === null || delta === 0) return undefined;
                       const arrow = delta > 0 ? "▲" : "▼";
-                      return `${arrow} ${numberFormatter.format(Math.abs(delta))} vs. prior week`;
+                      return formatMessage(
+                        {
+                          id: "chart.practiceTrend.tooltip.attemptDelta",
+                          defaultMessage: "{arrow} {difference, number, integer} vs. prior week"
+                        },
+                        { arrow, difference: Math.abs(delta) }
+                      );
                     }
                     if (context.datasetIndex === 1) {
                       const delta = accuracyDeltas[index];
                       if (delta === null || delta === 0) return undefined;
                       const arrow = delta > 0 ? "▲" : "▼";
-                      return `${arrow} ${Math.abs(delta).toFixed(1)} pts vs. prior week`;
+                      return formatMessage(
+                        {
+                          id: "chart.practiceTrend.tooltip.accuracyDelta",
+                          defaultMessage: "{arrow} {difference, number, decimal-1} pts vs. prior week"
+                        },
+                        { arrow, difference: Math.abs(delta) }
+                      );
                     }
                     return undefined;
                   },
@@ -218,10 +265,14 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
                     const index = items[0]?.dataIndex ?? 0;
                     const badges: string[] = [];
                     if (index === mostRecentIndex && attemptValues[index] > 0) {
-                      badges.push("Latest week");
+                      badges.push(
+                        formatMessage({ id: "chart.practiceTrend.tooltip.badge.latest", defaultMessage: "Latest week" })
+                      );
                     }
                     if (index === maxAttemptIndex && maxAttemptIndex >= 0) {
-                      badges.push("Best week so far");
+                      badges.push(
+                        formatMessage({ id: "chart.practiceTrend.tooltip.badge.best", defaultMessage: "Best week so far" })
+                      );
                     }
                     return badges.join(" • ");
                   }
@@ -250,7 +301,10 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
                   drawOnChartArea: false
                 },
                 ticks: {
-                  callback: (value) => `${value}%`
+                  callback: (value) =>
+                    typeof value === "number"
+                      ? percentFormatter.format(value / 100)
+                      : formatMessage({ id: "chart.practiceTrend.axis.percent", defaultMessage: "0%" })
                 }
               },
               x: {
@@ -262,7 +316,7 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
           }}
         />
       </div>
-      {streakMessage ? <p className="text-xs text-neutral-600">{streakMessage}</p> : null}
+    {streakMessage ? <p className="text-xs text-neutral-600">{streakMessage}</p> : null}
     </div>
   );
 }

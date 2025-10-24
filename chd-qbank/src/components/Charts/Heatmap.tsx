@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchAdminHeatmap } from "../../lib/analytics";
 import { getErrorMessage } from "../../lib/utils";
+import { useI18n } from "../../i18n";
 
 type Cell = {
   lesion: string;
@@ -45,6 +46,7 @@ const EMPTY_DATA: HeatmapData = {
 export default function Heatmap() {
   const [data, setData] = useState<HeatmapData>(EMPTY_DATA);
   const [error, setError] = useState<string | null>(null);
+  const { formatMessage, formatNumber } = useI18n();
 
   useEffect(() => {
     let cancelled = false;
@@ -110,21 +112,35 @@ export default function Heatmap() {
 
   return (
     <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white p-4 shadow-sm">
-      <h3 className="mb-4 text-sm font-semibold text-neutral-700">Performance heatmap</h3>
+      <h3 className="mb-4 text-sm font-semibold text-neutral-700">
+        {formatMessage({ id: "heatmap.title", defaultMessage: "Performance heatmap" })}
+      </h3>
       {error ? (
         <p className="mb-3 text-xs text-red-600" role="alert">
-          Failed to load heatmap data: {error}
+          {formatMessage(
+            { id: "heatmap.error", defaultMessage: "Failed to load heatmap data: {error}" },
+            { error }
+          )}
         </p>
       ) : null}
       {data.weeklySpan ? (
         <p className="mb-3 text-xs text-neutral-500">
-          Aggregated across {data.weeklySpan} weekly buckets with {data.rowCount} question-week rows.
+          {formatMessage(
+            {
+              id: "heatmap.summary",
+              defaultMessage:
+                "Aggregated across {weeklySpan, plural, one {# weekly bucket} other {# weekly buckets}} with {rowCount, plural, one {# question-week row} other {# question-week rows}}."
+            },
+            { weeklySpan: data.weeklySpan, rowCount: data.rowCount }
+          )}
         </p>
       ) : null}
       <table className="border-collapse text-xs">
         <thead>
           <tr>
-            <th className="px-2 py-1 text-left">Lesion</th>
+            <th className="px-2 py-1 text-left">
+              {formatMessage({ id: "heatmap.lesionColumn", defaultMessage: "Lesion" })}
+            </th>
             {data.topics.map((topic) => (
               <th key={topic} className="px-2 py-1 text-left">
                 {topic}
@@ -139,13 +155,24 @@ export default function Heatmap() {
               {data.topics.map((topic) => {
                 const cell = cellMap.get(`${lesion}__${topic}`);
                 const rate = cell?.correct_rate ?? 0;
+                const attemptsTitle = cell
+                  ? formatMessage(
+                      {
+                        id: "heatmap.cellAttempts",
+                        defaultMessage: "{attempts, plural, one {# attempt} other {# attempts}}"
+                      },
+                      { attempts: cell.attempts }
+                    )
+                  : formatMessage({ id: "heatmap.noAttempts", defaultMessage: "No attempts" });
                 return (
                   <td
                     key={topic}
                     className={`min-w-[70px] px-2 py-1 text-center text-sm font-medium text-neutral-900 ${classForRate(rate)}`}
-                    title={cell ? `${cell.attempts} attempts` : "No attempts"}
+                    title={attemptsTitle}
                   >
-                    {cell ? `${Math.round(rate * 100)}%` : "–"}
+                    {cell
+                      ? formatNumber(rate, { style: "percent", maximumFractionDigits: 0 })
+                      : "–"}
                   </td>
                 );
               })}
