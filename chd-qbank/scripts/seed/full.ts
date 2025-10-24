@@ -26,6 +26,10 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false }
 });
 
+const DEFAULT_ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? "admin@example.com";
+const DEFAULT_ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? "Admin123!";
+const DEFAULT_ADMIN_ALIAS = process.env.SEED_ADMIN_ALIAS ?? "demo-admin";
+
 function exitOnError(error: PostgrestError | null, message: string): void {
   if (error) {
     throw new Error(`${message}: ${error.message}`);
@@ -262,6 +266,87 @@ async function upsertCxrItem(item: CxrItemSeed): Promise<void> {
   await syncCxrLabels(itemId, item.labels, item.slug);
 }
 
+async function ensureDefaultAdmin(): Promise<void> {
+  if (!DEFAULT_ADMIN_EMAIL || !DEFAULT_ADMIN_PASSWORD) {
+    throw new Error("Default admin credentials are not configured.");
+  }
+
+  const { data: existingUser, error: lookupError } = await supabase.auth.admin.getUserByEmail(
+    DEFAULT_ADMIN_EMAIL
+  );
+  if (lookupError) {
+    throw new Error(`Failed to look up default admin user: ${lookupError.message}`);
+  }
+
+  let userId = existingUser.user?.id ?? null;
+  let createdUser = false;
+
+  if (!userId) {
+    const { data: created, error: createError } = await supabase.auth.admin.createUser({
+      email: DEFAULT_ADMIN_EMAIL,
+      password: DEFAULT_ADMIN_PASSWORD,
+      email_confirm: true,
+      user_metadata: { seeded_admin: true }
+    });
+
+    if (createError) {
+      throw new Error(`Failed to create default admin user: ${createError.message}`);
+    }
+
+    userId = created.user?.id ?? null;
+    if (!userId) {
+      throw new Error("Default admin user was created but did not return an id.");
+    }
+
+    createdUser = true;
+    console.log(`Created default admin account for ${DEFAULT_ADMIN_EMAIL}.`);
+  }
+
+  if (!userId) {
+    throw new Error("Default admin user id could not be resolved.");
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("app_users")
+    .select("role, alias")
+    .eq("id", userId)
+    .maybeSingle();
+  exitOnError(profileError, `Failed to load app_user profile for ${DEFAULT_ADMIN_EMAIL}`);
+
+  if (!profile) {
+    const { error: insertError } = await supabase
+      .from("app_users")
+      .upsert(
+        { id: userId, role: "admin", alias: DEFAULT_ADMIN_ALIAS, alias_locked: false },
+        { onConflict: "id" }
+      );
+    exitOnError(insertError, `Failed to seed admin profile for ${DEFAULT_ADMIN_EMAIL}`);
+    return;
+  }
+
+  const updates: Record<string, unknown> = {};
+  if (profile.role !== "admin") {
+    updates.role = "admin";
+  }
+  if (!profile.alias) {
+    updates.alias = DEFAULT_ADMIN_ALIAS;
+  }
+
+  if (Object.keys(updates).length > 0) {
+    const { error: updateError } = await supabase
+      .from("app_users")
+      .update(updates)
+      .eq("id", userId);
+    exitOnError(updateError, `Failed to update admin profile for ${DEFAULT_ADMIN_EMAIL}`);
+  }
+
+  if (createdUser) {
+    console.log(
+      `Seeded default admin credentials (email: ${DEFAULT_ADMIN_EMAIL}). Prompt rotation after first login.`
+    );
+  }
+}
+
 async function main(): Promise<void> {
   for (const bundle of MEDIA_BUNDLES) {
     await upsertMediaBundle(bundle);
@@ -274,6 +359,8 @@ async function main(): Promise<void> {
   for (const cxrItem of CXR_ITEMS) {
     await upsertCxrItem(cxrItem);
   }
+
+  await ensureDefaultAdmin();
 
   console.log("Full seed completed successfully.");
 }
