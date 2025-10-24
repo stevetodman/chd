@@ -26,6 +26,12 @@ type Props = {
   canGoBack?: boolean;
 };
 
+/**
+ * Render an interactive question card with answer submission, flagging, and optional tutor rail.
+ *
+ * The component orchestrates keyboard hints, idempotent answer submission, accessibility
+ * announcements, and auxiliary study panels (labs, formulas, context).
+ */
 export default function QuestionCard({
   question,
   onAnswer,
@@ -37,6 +43,15 @@ export default function QuestionCard({
   onPrevious,
   canGoBack = false
 }: Props) {
+  /**
+   * State machine:
+   * - `selected` tracks the current choice and is reset when the question changes.
+   * - `flagged` mirrors the server flag state and is optimistically updated.
+   * - `start` stores the timestamp used to measure answer duration.
+   * - `showExplanation` toggles the tutor rail and shifts focus for screen readers.
+   * - `submitting`/`answerCommitted` gate duplicate submissions while the handler resolves.
+   * - `feedbackAnnouncement` contains ARIA live text after a choice is made.
+   */
   const [selected, setSelected] = useState<Choice | null>(null);
   const [flagged, setFlagged] = useState(false);
   const [start, setStart] = useState<number>(() => performance.now());
@@ -50,6 +65,10 @@ export default function QuestionCard({
   const tutorModeEnabled = useFeatureFlagsStore((state) => state.tutorModeEnabled);
   const showTutorRail = tutorModeEnabled;
 
+  /**
+   * Whenever the question id changes, reset the interaction state so timers and
+   * selections reflect the new prompt.
+   */
   useEffect(() => {
     setStart(performance.now());
     setSelected(null);
@@ -59,15 +78,26 @@ export default function QuestionCard({
     setFeedbackAnnouncement("");
   }, [question.id]);
 
+  /**
+   * Keep the optimistic flag state in sync with the prop passed by the caller.
+   */
   useEffect(() => {
     setFlagged(initialFlagged);
   }, [question.id, initialFlagged]);
 
+  /**
+   * When the explanation is shown, shift focus into it so keyboard and assistive
+   * tech users are aware of the newly available content.
+   */
   useEffect(() => {
     if (!showExplanation) return;
     explanationRef.current?.focus({ preventScroll: false });
   }, [showExplanation]);
 
+  /**
+   * Handle answer selection by timing the attempt, showing accessible feedback,
+   * and invoking the supplied callback. Errors roll back local optimistic state.
+   */
   const handleSelect = async (choice: Choice) => {
     if (submitting || answerCommitted) return;
     const elapsed = clampMs(performance.now() - start);
@@ -97,6 +127,10 @@ export default function QuestionCard({
     }
   };
 
+  /**
+   * Optimistically toggle the question flag while falling back to the previous
+   * state when the persistence layer rejects the change.
+   */
   const toggleFlag = async () => {
     const wasFlagged = flagged;
     const next = !flagged;
