@@ -1,6 +1,6 @@
 # Environment Variable Reference
 
-This project relies on a small set of environment variables. Use this guide when creating local `.env` files or configuring deployment platforms. Never commit real credentials or secrets to the repository—only blank placeholders belong in example files.
+This project relies on a small set of environment variables. Use this guide when creating local `.env` files or configuring deployment platforms. The `.env.example` file is provided only as a template; it contains placeholder values and must never include real credentials or secrets.
 
 ## Supabase client configuration (`VITE_*`)
 - `VITE_SUPABASE_URL` – Supabase project URL used by the frontend.
