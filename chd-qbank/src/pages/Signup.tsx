@@ -44,6 +44,7 @@ export default function Signup() {
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             required
+            autoComplete="email"
           />
         </label>
         <label className="block text-sm font-medium">
@@ -54,6 +55,7 @@ export default function Signup() {
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
             required
+            autoComplete="new-password"
           />
         </label>
         <label className="block text-sm font-medium">
@@ -64,6 +66,7 @@ export default function Signup() {
             value={form.invite_code}
             onChange={(e) => setForm({ ...form, invite_code: e.target.value })}
             required
+            autoComplete="one-time-code"
           />
         </label>
         <label className="block text-sm font-medium">
@@ -75,6 +78,7 @@ export default function Signup() {
             onChange={(e) => setForm({ ...form, desired_alias: e.target.value })}
             placeholder="Brisk-Sparrow-417"
             maxLength={40}
+            autoComplete="nickname"
           />
         </label>
         {error ? <p className="text-sm text-red-600">{error}</p> : null}

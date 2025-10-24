@@ -1,3 +1,5 @@
+import { LEGAL_EFFECTIVE_DATE } from "../config/legal";
+
 export default function Terms() {
   return (
     <div className="mx-auto max-w-3xl p-6 prose">
@@ -29,7 +31,7 @@ export default function Terms() {
       <h2>Contact</h2>
       <p>Email: <a href="mailto:stevetodman@hotmail.com">stevetodman@hotmail.com</a></p>
 
-      <p><em>Effective date:</em> {new Date().toISOString().slice(0,10)}</p>
+      <p><em>Effective date:</em> {LEGAL_EFFECTIVE_DATE}</p>
     </div>
   );
 }

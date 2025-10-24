@@ -1,3 +1,5 @@
+import { LEGAL_EFFECTIVE_DATE } from "../config/legal";
+
 export default function Privacy() {
   return (
     <div className="mx-auto max-w-3xl p-6 prose">
@@ -49,7 +51,7 @@ export default function Privacy() {
       <h2>Updates</h2>
       <p>If we change this policy, we’ll update this page and the “Effective date.”</p>
 
-      <p><em>Effective date:</em> {new Date().toISOString().slice(0,10)}</p>
+      <p><em>Effective date:</em> {LEGAL_EFFECTIVE_DATE}</p>
     </div>
   );
 }

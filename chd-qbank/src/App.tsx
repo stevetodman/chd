@@ -5,6 +5,8 @@ import { AppRoutes } from "./routes";
 import { getSession, useSessionStore } from "./lib/auth";
 import { useServiceWorkerUpdates } from "./hooks/useServiceWorkerUpdates";
 
+const PUBLIC_ROUTES = new Set(["/login", "/signup", "/privacy", "/terms"]);
+
 export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -17,8 +19,8 @@ export default function App() {
 
   useEffect(() => {
     if (loading || !initialized) return;
-    const isAuthRoute = location.pathname === "/login" || location.pathname === "/signup";
-    if (!session && !isAuthRoute) {
+    const isPublicRoute = PUBLIC_ROUTES.has(location.pathname);
+    if (!session && !isPublicRoute) {
       navigate("/login", { replace: true });
     }
   }, [session, loading, initialized, location.pathname, navigate]);

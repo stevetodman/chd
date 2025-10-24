@@ -66,6 +66,7 @@ export default function Login() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            autoComplete="email"
           />
         </label>
         <label className="block text-sm font-medium">
@@ -76,6 +77,7 @@ export default function Login() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            autoComplete="current-password"
           />
         </label>
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
@@ -107,6 +109,7 @@ export default function Login() {
                   value={resetEmail}
                   onChange={(e) => setResetEmail(e.target.value)}
                   required
+                  autoComplete="email"
                 />
               </label>
               {resetError ? (
