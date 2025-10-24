@@ -100,7 +100,7 @@ export default function ChoiceList({
               }
             }}
             className={classNames(
-              "w-full rounded-md border border-neutral-200 bg-white p-4 text-left shadow-sm transition focus:outline-none focus:ring-2 focus:ring-brand-500",
+              "choice-option w-full rounded-md border border-neutral-200 bg-white p-4 text-left shadow-sm transition focus:outline-none focus:ring-2 focus:ring-brand-500",
               isSelected && !reveal && "border-brand-500 ring-2 ring-brand-500",
               showAsCorrectSelection &&
                 "border-emerald-500 bg-emerald-50 text-emerald-900 ring-2 ring-emerald-300",

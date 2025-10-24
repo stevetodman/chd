@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import { useSettingsStore } from "../lib/settings";
@@ -8,6 +8,7 @@ import { requireAdmin, signOut } from "../lib/auth";
 import { Button } from "./ui/Button";
 
 export default function Layout() {
+  const location = useLocation();
   const loadSettings = useSettingsStore((s) => s.loadSettings);
   const maintenanceMode = useSettingsStore((s) => s.maintenanceMode);
   const { session, loading: sessionLoading, initialized } = useSessionStore();
@@ -59,22 +60,24 @@ export default function Layout() {
     <div className="min-h-screen bg-neutral-50">
       <Navbar />
       <main className="mx-auto max-w-6xl px-4 py-6">
-        {showMaintenance ? (
-          <div className="flex min-h-[60vh] items-center justify-center">
-            <div className="max-w-lg rounded-xl border border-neutral-200 bg-white p-6 text-center shadow-sm">
-              <h1 className="text-xl font-semibold">We&rsquo;re doing a quick tune-up</h1>
-              <p className="mt-2 text-neutral-600">
-                The app is temporarily unavailable for students while we update things.
-                Please check back soon.
-              </p>
-              <div className="mt-4 flex justify-center">
-                <Button onClick={() => { void signOut(); }}>Sign out</Button>
+        <div key={`${location.pathname}${location.search}`} className="page-transition">
+          {showMaintenance ? (
+            <div className="flex min-h-[60vh] items-center justify-center">
+              <div className="max-w-lg rounded-xl border border-neutral-200 bg-white p-6 text-center shadow-sm">
+                <h1 className="text-xl font-semibold">We&rsquo;re doing a quick tune-up</h1>
+                <p className="mt-2 text-neutral-600">
+                  The app is temporarily unavailable for students while we update things.
+                  Please check back soon.
+                </p>
+                <div className="mt-4 flex justify-center">
+                  <Button onClick={() => { void signOut(); }}>Sign out</Button>
+                </div>
               </div>
             </div>
-          </div>
-        ) : (
-          <Outlet />
-        )}
+          ) : (
+            <Outlet />
+          )}
+        </div>
       </main>
       <Footer />
     </div>

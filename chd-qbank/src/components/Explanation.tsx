@@ -22,6 +22,7 @@ const Explanation = forwardRef<HTMLDivElement, ExplanationProps>(function Explan
   const [open, setOpen] = useState(false);
   const toggleLabel = open ? "Hide deep dive" : "Show deep dive";
   const handleToggle = () => setOpen((prev) => !prev);
+  const deepSectionId = labelId ? `${labelId}-deep` : undefined;
   return (
     <Card
       ref={ref}
@@ -33,7 +34,13 @@ const Explanation = forwardRef<HTMLDivElement, ExplanationProps>(function Explan
         <CardHeader className="flex items-center justify-between">
           <CardTitle>Explanation</CardTitle>
           {deep ? (
-            <Button type="button" variant="ghost" onClick={handleToggle}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleToggle}
+              aria-expanded={open}
+              aria-controls={deepSectionId}
+            >
               {toggleLabel}
             </Button>
           ) : null}
@@ -44,7 +51,13 @@ const Explanation = forwardRef<HTMLDivElement, ExplanationProps>(function Explan
       >
         {!showHeader && deep ? (
           <div className="flex justify-end">
-            <Button type="button" variant="ghost" onClick={handleToggle}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleToggle}
+              aria-expanded={open}
+              aria-controls={deepSectionId}
+            >
               {toggleLabel}
             </Button>
           </div>
@@ -57,7 +70,7 @@ const Explanation = forwardRef<HTMLDivElement, ExplanationProps>(function Explan
           {brief}
         </ReactMarkdown>
         {deep && open ? (
-          <div className="rounded-md bg-neutral-50 p-3">
+          <div id={deepSectionId} className="explanation-deep rounded-md bg-neutral-50 p-3">
             <ReactMarkdown
               remarkPlugins={markdownRemarkPlugins}
               rehypePlugins={markdownRehypePlugins}
