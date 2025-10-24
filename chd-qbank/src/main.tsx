@@ -2,13 +2,14 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
+import config from "./config";
 import { I18nProvider, normalizeLocale } from "./i18n";
 import { messages, FALLBACK_LOCALE } from "./locales";
 import { useLocaleStore } from "./store/i18n";
 import "./styles/globals.css";
 
 async function registerServiceWorker() {
-  if (!("serviceWorker" in navigator) || !import.meta.env.PROD) {
+  if (!("serviceWorker" in navigator) || !config.isProduction) {
     return;
   }
 

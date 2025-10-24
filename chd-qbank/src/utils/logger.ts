@@ -1,3 +1,5 @@
+import config from "../config";
+
 /**
  * Lightweight logging helper that standardizes console output.
  *
@@ -15,7 +17,7 @@ const logger = {
     console.error('[ERROR]', ...args);
   },
   debug: (...args: unknown[]) => {
-    if (process.env.NODE_ENV === 'production') {
+    if (config.isProduction) {
       return;
     }
 
