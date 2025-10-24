@@ -1,6 +1,8 @@
 node_modules/
 chd-qbank/node_modules/
 chd-qbank/scripts/dist/
+sbom.xml
+compliance-artifacts/
 *.log
 .env.local
 chd-qbank/.vite/

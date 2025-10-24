@@ -5,7 +5,24 @@ import { fileURLToPath } from 'url';
 import { promises as fs } from 'fs';
 
 const require = createRequire(import.meta.url);
-const licenseChecker = require('license-checker');
+
+function loadLicenseChecker() {
+  try {
+    return require('license-checker');
+  } catch (error) {
+    if (error && error.code === 'MODULE_NOT_FOUND') {
+      const message = [
+        'The `license-checker` package is required to generate a NOTICE file.',
+        'Run `npm install` from the repository root to install dev dependencies and retry.',
+      ].join('\n');
+      const wrapped = new Error(message);
+      wrapped.cause = error;
+      wrapped.code = error.code;
+      throw wrapped;
+    }
+    throw error;
+  }
+}
 
 function buildHeader() {
   return [
@@ -56,6 +73,7 @@ function normalizeOptions(options = {}) {
 }
 
 async function collectLicenses(start) {
+  const licenseChecker = loadLicenseChecker();
   return new Promise((resolve, reject) => {
     licenseChecker.init(
       {
