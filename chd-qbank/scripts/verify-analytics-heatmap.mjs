@@ -1,34 +1,9 @@
-import { readFileSync, existsSync } from "node:fs";
-import { resolve } from "node:path";
 import { performance } from "node:perf_hooks";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+import { loadEnvFile } from "./utils/loadEnv.mjs";
 
-function loadEnvFile() {
-  const envPath = resolve(process.cwd(), ".env");
-  if (!existsSync(envPath)) return;
-
-  const contents = readFileSync(envPath, "utf8");
-  contents
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .forEach((line) => {
-      if (!line || line.startsWith("#")) return;
-      const eq = line.indexOf("=");
-      if (eq === -1) return;
-      const key = line.slice(0, eq).trim();
-      let value = line.slice(eq + 1).trim();
-      if (
-        (value.startsWith('"') && value.endsWith('"')) ||
-        (value.startsWith("'") && value.endsWith("'"))
-      ) {
-        value = value.slice(1, -1);
-      }
-      if (!(key in process.env)) {
-        process.env[key] = value;
-      }
-    });
-}
+loadEnvFile();
 
 const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
 
@@ -217,8 +192,6 @@ async function runWithConcurrencyLimit(tasks, limit) {
   }
   await Promise.all(executing);
 }
-
-loadEnvFile();
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;

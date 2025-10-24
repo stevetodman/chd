@@ -5,8 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:staging": "vite --mode staging",
+    "dev:production": "vite --mode production",
     "build": "vite build",
+    "build:staging": "vite build --mode staging",
     "preview": "vite preview",
+    "preview:staging": "vite preview --mode staging",
     "test": "vitest run --reporter=verbose --coverage",
     "test:watch": "vitest",
     "lint": "eslint --ext .ts,.tsx .",
