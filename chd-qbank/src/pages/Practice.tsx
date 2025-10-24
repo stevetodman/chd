@@ -30,7 +30,10 @@ export default function Practice() {
     filterOptionsLoading,
     filterOptionsError
   } = usePracticeSession();
-  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return window.localStorage.getItem("practice:has-started") !== "true";
+  });
   const [pendingFilters, setPendingFilters] = useState<PracticeFilters>({ ...filters });
 
   useEffect(() => {
@@ -67,6 +70,12 @@ export default function Practice() {
     setPendingFilters({ ...DEFAULT_PRACTICE_FILTERS });
     applyFilters({ ...DEFAULT_PRACTICE_FILTERS });
   };
+
+  useEffect(() => {
+    if (questions.length === 0) return;
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("practice:has-started", "true");
+  }, [questions.length]);
 
   if (loading && questions.length === 0) {
     return (
@@ -269,15 +278,10 @@ export default function Practice() {
         onAnswer={handleAnswer}
         onFlagChange={handleFlagChange}
         initialFlagged={currentResponse?.flagged ?? false}
+        onNext={next}
+        canAdvance={canAdvance}
+        progress={{ current: index + 1, total: questions.length }}
       />
-      <div className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-600">
-        <div>
-          Q {index + 1} of {questions.length}
-        </div>
-        <Button type="button" onClick={next} aria-keyshortcuts="n" disabled={!canAdvance}>
-          Next question
-        </Button>
-      </div>
       {sessionComplete ? (
         <Card className="border-emerald-200">
           <CardHeader>

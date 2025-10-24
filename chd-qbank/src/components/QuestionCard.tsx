@@ -15,9 +15,20 @@ type Props = {
   onAnswer: (choice: Choice, durationMs: number, flagged: boolean) => Promise<void> | void;
   onFlagChange?: (flagged: boolean) => Promise<void> | void;
   initialFlagged?: boolean;
+  onNext?: () => void;
+  canAdvance?: boolean;
+  progress?: { current: number; total: number };
 };
 
-export default function QuestionCard({ question, onAnswer, onFlagChange, initialFlagged = false }: Props) {
+export default function QuestionCard({
+  question,
+  onAnswer,
+  onFlagChange,
+  initialFlagged = false,
+  onNext,
+  canAdvance = true,
+  progress
+}: Props) {
   const [selected, setSelected] = useState<Choice | null>(null);
   const [flagged, setFlagged] = useState(false);
   const [start, setStart] = useState<number>(() => performance.now());
@@ -102,11 +113,25 @@ export default function QuestionCard({ question, onAnswer, onFlagChange, initial
             Pro tip: press A–E or 1–5 to choose an answer instantly. Press X to strike out the focused option.
           </p>
         </CardContent>
-        <CardFooter className="flex items-center justify-between gap-3">
-          <FlagButton flagged={flagged} onToggle={toggleFlag} />
-          <Button type="button" onClick={() => setShowExplanation(true)} disabled={!selected}>
-            Reveal explanation
-          </Button>
+        <CardFooter className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-3">
+            <FlagButton flagged={flagged} onToggle={toggleFlag} />
+            <Button type="button" onClick={() => setShowExplanation(true)} disabled={!selected}>
+              Reveal explanation
+            </Button>
+          </div>
+          {onNext ? (
+            <div className="flex flex-col items-stretch gap-3 text-sm text-neutral-600 sm:flex-row sm:items-center">
+              {progress ? (
+                <span className="text-center sm:text-left">
+                  Q {progress.current} of {progress.total}
+                </span>
+              ) : null}
+              <Button type="button" onClick={onNext} aria-keyshortcuts="n" disabled={!canAdvance}>
+                Next question
+              </Button>
+            </div>
+          ) : null}
         </CardFooter>
       </Card>
       <div className="space-y-4">

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { supabase } from "../lib/supabaseClient";
@@ -24,6 +24,7 @@ const shuffle = <T,>(values: T[]): T[] => {
 
 export default function Dashboard() {
   const { session } = useSessionStore();
+  const navigate = useNavigate();
   const [aliasNeeded, setAliasNeeded] = useState(false);
   const [featured, setFeatured] = useState<FeaturedQuestion[]>([]);
   const [loadingFeatured, setLoadingFeatured] = useState(false);
@@ -200,8 +201,25 @@ export default function Dashboard() {
 
   const accuracy = metrics.total_attempts > 0 ? Math.round((metrics.correct_attempts / metrics.total_attempts) * 100) : 0;
 
+  const goToPractice = () => {
+    navigate("/practice");
+  };
+
   return (
     <div className="grid gap-6 md:grid-cols-2">
+      <div className="md:col-span-2">
+        <div className="flex flex-col gap-3 rounded-lg border border-brand-200 bg-brand-50 p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-neutral-900">Ready to keep practicing?</h2>
+            <p className="text-sm text-neutral-700">
+              Jump back into your most recent tutor-mode session without adjusting settings.
+            </p>
+          </div>
+          <Button type="button" onClick={goToPractice} className="w-full md:w-auto">
+            Resume practice
+          </Button>
+        </div>
+      </div>
       {aliasNeeded ? (
         <Card className="md:col-span-2 border-brand-200 bg-brand-50">
           <CardHeader>
@@ -290,9 +308,9 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-neutral-700">
           <p>Practice from a curated set of 250 CHD questions in tutor mode.</p>
-          <Link to="/practice" className="text-brand-600 underline">
-            Resume practice
-          </Link>
+          <p className="text-xs text-neutral-500">
+            Use the resume button above to pick up right where you left off.
+          </p>
         </CardContent>
       </Card>
       <Card>
