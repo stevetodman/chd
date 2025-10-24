@@ -8,14 +8,14 @@
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": false,
     "module": "ESNext",
     "moduleResolution": "Node",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "noImplicitOverride": true,
-    "jsx": "react-jsx",
-    "types": ["vite/client"]
+    "jsx": "react-jsx"
   },
   "include": ["src", "tests"],
   "references": [{ "path": "./tsconfig.node.json" }]
