@@ -19,12 +19,34 @@ jobs:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: 'chd-qbank/package-lock.json'
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            migrations:
+              - 'chd-qbank/supabase/migrations/**'
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test -- --run --reporter=dot
       - run: npm run build
       - run: npm run notice
+      - name: Check Supabase migration safety
+        if: steps.changes.outputs.migrations == 'true'
+        run: npm run check:migration-safety
       - name: Ensure NOTICE and license inventory are current
         working-directory: ..
         run: git diff --exit-code
+
+  edge-function-lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: chd-qbank/supabase/functions/signup-with-code
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+      - run: deno lint
+      - run: deno check index.ts
