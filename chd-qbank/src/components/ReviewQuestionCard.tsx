@@ -6,6 +6,7 @@ import Explanation from "./Explanation";
 import StemHighlighter from "./StemHighlighter";
 import LabPanel from "./LabPanel";
 import FormulaPanel from "./FormulaPanel";
+import ContextPanel from "./ContextPanel";
 import { Button } from "./ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/Card";
 
@@ -79,6 +80,8 @@ export default function ReviewQuestionCard({ flag, onMarkReviewed, processing = 
                   bodyMd={panel.body_md}
                 />
               );
+            case "context":
+              return <ContextPanel key={panel.id} title={panel.title} bodyMd={panel.body_md} />;
             default:
               return null;
           }

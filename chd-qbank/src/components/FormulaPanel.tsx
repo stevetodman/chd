@@ -11,6 +11,7 @@ type Props = {
   bodyMd?: string | null;
   labelId?: string;
   showTitle?: boolean;
+  asSection?: boolean;
 };
 
 const hasContent = (items?: FormulaReference[] | null, bodyMd?: string | null) => {
@@ -24,7 +25,8 @@ export default function FormulaPanel({
   formulas,
   bodyMd,
   labelId,
-  showTitle = true
+  showTitle = true,
+  asSection = true
 }: Props) {
   if (!hasContent(formulas, bodyMd)) {
     return null;
@@ -33,41 +35,49 @@ export default function FormulaPanel({
   const trimmedBody = typeof bodyMd === "string" ? bodyMd.trim() : "";
   const headingId = useId();
 
+  const content = (
+    <Card className={showTitle ? undefined : "border-0 bg-transparent shadow-none"}>
+      {showTitle && title ? (
+        <CardHeader>
+          <CardTitle id={headingId}>{title}</CardTitle>
+        </CardHeader>
+      ) : null}
+      <CardContent className={classNames("space-y-3 text-sm", showTitle ? undefined : "p-0")}
+      >
+        {Array.isArray(formulas) && formulas.length > 0 ? (
+          <ul className="space-y-2">
+            {formulas.map((formula) => (
+              <li key={`${formula.name}-${formula.expression}`}>
+                <p className="font-semibold text-neutral-900">{formula.name}</p>
+                <p className="text-neutral-600">{formula.expression}</p>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {trimmedBody ? (
+          <ReactMarkdown
+            remarkPlugins={markdownRemarkPlugins}
+            rehypePlugins={markdownRehypePlugins}
+            className="prose prose-sm max-w-none text-neutral-700"
+          >
+            {trimmedBody}
+          </ReactMarkdown>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+
+  if (!asSection) {
+    return content;
+  }
+
   return (
     <section
       role="complementary"
       aria-labelledby={showTitle && title ? headingId : labelId}
       aria-label={showTitle && title ? undefined : "Formula reference"}
     >
-      <Card className={showTitle ? undefined : "border-0 bg-transparent shadow-none"}>
-        {showTitle && title ? (
-          <CardHeader>
-            <CardTitle id={headingId}>{title}</CardTitle>
-          </CardHeader>
-        ) : null}
-        <CardContent className={classNames("space-y-3 text-sm", showTitle ? undefined : "p-0")}
-        >
-          {Array.isArray(formulas) && formulas.length > 0 ? (
-            <ul className="space-y-2">
-              {formulas.map((formula) => (
-                <li key={`${formula.name}-${formula.expression}`}>
-                  <p className="font-semibold text-neutral-900">{formula.name}</p>
-                  <p className="text-neutral-600">{formula.expression}</p>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          {trimmedBody ? (
-            <ReactMarkdown
-              remarkPlugins={markdownRemarkPlugins}
-              rehypePlugins={markdownRehypePlugins}
-              className="prose prose-sm max-w-none text-neutral-700"
-            >
-              {trimmedBody}
-            </ReactMarkdown>
-          ) : null}
-        </CardContent>
-      </Card>
+      {content}
     </section>
   );
 }

@@ -5,6 +5,7 @@ import Explanation from "./Explanation";
 import FlagButton from "./FlagButton";
 import LabPanel from "./LabPanel";
 import FormulaPanel from "./FormulaPanel";
+import ContextPanel from "./ContextPanel";
 import StemHighlighter from "./StemHighlighter";
 import { Button } from "./ui/Button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/Card";
@@ -195,7 +196,13 @@ export default function QuestionCard({
             if (!panel) return null;
             const sectionId = panel.id ? `panel-${panel.id}` : `panel-${panel.kind}-${index}`;
             const sectionTitle =
-              panel.title ?? (panel.kind === "labs" ? "Vitals & Labs" : "Formula Quick Ref");
+              panel.title ??
+              (panel.kind === "labs"
+                ? "Vitals & Labs"
+                : panel.kind === "context"
+                  ? "Context"
+                  : "Formula Quick Ref");
+            const hiddenHeadingId = `${sectionId}-heading`;
             let summary: string | undefined;
             if (panel.kind === "labs") {
               const count = panel.labs?.length ?? 0;
@@ -210,52 +217,59 @@ export default function QuestionCard({
                     ? "Reference notes"
                     : undefined;
             }
-            switch (panel.kind) {
-              case "labs":
-                return (
-                  <section
-                    key={sectionId}
-                    role="complementary"
-                    aria-labelledby={sectionId}
-                    className="contents"
-                  >
-                    <CollapsibleSection
-                      id={sectionId}
-                      title={sectionTitle}
-                      summary={summary}
-                      defaultOpen={isLargeScreen}
-                    >
-                      <LabPanel labs={panel.labs} showTitle={false} labelId={sectionId} />
-                    </CollapsibleSection>
-                  </section>
-                );
-              case "formula":
-                return (
-                  <section
-                    key={sectionId}
-                    role="complementary"
-                    aria-labelledby={sectionId}
-                    className="contents"
-                  >
-                    <CollapsibleSection
-                      id={sectionId}
-                      title={sectionTitle}
-                      summary={summary}
-                      defaultOpen={isLargeScreen}
-                    >
-                      <FormulaPanel
-                        title={panel.title}
-                        formulas={panel.formulas}
-                        bodyMd={panel.body_md}
-                        showTitle={false}
-                        labelId={sectionId}
-                      />
-                    </CollapsibleSection>
-                  </section>
-                );
-              default:
-                return null;
+            if (panel.kind === "context") {
+              const previewText = panel.body_md?.trim() ?? "";
+              if (previewText) {
+                summary = previewText.length > 80 ? `${previewText.slice(0, 77)}…` : previewText;
+              }
             }
+
+            let panelContent: JSX.Element | null = null;
+            if (panel.kind === "labs") {
+              panelContent = <LabPanel labs={panel.labs} showTitle={false} asSection={false} />;
+            }
+            if (panel.kind === "formula") {
+              panelContent = (
+                <FormulaPanel
+                  title={panel.title}
+                  formulas={panel.formulas}
+                  bodyMd={panel.body_md}
+                  showTitle={false}
+                  asSection={false}
+                />
+              );
+            }
+            if (panel.kind === "context") {
+              panelContent = (
+                <ContextPanel title={panel.title} bodyMd={panel.body_md} showTitle={false} asSection={false} />
+              );
+            }
+
+            if (!panelContent) {
+              return null;
+            }
+
+            return (
+              <section
+                key={sectionId}
+                role="complementary"
+                aria-labelledby={hiddenHeadingId}
+                tabIndex={0}
+                className="rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 focus-visible:ring-offset-2"
+              >
+                <h2 id={hiddenHeadingId} className="sr-only">
+                  {sectionTitle}
+                </h2>
+                <CollapsibleSection
+                  id={sectionId}
+                  title={sectionTitle}
+                  summary={summary}
+                  defaultOpen={isLargeScreen}
+                >
+                  {panelContent}
+                </CollapsibleSection>
+              </section>
+            );
           })}
           {showExplanation ? (
             <CollapsibleSection title="Explanation" defaultOpen id={explanationSectionId}>
