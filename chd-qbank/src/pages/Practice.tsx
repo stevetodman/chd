@@ -25,6 +25,7 @@ export default function Practice() {
     error,
     hasMore,
     next,
+    previous,
     handleAnswer,
     handleFlagChange,
     sessionStats,
@@ -114,6 +115,26 @@ export default function Practice() {
     const percentage = ((index + 1) / questions.length) * 100;
     return Number.isFinite(percentage) ? Math.min(100, Math.max(0, percentage)) : 0;
   }, [index, questions.length]);
+
+  const totalQuestions = questions.length;
+
+  const answeredProgressPercent = useMemo(() => {
+    if (totalQuestions === 0) return 0;
+    const percentage = (sessionStats.totalAnswered / totalQuestions) * 100;
+    return Number.isFinite(percentage) ? Math.min(100, Math.max(0, percentage)) : 0;
+  }, [sessionStats.totalAnswered, totalQuestions]);
+
+  const answeredSummary = useMemo(
+    () =>
+      formatMessage(
+        {
+          id: "practice.questionProgress.summary",
+          defaultMessage: "{current, number, integer} of {total, number, integer} answered"
+        },
+        { current: sessionStats.totalAnswered, total: totalQuestions }
+      ),
+    [formatMessage, sessionStats.totalAnswered, totalQuestions]
+  );
 
   const flaggedActive = filters.flagged === "flagged";
 
@@ -248,11 +269,21 @@ export default function Practice() {
     (!hasMore && index >= questions.length - 1) || questions.length === 0
   );
 
+  const canGoBack = index > 0;
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
-      if (event.key?.toLowerCase() !== "n") return;
-      if (!canAdvance) return;
+      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+
+      const key = event.key;
+      const normalized = key?.toLowerCase();
+      const goForward = key === "ArrowRight" || normalized === "n";
+      const goBackward = key === "ArrowLeft";
+      if (!goForward && !goBackward) return;
+
+      if (goForward && !canAdvance) return;
+      if (goBackward && !canGoBack) return;
 
       const activeElement = document.activeElement;
       if (
@@ -266,12 +297,16 @@ export default function Practice() {
       }
 
       event.preventDefault();
-      next();
+      if (goForward) {
+        next();
+      } else if (goBackward) {
+        previous();
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [canAdvance, next]);
+  }, [canAdvance, canGoBack, next, previous]);
 
   const renderFilterFields = () => (
     <>
@@ -469,7 +504,7 @@ export default function Practice() {
         <Button
           type="button"
           onClick={next}
-          aria-keyshortcuts="n"
+          aria-keyshortcuts="ArrowRight n"
           disabled={!canAdvance}
           className="w-full"
         >
@@ -696,6 +731,25 @@ export default function Practice() {
               </Dialog.Portal>
             </Dialog.Root>
           </div>
+          <section className="rounded-xl border border-surface-muted bg-surface-base px-4 py-4 shadow-sm">
+            <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              <span>
+                {formatMessage({ id: "practice.questionProgress.title", defaultMessage: "Practice progress" })}
+              </span>
+              <span>{answeredSummary}</span>
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface-muted">
+              <div
+                role="progressbar"
+                aria-label={answeredSummary}
+                aria-valuemin={0}
+                aria-valuemax={totalQuestions}
+                aria-valuenow={sessionStats.totalAnswered}
+                className="h-full rounded-full bg-brand-500 transition-[width] duration-300"
+                style={{ width: `${answeredProgressPercent}%` }}
+              />
+            </div>
+          </section>
           <QuestionCard
             question={currentQuestion}
             onAnswer={handleAnswer}
@@ -703,6 +757,8 @@ export default function Practice() {
             initialFlagged={currentResponse?.flagged ?? false}
             onNext={next}
             canAdvance={canAdvance}
+            onPrevious={previous}
+            canGoBack={canGoBack}
             progress={{ current: index + 1, total: questions.length }}
           />
           {sessionComplete ? (

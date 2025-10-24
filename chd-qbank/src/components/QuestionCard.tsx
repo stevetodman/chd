@@ -21,6 +21,8 @@ type Props = {
   onNext?: () => void;
   canAdvance?: boolean;
   progress?: { current: number; total: number };
+  onPrevious?: () => void;
+  canGoBack?: boolean;
 };
 
 export default function QuestionCard({
@@ -30,7 +32,9 @@ export default function QuestionCard({
   initialFlagged = false,
   onNext,
   canAdvance = true,
-  progress
+  progress,
+  onPrevious,
+  canGoBack = false
 }: Props) {
   const [selected, setSelected] = useState<Choice | null>(null);
   const [flagged, setFlagged] = useState(false);
@@ -93,13 +97,13 @@ export default function QuestionCard({
   };
 
   const toggleFlag = async () => {
-    const previous = flagged;
+    const wasFlagged = flagged;
     const next = !flagged;
     setFlagged(next);
     try {
       await onFlagChange?.(next);
     } catch {
-      setFlagged(previous);
+      setFlagged(wasFlagged);
     }
   };
 
@@ -127,7 +131,8 @@ export default function QuestionCard({
             autoFocusFirst
           />
           <p className="text-xs text-neutral-500" id="choice-shortcuts-hint">
-            Pro tip: press A–E or 1–5 to choose an answer instantly. Press X to strike out the focused option.
+            Pro tip: press A–E or 1–5 to choose an answer instantly. Press X to strike out the focused option. Use
+            ←/→ or N to move between questions when available.
           </p>
         </CardContent>
         <CardFooter className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -148,22 +153,38 @@ export default function QuestionCard({
               </Button>
             ) : null}
           </div>
-          {onNext ? (
+          {onNext || onPrevious ? (
             <div className="flex flex-col items-stretch gap-3 text-sm text-neutral-600 sm:w-auto sm:flex-row sm:items-center">
               {progress ? (
                 <span className="text-center sm:text-left">
                   Q {progress.current} of {progress.total}
                 </span>
               ) : null}
-              <Button
-                type="button"
-                onClick={onNext}
-                aria-keyshortcuts="n"
-                disabled={!canAdvance}
-                className="w-full sm:w-auto"
-              >
-                Next question
-              </Button>
+              <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+                {onPrevious ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={onPrevious}
+                    aria-keyshortcuts="ArrowLeft"
+                    disabled={!canGoBack}
+                    className="w-full sm:w-auto"
+                  >
+                    Previous question
+                  </Button>
+                ) : null}
+                {onNext ? (
+                  <Button
+                    type="button"
+                    onClick={onNext}
+                    aria-keyshortcuts="ArrowRight n"
+                    disabled={!canAdvance}
+                    className="w-full sm:w-auto"
+                  >
+                    Next question
+                  </Button>
+                ) : null}
+              </div>
             </div>
           ) : null}
         </CardFooter>

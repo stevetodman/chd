@@ -660,6 +660,10 @@ export function usePracticeSession() {
     }
   }, [hasMore, index, loadPage, page]);
 
+  const previous = useCallback(() => {
+    setIndex((prev) => (prev > 0 ? prev - 1 : prev));
+  }, []);
+
   const currentQuestion = questions[index] ?? null;
   const currentResponse = useMemo(() => {
     if (!currentQuestion) return null;
@@ -740,6 +744,7 @@ export function usePracticeSession() {
     error,
     hasMore,
     next,
+    previous,
     handleAnswer,
     handleFlagChange,
     sessionStats,
