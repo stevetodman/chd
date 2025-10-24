@@ -16,3 +16,15 @@ This project relies on a small set of environment variables. Use this guide when
 - `INVITE_EXPIRES` – ISO date string indicating when the invite should expire.
 
 Only supply invite and service-role credentials in your runtime environment or secret manager. Do not persist them in source control.
+
+### Provisioning checklist
+
+1. Copy `chd-qbank/.env.example` locally and leave invite placeholders as-is.
+2. Export or prefix real values when seeding:
+
+   ```bash
+   INVITE_CODE="<secure-value>" INVITE_EXPIRES="2025-12-31" npm run --prefix chd-qbank seed:invite
+   ```
+
+3. Store production secrets in a managed secret store (Supabase project secrets, Vercel environment variables, etc.) and load them into the environment before executing the script.
+4. Rotate invite codes immediately if they may have leaked (accidental commit, shared screenshot, etc.) and rerun the seeding command.

@@ -55,7 +55,7 @@ This monorepo packages everything required to operate the **CHD QBank**: a conge
    npm install
    ```
 
-2. Copy `.env.example` to `.env.development` (or `.env`) and populate Supabase credentials (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`). If you plan to run automation scripts locally, also set service-role variables (see [Environment variables](#environment-variables)).
+2. Copy `.env.example` to `.env.development` (or `.env`) and populate Supabase credentials (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`). Leave the invite placeholders in place—service-role keys and invite codes are supplied at runtime (see [Environment variables](#environment-variables)).
 
 3. Start the development server:
 
@@ -63,7 +63,7 @@ This monorepo packages everything required to operate the **CHD QBank**: a conge
    npm run dev
    ```
 
-4. Visit [http://localhost:5173](http://localhost:5173) and sign in with an invited account. Initial content can be loaded by running the seeding scripts after your database is provisioned.
+4. Visit [http://localhost:5173](http://localhost:5173) and sign in with an invited account. Initial content can be loaded by running the seeding scripts after your database is provisioned; provide invite codes via environment variables when invoking `npm run seed:invite`.
 
 ## Supabase & data model
 
@@ -100,25 +100,14 @@ All commands below run from `chd-qbank/`:
 ## Environment variables
 
 Create environment files in `chd-qbank/` with the variables required for your workflow (e.g. `.env.development`, `.env.staging`,
-or a shared `.env`):
-
-```bash
-VITE_SUPABASE_URL=<your-supabase-url>
-VITE_SUPABASE_ANON_KEY=<your-anon-key>
-
-# Automation scripts (service role credentials never ship to the client bundle)
-SUPABASE_URL=<your-supabase-url>
-SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
-INVITE_CODE=<optional-invite-code>
-INVITE_EXPIRES=<optional-iso-date>
-```
+or a shared `.env`). `.env.example` documents every variable with placeholder values—copy the file and replace only the entries you need for local development. Keep the `INVITE_CODE` and `INVITE_EXPIRES` placeholders intact; real values should be injected only when you execute the seeding script or stored securely in your deployment secret manager.
 
 Automation helpers automatically load `.env`, `.env.local`, `.env.<environment>`, and `.env.<environment>.local` files in that
 order. Set `APP_ENV` (or `NODE_ENV`) to `development`, `staging`, or `production` when running scripts to select the appropriate
-configuration:
+configuration. Supply invite credentials on the command line when seeding:
 
 ```bash
-APP_ENV=staging npm run seed:invite
+INVITE_CODE="<secure-value>" INVITE_EXPIRES="2025-12-31" APP_ENV=staging npm run seed:invite
 APP_ENV=production npm run verify:policies
 ```
 
@@ -131,7 +120,7 @@ npm run preview:staging
 ```
 
 Invite codes are only written to the `app_settings` table via `npm run seed:invite`—do **not** expose them through Vite
-environment variables. When deploying Edge Functions, configure their environment variables separately inside Supabase.
+environment variables or commit them to version control. When deploying Edge Functions, configure their environment variables separately inside Supabase or your secret manager, and rotate invite codes if exposure is suspected.
 
 ## Testing expectations
 

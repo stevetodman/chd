@@ -93,7 +93,7 @@ Fix: Remove `zod` from devDependencies, add `npm run sbom` script invoking `cycl
 
 | ID | Issue | Evidence | Why it matters | Effort | Impact | Priority | Owner hint |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 5A | Static invite code in sample env | `.env.example` includes `CHD2025FALL` | Downstream forks might treat as production secret | 1h | Medium | P1 | Security | 【F:chd-qbank/.env.example†L1-L5】 |
+| 5A | Static invite code in sample env | `.env.example` previously included a hard-coded invite code | Downstream forks might treat as production secret | 1h | Medium | P1 | Security | 【F:chd-qbank/.env.example†L1-L5】 |
 
 Fix: Replace with `<PLACEHOLDER>` tokens and update docs.
 

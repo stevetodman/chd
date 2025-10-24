@@ -25,8 +25,19 @@ if (!INVITE_CODE) {
   process.exit(1);
 }
 
+const placeholderInvitePatterns = [/^<YOUR_[A-Z0-9_]+>$/, /^TEST_INVITE_CODE$/i, /<secure-value>/i];
+if (placeholderInvitePatterns.some((pattern) => pattern.test(INVITE_CODE))) {
+  console.error('Replace the INVITE_CODE placeholder with a real value before seeding.');
+  process.exit(1);
+}
+
 if (!INVITE_EXPIRES) {
   console.error('Missing INVITE_EXPIRES environment variable.');
+  process.exit(1);
+}
+
+if (/^<.+>$/.test(INVITE_EXPIRES)) {
+  console.error('Replace the INVITE_EXPIRES placeholder with a real ISO date (e.g. 2025-12-31).');
   process.exit(1);
 }
 

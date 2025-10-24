@@ -1,0 +1,8 @@
+title = "chd gitleaks configuration"
+
+[allowlist]
+  description = "Ignore obvious placeholder values"
+  regexes = [
+    "<YOUR_[A-Z0-9_]+>",
+    "<secure-value>"
+  ]

@@ -27,4 +27,11 @@ Please do not publicly disclose the vulnerability until we have had an opportuni
 - If the vulnerability requires credential rotation (e.g., Supabase service role keys), indicate which secrets were potentially exposed so we can rotate them promptly.
 - For urgent issues outside normal business hours, mark the email subject line with `URGENT` so it is escalated automatically.
 
+## Handling invite codes and other sensitive configuration
+
+- Invite codes are provisioned out-of-band. Inject them via environment variables (for example `INVITE_CODE="<secure-value>" INVITE_EXPIRES="2025-12-31" npm run --prefix chd-qbank seed:invite`) instead of storing them in Git, issue trackers, or chat logs.
+- Store long-lived secrets (Supabase service role keys, production invite codes) in an encrypted secret manager and scope access narrowly.
+- Rotate invite codes immediately whenever exposure is suspected. Historical commits in this repository exposed a legacy invite code—assume any pre-2024-09 values are compromised and replace them in every environment.
+- Document rotations in the internal change log so downstream operators know which environments were updated and which codes are no longer valid.
+
 Thank you for helping to keep the CHD community safe.

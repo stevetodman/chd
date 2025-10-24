@@ -8,7 +8,7 @@
 ## Findings
 
 ### 1. Hard-coded invite code secret (High)
-The Supabase schema seeds the `app_settings` table with a static invite code (`CHD2025FALL`) and expiration date. Because this migration is part of the public repository, anyone can recover the code and pair it with the publicly exposed Supabase project URL to self-enroll via the signup Edge Function.【F:chd-qbank/schema.sql†L91-L103】
+The Supabase schema seeds the `app_settings` table with a static invite code (the production value at the time) and expiration date. Because this migration is part of the public repository, anyone can recover the code and pair it with the publicly exposed Supabase project URL to self-enroll via the signup Edge Function.【F:chd-qbank/schema.sql†L91-L103】
 
 **Impact:** Unauthorized users can bypass the intended invite-only onboarding and generate verified accounts, gaining access to protected study material.
 
