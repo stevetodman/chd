@@ -2,7 +2,7 @@
 /// <reference lib="webworker" />
 
 import { registerRoute } from "workbox-routing";
-import { CacheFirst, NetworkFirst } from "workbox-strategies";
+import { CacheFirst, NetworkOnly } from "workbox-strategies";
 import { CacheableResponsePlugin } from "workbox-cacheable-response";
 import { ExpirationPlugin } from "workbox-expiration";
 
@@ -22,13 +22,12 @@ const BUILD_HASH = typeof __BUILD_HASH__ === "string" ? __BUILD_HASH__ : "dev";
 const APP_SHELL_CACHE = `app-shell-v${BUILD_HASH}`;
 const STATIC_CACHE = `static-v${BUILD_HASH}`;
 const DYNAMIC_CACHE = `dynamic-v${BUILD_HASH}`;
-const SUPABASE_REST_CACHE = `supabase-rest-v${BUILD_HASH}`;
 const SUPABASE_STORAGE_CACHE = `supabase-storage-v${BUILD_HASH}`;
+const SUPABASE_REST_CACHE_PREFIX = "supabase-rest-v";
 const EXPECTED_CACHES = new Set([
   APP_SHELL_CACHE,
   STATIC_CACHE,
   DYNAMIC_CACHE,
-  SUPABASE_REST_CACHE,
   SUPABASE_STORAGE_CACHE
 ]);
 const APP_SHELL_ASSETS = ["/", "/index.html", "/offline.html", "/manifest.json"];
@@ -40,13 +39,7 @@ registerRoute(
     request.method === "GET" &&
     url.hostname.endsWith(SUPABASE_HOST_SUFFIX) &&
     url.pathname.startsWith("/rest/v1/"),
-  new NetworkFirst({
-    cacheName: SUPABASE_REST_CACHE,
-    plugins: [
-      new CacheableResponsePlugin({ statuses: [0, 200] }),
-      new ExpirationPlugin({ maxEntries: 100, maxAgeSeconds: 5 * 60 })
-    ]
-  })
+  new NetworkOnly()
 );
 
 registerRoute(
@@ -79,7 +72,10 @@ self.addEventListener("activate", (event) => {
 
       await Promise.all(
         cacheNames.map((cacheName) => {
-          if (!EXPECTED_CACHES.has(cacheName)) {
+          if (
+            !EXPECTED_CACHES.has(cacheName) ||
+            cacheName.startsWith(SUPABASE_REST_CACHE_PREFIX)
+          ) {
             return caches.delete(cacheName);
           }
           return Promise.resolve(true);
