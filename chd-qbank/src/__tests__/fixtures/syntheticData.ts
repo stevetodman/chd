@@ -112,7 +112,7 @@ export const syntheticPracticeQuestions: QuestionQueryRow[] = [
     subtopic: "hemodynamics",
     lesion: "complete AVSD",
     media_bundle: null,
-    context_panels: null,
+    context_panels: [],
     choices: [
       {
         id: "choice-g",

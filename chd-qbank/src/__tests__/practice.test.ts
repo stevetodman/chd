@@ -20,7 +20,7 @@ const sampleRow = (overrides: Partial<QuestionQueryRow> = {}): QuestionQueryRow 
   subtopic: null,
   lesion: null,
   media_bundle: null,
-  context_panels: null,
+  context_panels: [],
   choices: null,
   ...overrides
 });
