@@ -27,4 +27,10 @@ Please do not publicly disclose the vulnerability until we have had an opportuni
 - If the vulnerability requires credential rotation (e.g., Supabase service role keys), indicate which secrets were potentially exposed so we can rotate them promptly.
 - For urgent issues outside normal business hours, mark the email subject line with `URGENT` so it is escalated automatically.
 
+## Related documentation
+
+- Platform hardening and admin procedures are documented in [`docs/security`](./docs/security).
+- Operational expectations for contributors are outlined in the [README](./README.md) and [CONTRIBUTING](./CONTRIBUTING.md) guides.
+- Public builds include the latest version of this policy in the repository root for easy discovery.
+
 Thank you for helping to keep the CHD community safe.

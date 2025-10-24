@@ -8,6 +8,7 @@ This monorepo packages everything required to operate the **CHD QBank**: a conge
 - [Key capabilities](#key-capabilities)
 - [Prerequisites](#prerequisites)
 - [Quick start](#quick-start)
+- [Usage guide](#usage-guide)
 - [Supabase & data model](#supabase--data-model)
 - [Automation scripts](#automation-scripts)
 - [Environment variables](#environment-variables)
@@ -60,23 +61,64 @@ This monorepo packages everything required to operate the **CHD QBank**: a conge
 3. Start the development server:
 
    ```bash
-   npm run dev
-   ```
+  npm run dev
+  ```
 
 4. Visit [http://localhost:5173](http://localhost:5173) and sign in with an invited account. Initial content can be loaded by running the seeding scripts after your database is provisioned.
 
+## Usage guide
+
+### Signing in and roles
+
+- Deploy the [`signup-with-code` Edge Function](./chd-qbank/supabase/functions/signup-with-code) and populate the `app_settings` table with a valid invite code (see [`npm run seed:invite`](#automation-scripts)).
+- Learners sign up via email/password. Instructors and admins receive elevated roles through the `app_roles` table and can unlock analytics dashboards, content review tools, and seeding utilities.
+- Use Supabase Auth to manage password resets; role assignments sync automatically through the `handle_new_user` trigger in [`schema.sql`](./chd-qbank/schema.sql).
+
+### Practicing questions
+
+1. Navigate to **Practice** → **Question Bank**.
+2. Filter by lesion, topic, Bloom level, or difficulty. Taxonomy facets are sourced from the metadata in `questions.full.template.json`.
+3. Start a session to see one question at a time. Explanations surface after you submit an answer—brief summaries lead, followed by the detailed teaching block.
+4. Completed sessions populate the `responses` and `answer_events` tables. Analytics widgets refresh automatically once the [`analytics_heatmap_agg`](./docs/analytics/heatmap.md) materialized view is updated via cron or `npm run verify:analytics:heatmap`.
+
+### Reviewing analytics
+
+- Instructor roles can open the **Insights** area to review cohort progress, heatmaps, and reliability calculations sourced from `assessment_reliability`.
+- Download CSV exports from the analytics dashboards when you need to perform offline analysis. The exports mirror the views documented in [`docs/analytics`](./docs/analytics).
+- Scheduled jobs defined in [`cron.sql`](./chd-qbank/cron.sql) keep materialized views fresh; run them manually after large content imports to avoid stale charts.
+
+### Gameplay drills
+
+- **Murmur lab:** Launch from **Games** → **Murmurs** to classify audio clips stored in `media_bundles.murmur_url`. Attempts and leaderboard progress persist via the `murmur_attempts` and `leaderboard_events` tables.
+- **Chest X-ray labeling:** Start from **Games** → **CXR Trainer**. Bounding boxes come from `cxr_labels`; accuracy and timing metrics land in `cxr_attempts` for analytics review.
+- Game assets reuse the same seeding pipeline as question content. Updating the templates ensures instructors and learners see consistent scenarios across practice modes.
+
 ## Supabase & data model
 
-The application relies on a Postgres schema defined in [`chd-qbank/schema.sql`](./chd-qbank/schema.sql). Key tables include:
+The application relies on a Postgres schema defined in [`chd-qbank/schema.sql`](./chd-qbank/schema.sql). Bootstrap a new project by running the schema, storage policy, and cron SQL files inside the Supabase SQL editor (or through the CLI). Once the schema exists you can seed representative content with `npm run seed:full` and keep invite codes synchronized via `npm run seed:invite`.
 
-- `app.app_settings` – singleton configuration row controlling retention windows and operational toggles.
-- `app_users` / `auth.users` – profile mirror storing learner role assignments, display preferences, and moderation flags.
-- `questions`, `choices`, `media_bundles` – question bank content with optional rich media attachments and Markdown explanations.
-- `responses`, `practice_sessions`, `answer_events` – gameplay telemetry and session metadata powering analytics and leaderboards.
-- `murmur_items`, `murmur_options`, `cxr_items`, `cxr_labels` – assets for the teaching games bundled with the platform.
-- `analytics_heatmap_agg` materialized view plus helper functions documented in [docs/analytics/heatmap.md](./docs/analytics/heatmap.md).
+### Core tables
 
-Bootstrap a new project by running the schema, storage policy, and cron SQL files inside the Supabase SQL editor (or through the CLI). Once the schema exists you can seed representative content with `npm run seed:full` and keep invite codes synchronized via `npm run seed:invite`.
+| Table | Purpose |
+| --- | --- |
+| `app.app_settings` | Singleton configuration row controlling invite codes, retention windows, and feature toggles. Updated via `npm run seed:invite` and audited by `app.app_settings_audit`. |
+| `app_users` | Mirrors `auth.users` with display preferences, consent flags, and role metadata. The `handle_new_user` trigger keeps it synchronized. |
+| `questions` | Stores Markdown stems, difficulty targets, taxonomy tags, and `media_bundle_id` references. |
+| `choices` | Linked to `questions` with one row per answer option; the `sync_correct_choice` trigger keeps `questions.correct_choice_label` aligned. |
+| `media_bundles` | Groups murmur audio, CXR images, diagrams, and accessibility `alt_text` for reuse across questions and games. |
+| `responses` & `answer_events` | Capture practice activity, timing, and confidence values for downstream analytics. `log_answer_event()` mirrors responses into `answer_events`.
+| `practice_sessions` | Tracks a learner's interaction with the bank, including start/end timestamps and assignment metadata.
+| `murmur_items`/`murmur_options` | Define auscultation drills: each item references a media bundle and the expected auscultatory finding. |
+| `cxr_items`/`cxr_labels` | Describe radiology training cases and bounding boxes. |
+| `assessment_reliability` & `leaderboard` | Aggregated views powering cohort analytics and gamification features. |
+| `public_aliases` | Allows learners to opt into a public leaderboard identity without exposing email addresses. |
+
+### Functions, views, and APIs
+
+- **Triggers:** `log_answer_event`, `sync_public_alias`, and `set_updated_at` maintain audit trails and derived fields without manual bookkeeping.
+- **Analytics:** The `analytics_heatmap_agg` materialized view and supporting `analytics_refresh_heatmap()` function feed heatmap dashboards. See [`docs/analytics/heatmap.md`](./docs/analytics/heatmap.md) for refresh guidance.
+- **Edge functions:** [`signup-with-code`](./chd-qbank/supabase/functions/signup-with-code/index.ts) enforces invite-only registration. It validates codes stored in `app.app_settings` and provisions role assignments during sign-up.
+- **Security helpers:** `is_admin()` and `leaderboard_is_enabled()` consolidate role checks for the frontend and automation scripts.
 
 ## Automation scripts
 
@@ -164,10 +206,12 @@ environment variables. When deploying Edge Functions, configure their environmen
 
 ## Additional documentation
 
+- QBank authoring workflow: [`docs/qbank/content-authoring.md`](./docs/qbank/content-authoring.md)
 - Analytics heatmap operations: [`docs/analytics/heatmap.md`](./docs/analytics/heatmap.md)
 - Event retention jobs: [`docs/ops/event-retention.md`](./docs/ops/event-retention.md)
 - Service worker behavior: [`docs/runtime/service-worker.md`](./docs/runtime/service-worker.md)
 - Admin role management: [`docs/security/admin-roles.md`](./docs/security/admin-roles.md)
+- Security disclosures and response process: [`SECURITY.md`](./SECURITY.md)
 
 ## License
 
