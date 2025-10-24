@@ -9,9 +9,14 @@ const MEDIA_DIR   = path.join(ROOT, "chd-qbank", "public", "media");
 
 function loadQuestions() {
   if (!fs.existsSync(EXAMPLE_DIR)) return [];
-  return fs.readdirSync(EXAMPLE_DIR)
-    .filter(f => f.endsWith(".json"))
-    .map(f => JSON.parse(fs.readFileSync(path.join(EXAMPLE_DIR, f), "utf8")));
+  const walk = (dir: string): string[] =>
+    fs.readdirSync(dir).flatMap((f) => {
+      const p = path.join(dir, f);
+      return fs.statSync(p).isDirectory() ? walk(p) : [p];
+    });
+  return walk(EXAMPLE_DIR)
+    .filter((f) => f.endsWith(".json"))
+    .map((f) => JSON.parse(fs.readFileSync(f, "utf8")));
 }
 
 describe("QBank question shape & assets", () => {
@@ -22,7 +27,7 @@ describe("QBank question shape & assets", () => {
   });
 
   it("stable top-level keys (snapshot)", () => {
-    const shapes = questions.map(q => Object.keys(q).sort());
+    const shapes = questions.map((q) => Object.keys(q).sort());
     expect(shapes).toMatchSnapshot();
   });
 

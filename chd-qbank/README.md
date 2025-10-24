@@ -103,3 +103,22 @@ Add new question items by placing JSON files under `content/questions/`. Each fi
 Run the validation suite with `npm test` for a one-time check or `npm run test:watch` while iterating locally.
 
 If you intentionally change the question shape, update snapshots with `npx vitest -u`.
+
+### QBank Tests
+Add items under `content/questions/`. Run:
+  npm test
+  npm run test:watch
+Update snapshots intentionally:
+  npx vitest -u
+
+### QBank Migration (schema normalization)
+Dry run (no writes):
+  npm run migrate:qbank:dry
+
+Perform migration with backups + CSV report:
+  npm run migrate:qbank
+
+Outputs:
+- Backups → chd-qbank/content/_backup_YYYYMMDD_HHMMSS/
+- Report  → chd-qbank/content/_reports/migration_YYYYMMDD_HHMMSS.csv
+
