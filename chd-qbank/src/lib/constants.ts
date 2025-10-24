@@ -33,6 +33,13 @@ export type FormulaReference = {
   expression: string;
 };
 
+export type ContextInfoPanel = {
+  id: string;
+  kind: "context";
+  title?: string | null;
+  body_md: string;
+};
+
 export type ContextLabsPanel = {
   id: string;
   kind: "labs";
@@ -48,7 +55,7 @@ export type ContextFormulaPanel = {
   body_md?: string | null;
 };
 
-export type ContextPanel = ContextLabsPanel | ContextFormulaPanel;
+export type ContextPanel = ContextInfoPanel | ContextLabsPanel | ContextFormulaPanel;
 
 export type Question = {
   id: string;
