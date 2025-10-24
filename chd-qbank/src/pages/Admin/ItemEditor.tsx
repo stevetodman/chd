@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { Button } from "../../components/ui/Button";
 
@@ -23,42 +23,66 @@ interface EditableItem {
 
 export default function ItemEditor() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [item, setItem] = useState<EditableItem | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const loadItem = useCallback(async () => {
+    if (!id) {
+      setLoadError("Missing item identifier.");
+      setLoading(false);
+      setItem(null);
+      return;
+    }
+
+    setLoading(true);
+    setLoadError(null);
+
+    try {
+      const { data, error } = await supabase
+        .from("questions")
+        .select(
+          "id, stem_md, lead_in, explanation_brief_md, explanation_deep_md, status, version, choices(id, label, text_md, is_correct)"
+        )
+        .eq("id", id)
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data) {
+        throw new Error("Item not found.");
+      }
+
+      const editable = {
+        id: data.id as string,
+        stem_md: data.stem_md as string,
+        lead_in: (data.lead_in as string | null) ?? null,
+        explanation_brief_md: data.explanation_brief_md as string,
+        explanation_deep_md: (data.explanation_deep_md as string | null) ?? null,
+        status: data.status as string,
+        version: data.version as number,
+        choices: ((data.choices ?? []) as EditableChoice[]).sort((a, b) =>
+          a.label.localeCompare(b.label)
+        )
+      } satisfies EditableItem;
+
+      setItem(editable);
+    } catch (err) {
+      setItem(null);
+      setLoadError(err instanceof Error ? err.message : "Failed to load item.");
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
 
   useEffect(() => {
-    if (!id) return;
-    // Supabase integration: load full item for editing (admin-only).
-    supabase
-      .from("questions")
-      .select(
-        "id, stem_md, lead_in, explanation_brief_md, explanation_deep_md, status, version, choices(id, label, text_md, is_correct)"
-      )
-      .eq("id", id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!data) {
-          setItem(null);
-          return;
-        }
-
-        const editable = {
-          id: data.id as string,
-          stem_md: data.stem_md as string,
-          lead_in: (data.lead_in as string | null) ?? null,
-          explanation_brief_md: data.explanation_brief_md as string,
-          explanation_deep_md: (data.explanation_deep_md as string | null) ?? null,
-          status: data.status as string,
-          version: data.version as number,
-          choices: ((data.choices ?? []) as EditableChoice[]).sort((a, b) =>
-            a.label.localeCompare(b.label)
-          )
-        } satisfies EditableItem;
-
-        setItem(editable);
-      });
-  }, [id]);
+    void loadItem();
+  }, [loadItem]);
 
   const save = async () => {
     if (!item) return;
@@ -116,7 +140,28 @@ export default function ItemEditor() {
     }
   };
 
-  if (!item) return <div>Loading item…</div>;
+  if (loading) return <div>Loading item…</div>;
+
+  if (loadError)
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-red-600">Failed to load item: {loadError}</p>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" onClick={() => void loadItem()}>
+            Retry
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => navigate("/admin/items")}
+          >
+            Back to list
+          </Button>
+        </div>
+      </div>
+    );
+
+  if (!item) return null;
 
   return (
     <div className="space-y-4">
