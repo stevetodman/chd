@@ -2,6 +2,11 @@
 - Describe the purpose of this change and link to related issues or discussions.
 - Highlight any notable implementation details reviewers should know upfront.
 
+## Clinical/Source Citations
+- [ ] All clinical assertions and statistics include inline citations following the [Content Style Checklist](../docs/documentation-content-style-checklist.md).
+- [ ] References section or bibliography updated when more than three sources are cited.
+- [ ] Linked sources are accessible (include DOI when available) and reflect the most current guidance.
+
 ## Testing
 - [ ] Lint command(s) and output:
 - [ ] Test command(s) and output:
