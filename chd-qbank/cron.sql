@@ -49,3 +49,6 @@ select cron.schedule('cleanup_idempotency_keys_ten_minute', '*/5 * * * *', $$
   delete from idempotency_keys
   where created_at < now() - interval '10 minutes';
 $$);
+
+select cron.schedule('refresh_leaderboard_weekly_hourly', '5 * * * *', $$select leaderboard_refresh_weekly();$$);
+select cron.schedule('refresh_analytics_heatmap_hourly', '10 * * * *', $$select analytics_refresh_heatmap();$$);
