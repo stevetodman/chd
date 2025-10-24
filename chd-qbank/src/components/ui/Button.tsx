@@ -6,14 +6,15 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "ghost";
 };
 
-const base = "inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 disabled:opacity-50";
+const base =
+  "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 focus-visible:ring-offset-1 focus-visible:ring-offset-surface-base disabled:cursor-not-allowed disabled:opacity-60";
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "primary", ...props }, ref) => {
     const variantClasses = {
-      primary: "bg-brand-600 text-white hover:bg-brand-500",
-      secondary: "bg-neutral-100 text-neutral-900 hover:bg-neutral-200",
-      ghost: "bg-transparent text-neutral-700 hover:bg-neutral-100"
+      primary: "bg-brand-600 text-white shadow-elevation-xs hover:bg-brand-500",
+      secondary: "border border-surface-muted bg-surface-base text-surface-inverted shadow-elevation-xs hover:bg-surface-subtle",
+      ghost: "bg-transparent text-surface-inverted hover:bg-surface-muted/60"
     }[variant];
 
     return <button ref={ref} className={classNames(base, variantClasses, className)} {...props} />;

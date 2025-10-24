@@ -7,11 +7,11 @@
 }
 
 body {
-  @apply bg-neutral-100 text-neutral-900 antialiased;
+  @apply bg-surface-subtle text-surface-inverted antialiased font-sans;
 }
 
 a {
-  @apply text-brand-600 hover:text-brand-500 underline;
+  @apply font-medium text-brand-600 underline transition-colors hover:text-brand-500;
 }
 
 main {

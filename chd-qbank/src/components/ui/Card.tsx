@@ -3,11 +3,14 @@ import { classNames } from "../../lib/utils";
 
 type CardElevation = "flat" | "raised";
 
-type CardStatus = "default" | "success" | "info" | "warning";
+type CardStatus = "default" | "success" | "info" | "warning" | "danger";
+
+type CardVariant = "primary" | "secondary";
 
 type CardProps = React.HTMLAttributes<HTMLDivElement> & {
   elevation?: CardElevation;
   status?: CardStatus;
+  variant?: CardVariant;
   interactive?: boolean;
 };
 
@@ -23,25 +26,37 @@ type CardDescriptionProps = React.HTMLAttributes<HTMLParagraphElement>;
 
 const elevationStyles: Record<CardElevation, string> = {
   flat: "shadow-none",
-  raised: "shadow-sm"
+  raised: "shadow-elevation-xs"
+};
+
+const variantStyles: Record<CardVariant, string> = {
+  primary: "border-surface-muted bg-surface-base",
+  secondary: "border-transparent bg-surface-subtle"
 };
 
 const statusStyles: Record<CardStatus, string> = {
-  default: "border-neutral-200 bg-white",
-  success: "border-emerald-200 bg-emerald-50/60",
-  info: "border-sky-200 bg-sky-50/70",
-  warning: "border-amber-200 bg-amber-50/70"
+  default: "",
+  success: "border-success-200 bg-success-50",
+  info: "border-brand-200 bg-brand-50",
+  warning: "border-warning-200 bg-warning-50",
+  danger: "border-danger-200 bg-danger-50"
 };
 
 export const Card = forwardRef<HTMLDivElement, CardProps>(
-  ({ className, elevation = "raised", status = "default", interactive = false, ...props }, ref) => (
+  (
+    { className, elevation = "raised", status = "default", variant = "primary", interactive = false, ...props },
+    ref
+  ) => (
     <div
       ref={ref}
       className={classNames(
         "group relative rounded-2xl border transition-all duration-200",
         elevationStyles[elevation],
+        variantStyles[variant],
         statusStyles[status],
-        interactive ? "hover:-translate-y-0.5 hover:shadow-md hover:shadow-brand-900/10" : null,
+        interactive
+          ? "hover:-translate-y-0.5 hover:shadow-elevation-md focus-within:-translate-y-0.5 focus-within:shadow-elevation-md"
+          : null,
         className
       )}
       {...props}
@@ -51,12 +66,12 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
 Card.displayName = "Card";
 
 export const CardHeader = forwardRef<HTMLDivElement, CardHeaderProps>(({ className, ...props }, ref) => (
-  <div ref={ref} className={classNames("border-b border-black/5 px-6 py-4", className)} {...props} />
+  <div ref={ref} className={classNames("border-b border-surface-muted/70 px-6 py-4", className)} {...props} />
 ));
 CardHeader.displayName = "CardHeader";
 
 export const CardTitle = forwardRef<HTMLHeadingElement, CardTitleProps>(({ className, ...props }, ref) => (
-  <h2 ref={ref} className={classNames("text-lg font-semibold tracking-tight text-neutral-900", className)} {...props} />
+  <h2 ref={ref} className={classNames("text-lg font-semibold tracking-tight text-surface-inverted", className)} {...props} />
 ));
 CardTitle.displayName = "CardTitle";
 
@@ -66,7 +81,7 @@ export const CardContent = forwardRef<HTMLDivElement, CardContentProps>(({ class
 CardContent.displayName = "CardContent";
 
 export const CardFooter = forwardRef<HTMLDivElement, CardFooterProps>(({ className, ...props }, ref) => (
-  <div ref={ref} className={classNames("border-t border-black/5 px-6 py-4", className)} {...props} />
+  <div ref={ref} className={classNames("border-t border-surface-muted/70 px-6 py-4", className)} {...props} />
 ));
 CardFooter.displayName = "CardFooter";
 
