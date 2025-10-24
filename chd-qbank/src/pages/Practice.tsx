@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { Link } from "react-router-dom";
+import { type ChangeEvent, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import PageState from "../components/PageState";
 import QuestionCard from "../components/QuestionCard";
 import { Button } from "../components/ui/Button";
@@ -19,8 +19,15 @@ export default function Practice() {
     handleAnswer,
     handleFlagChange,
     sessionStats,
-    sessionComplete
+    sessionComplete,
+    filters,
+    setFilters,
+    resetFilters,
+    filterOptions,
+    filtersLoading,
+    restart
   } = usePracticeSession();
+  const navigate = useNavigate();
 
   if (loading && questions.length === 0) {
     return (
@@ -43,21 +50,48 @@ export default function Practice() {
     );
   }
 
-  if (!currentQuestion)
-    return (
-      <PageState
-        title="No questions found"
-        description="Adjust your filters or try refreshing to start a new session."
-        variant="empty"
-        fullHeight
-      />
-    );
+  const canAdvance =
+    !!currentQuestion &&
+    !loading &&
+    !((!hasMore && index >= questions.length - 1) || questions.length === 0);
 
-  const canAdvance = !(
-    (!hasMore && index >= questions.length - 1) || questions.length === 0
-  );
+  const isFiltering =
+    filters.topic !== "all" || filters.lesion !== "all" || filters.difficulty !== "all";
+
+  const handleTopicChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const value = event.target.value;
+    setFilters({ topic: value === "all" ? "all" : value });
+  };
+
+  const handleLesionChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const value = event.target.value;
+    setFilters({ lesion: value === "all" ? "all" : value });
+  };
+
+  const handleDifficultyChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const value = event.target.value;
+    setFilters({ difficulty: value === "all" ? "all" : Number(value) });
+  };
+
+  const formatDifficulty = (level: number) => {
+    switch (level) {
+      case 1:
+        return "1 – Intro";
+      case 2:
+        return "2 – Easy";
+      case 3:
+        return "3 – Moderate";
+      case 4:
+        return "4 – Hard";
+      case 5:
+        return "5 – Expert";
+      default:
+        return `Level ${level}`;
+    }
+  };
 
   useEffect(() => {
+    if (!currentQuestion) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
       if (event.key?.toLowerCase() !== "n") return;
@@ -80,24 +114,127 @@ export default function Practice() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [canAdvance, next]);
+  }, [canAdvance, currentQuestion, next]);
+
+  const renderFilters = () => (
+    <section className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm" aria-label="Practice filters">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-neutral-900">Filters</h2>
+          <p className="text-xs text-neutral-500">Tailor the next set of questions to focus your practice.</p>
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={resetFilters}
+          disabled={!isFiltering || filtersLoading}
+        >
+          Clear filters
+        </Button>
+      </div>
+      <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <label className="flex flex-col text-sm font-medium text-neutral-700">
+          <span>Topic</span>
+          <select
+            className="mt-1 block w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/40 disabled:cursor-not-allowed disabled:bg-neutral-100"
+            value={filters.topic}
+            onChange={handleTopicChange}
+            disabled={filtersLoading && filterOptions.topics.length === 0}
+          >
+            <option value="all">All topics</option>
+            {filterOptions.topics.map((topic) => (
+              <option key={topic} value={topic}>
+                {topic}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col text-sm font-medium text-neutral-700">
+          <span>Lesion</span>
+          <select
+            className="mt-1 block w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/40 disabled:cursor-not-allowed disabled:bg-neutral-100"
+            value={filters.lesion}
+            onChange={handleLesionChange}
+            disabled={filtersLoading && filterOptions.lesions.length === 0}
+          >
+            <option value="all">All lesions</option>
+            {filterOptions.lesions.map((lesion) => (
+              <option key={lesion} value={lesion}>
+                {lesion}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col text-sm font-medium text-neutral-700">
+          <span>Target difficulty</span>
+          <select
+            className="mt-1 block w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/40 disabled:cursor-not-allowed disabled:bg-neutral-100"
+            value={filters.difficulty}
+            onChange={handleDifficultyChange}
+            disabled={filtersLoading && filterOptions.difficulties.length === 0}
+          >
+            <option value="all">All levels</option>
+            {filterOptions.difficulties.map((level) => (
+              <option key={level} value={level}>
+                {formatDifficulty(level)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      {filtersLoading ? (
+        <p className="mt-3 text-xs text-neutral-500">Loading filter options…</p>
+      ) : null}
+    </section>
+  );
+
+  const renderEmptyState = () => (
+    <PageState
+      title="No questions found"
+      description="Try broadening your filters or start a fresh session to explore more questions."
+      variant="empty"
+      fullHeight
+      action={
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={resetFilters}
+            disabled={!isFiltering || filtersLoading}
+          >
+            Clear filters
+          </Button>
+          <Button type="button" onClick={restart} disabled={loading}>
+            Start new session
+          </Button>
+        </div>
+      }
+    />
+  );
 
   return (
     <div className="space-y-6">
-      <QuestionCard
-        question={currentQuestion}
-        onAnswer={handleAnswer}
-        onFlagChange={handleFlagChange}
-        initialFlagged={currentResponse?.flagged ?? false}
-      />
-      <div className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-600">
-        <div>
-          Q {index + 1} of {questions.length}
-        </div>
-        <Button type="button" onClick={next} aria-keyshortcuts="n" disabled={!canAdvance}>
-          Next question
-        </Button>
-      </div>
+      {renderFilters()}
+      {currentQuestion ? (
+        <>
+          <QuestionCard
+            question={currentQuestion}
+            onAnswer={handleAnswer}
+            onFlagChange={handleFlagChange}
+            initialFlagged={currentResponse?.flagged ?? false}
+          />
+          <div className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-600">
+            <div>
+              Q {index + 1} of {questions.length}
+            </div>
+            <Button type="button" onClick={next} aria-keyshortcuts="n" disabled={!canAdvance}>
+              Next question
+            </Button>
+          </div>
+        </>
+      ) : (
+        renderEmptyState()
+      )}
       {sessionComplete ? (
         <Card className="border-emerald-200">
           <CardHeader>
@@ -147,6 +284,14 @@ export default function Practice() {
                 </p>
               </div>
             )}
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" onClick={restart} disabled={loading}>
+                Start a new session
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => navigate("/review")}>
+                See flagged items
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : null}
