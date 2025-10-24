@@ -103,6 +103,17 @@ export type HeatmapAggregateRow = {
   avg_time_ms: number | null;
 };
 
+export type CohortSummaryRow = {
+  cohort_id: string;
+  total_attempts: number;
+  correct_attempts: number;
+  incorrect_attempts: number;
+  correct_rate: number;
+  avg_time_ms: number | null;
+  first_attempt_at: string | null;
+  last_attempt_at: string | null;
+};
+
 export type DashboardMetrics = {
   total_attempts: number;
   correct_attempts: number;

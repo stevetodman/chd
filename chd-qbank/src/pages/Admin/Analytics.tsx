@@ -2,6 +2,7 @@ import { Suspense, lazy } from "react";
 
 const ItemStatsChart = lazy(() => import("../../components/Charts/ItemStatsChart"));
 const Heatmap = lazy(() => import("../../components/Charts/Heatmap"));
+const CohortExport = lazy(() => import("../../components/Analytics/CohortExport"));
 
 export default function Analytics() {
   return (
@@ -12,6 +13,9 @@ export default function Analytics() {
       </Suspense>
       <Suspense fallback={<div className="text-sm text-neutral-500">Preparing heatmap…</div>}>
         <Heatmap />
+      </Suspense>
+      <Suspense fallback={<div className="text-sm text-neutral-500">Loading export tools…</div>}>
+        <CohortExport />
       </Suspense>
     </div>
   );

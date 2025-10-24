@@ -1,5 +1,5 @@
 import { supabase } from "./supabaseClient";
-import type { HeatmapAggregateRow, ItemStats } from "./constants";
+import type { CohortSummaryRow, HeatmapAggregateRow, ItemStats } from "./constants";
 
 // Fetch public psychometrics; Supabase view hides sensitive fields until n >= 30.
 export async function fetchItemStats(): Promise<ItemStats[]> {
@@ -12,4 +12,10 @@ export async function fetchAdminHeatmap(): Promise<HeatmapAggregateRow[]> {
   const { data, error } = await supabase.rpc("analytics_heatmap_admin");
   if (error) throw error;
   return (data ?? []) as HeatmapAggregateRow[];
+}
+
+export async function fetchAdminCohortSummary(): Promise<CohortSummaryRow[]> {
+  const { data, error } = await supabase.rpc("analytics_export_cohort");
+  if (error) throw error;
+  return (data ?? []) as CohortSummaryRow[];
 }
