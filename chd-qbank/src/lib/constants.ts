@@ -60,6 +60,7 @@ export type Question = {
   topic?: string | null;
   subtopic?: string | null;
   lesion?: string | null;
+  difficulty_target?: number | null;
   media_bundle?: MediaBundle | null;
   choices: Choice[];
   context_panels?: ContextPanel[] | null;
