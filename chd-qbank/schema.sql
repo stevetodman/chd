@@ -229,6 +229,18 @@ create table if not exists distractor_stats (
   primary key (question_id, choice_id)
 );
 
+create table if not exists assessment_reliability (
+  id boolean primary key default true,
+  kr20_alpha double precision,
+  cronbach_alpha double precision,
+  n_items int not null default 0,
+  n_users int not null default 0,
+  total_attempts int not null default 0,
+  score_variance double precision,
+  sum_item_variance double precision,
+  last_computed_at timestamptz
+);
+
 create table if not exists leaderboard (
   user_id uuid primary key references app_users(id) on delete cascade,
   points int not null default 0,
@@ -317,6 +329,7 @@ alter table choices enable row level security;
 alter table responses enable row level security;
 alter table item_stats enable row level security;
 alter table distractor_stats enable row level security;
+alter table assessment_reliability enable row level security;
 alter table leaderboard enable row level security;
 alter table public_aliases enable row level security;
 alter table murmur_items enable row level security;
@@ -413,6 +426,10 @@ for all using (is_admin()) with check (is_admin());
 create policy "distractor_stats read" on distractor_stats
 for select using (true);
 create policy "distractor_stats write admin" on distractor_stats
+for all using (is_admin()) with check (is_admin());
+create policy "assessment_reliability read" on assessment_reliability
+for select using (true);
+create policy "assessment_reliability write admin" on assessment_reliability
 for all using (is_admin()) with check (is_admin());
 
 create policy "leader read" on leaderboard
@@ -772,6 +789,89 @@ language sql stable as $$
   group by q.lesion, q.topic;
 $$;
 
+create or replace function refresh_assessment_reliability()
+returns void
+language plpgsql
+security definer
+set search_path = public as $$
+declare
+  v_items int := 0;
+  v_users int := 0;
+  v_attempts int := 0;
+  v_sum_item_variance double precision := 0;
+  v_score_variance double precision;
+  v_alpha double precision;
+begin
+  with latest_responses as (
+    select distinct on (ae.user_id, ae.question_id)
+      ae.user_id,
+      ae.question_id,
+      ae.is_correct::int as score
+    from answer_events ae
+    order by ae.user_id, ae.question_id, ae.effective_at desc, ae.created_at desc
+  ),
+  item_rollups as (
+    select
+      question_id,
+      count(*) as attempts,
+      avg(score::double precision) as p_value,
+      avg(score::double precision) * (1 - avg(score::double precision)) as item_variance
+    from latest_responses
+    group by question_id
+  ),
+  user_rollups as (
+    select user_id, sum(score) as total_score
+    from latest_responses
+    group by user_id
+  )
+  select
+    coalesce((select count(*) from item_rollups), 0),
+    coalesce((select count(*) from user_rollups), 0),
+    coalesce((select sum(attempts) from item_rollups), 0),
+    coalesce((select sum(item_variance) from item_rollups), 0),
+    (select var_samp(total_score::double precision) from user_rollups)
+  into v_items, v_users, v_attempts, v_sum_item_variance, v_score_variance;
+
+  if v_items >= 2 and v_users >= 2 and v_score_variance is not null and v_score_variance > 0 then
+    v_alpha := (v_items::double precision / (v_items - 1)) * (1 - v_sum_item_variance / v_score_variance);
+  else
+    v_alpha := null;
+  end if;
+
+  insert into assessment_reliability(
+    id,
+    kr20_alpha,
+    cronbach_alpha,
+    n_items,
+    n_users,
+    total_attempts,
+    score_variance,
+    sum_item_variance,
+    last_computed_at
+  )
+  values (
+    true,
+    v_alpha,
+    v_alpha,
+    v_items,
+    v_users,
+    v_attempts,
+    v_score_variance,
+    v_sum_item_variance,
+    timezone('utc', now())
+  )
+  on conflict (id) do update set
+    kr20_alpha = excluded.kr20_alpha,
+    cronbach_alpha = excluded.cronbach_alpha,
+    n_items = excluded.n_items,
+    n_users = excluded.n_users,
+    total_attempts = excluded.total_attempts,
+    score_variance = excluded.score_variance,
+    sum_item_variance = excluded.sum_item_variance,
+    last_computed_at = excluded.last_computed_at;
+end;
+$$;
+
 create materialized view if not exists analytics_heatmap_agg
 as
 select
@@ -814,6 +914,23 @@ $$;
 grant execute on function analytics_refresh_heatmap() to authenticated;
 grant execute on function analytics_refresh_heatmap() to service_role;
 
+create or replace function analytics_refresh_reliability()
+returns void
+language plpgsql
+security definer
+set search_path = public as $$
+begin
+  if not is_admin() and auth.role() <> 'service_role' then
+    raise exception 'Admin privileges required';
+  end if;
+
+  perform refresh_assessment_reliability();
+end;
+$$;
+
+grant execute on function analytics_refresh_reliability() to authenticated;
+grant execute on function analytics_refresh_reliability() to service_role;
+
 create or replace function analytics_heatmap_admin()
 returns table (
   question_id uuid,
@@ -852,6 +969,44 @@ $$;
 
 grant execute on function analytics_heatmap_admin() to authenticated;
 grant execute on function analytics_heatmap_admin() to service_role;
+
+create or replace function analytics_reliability_snapshot()
+returns table (
+  kr20_alpha double precision,
+  cronbach_alpha double precision,
+  n_items int,
+  n_users int,
+  total_attempts int,
+  score_variance double precision,
+  sum_item_variance double precision,
+  last_computed_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public as $$
+begin
+  if not is_admin() and auth.role() <> 'service_role' then
+    raise exception 'Admin privileges required';
+  end if;
+
+  return query
+    select
+      kr20_alpha,
+      cronbach_alpha,
+      n_items,
+      n_users,
+      total_attempts,
+      score_variance,
+      sum_item_variance,
+      last_computed_at
+    from assessment_reliability
+    order by last_computed_at desc
+    limit 1;
+end;
+$$;
+
+grant execute on function analytics_reliability_snapshot() to authenticated;
+grant execute on function analytics_reliability_snapshot() to service_role;
 
 create table if not exists leaderboard_events (
   id uuid primary key default gen_random_uuid(),
