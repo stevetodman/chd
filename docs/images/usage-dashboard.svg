@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f5f7fa"/>
+      <stop offset="100%" stop-color="#eef2f9"/>
+    </linearGradient>
+    <style>
+      text { font-family: 'DejaVu Sans', Arial, sans-serif; }
+    </style>
+  </defs>
+  <rect width="1200" height="700" fill="url(#bg)"/>
+  <text x="50" y="70" font-size="54" fill="#203a66" font-weight="bold">CHD Question Bank Dashboard</text>
+
+  <!-- Practice question panel -->
+  <rect x="50" y="120" width="500" height="520" rx="26" fill="#ffffff" stroke="#ccd6eb" stroke-width="4"/>
+  <text x="80" y="180" font-size="36" fill="#2d4059">Practice Question</text>
+  <text x="80" y="230" font-size="24" fill="#4a5c78">Which complication is most associated with the arterial</text>
+  <text x="80" y="260" font-size="24" fill="#4a5c78">switch procedure?</text>
+
+  <g font-size="24" fill="#2d4059">
+    <rect x="80" y="310" width="440" height="56" rx="16" fill="#f0f3fb" stroke="#c1cee8" stroke-width="3"/>
+    <text x="110" y="347">A. Coronary insufficiency</text>
+    <rect x="80" y="380" width="440" height="56" rx="16" fill="#f0f3fb" stroke="#c1cee8" stroke-width="3"/>
+    <text x="110" y="417">B. Pulmonary stenosis</text>
+    <rect x="80" y="450" width="440" height="56" rx="16" fill="#f0f3fb" stroke="#c1cee8" stroke-width="3"/>
+    <text x="110" y="487">C. Residual VSD</text>
+    <rect x="80" y="520" width="440" height="56" rx="16" fill="#f0f3fb" stroke="#c1cee8" stroke-width="3"/>
+    <text x="110" y="557">D. Arrhythmia</text>
+  </g>
+
+  <!-- Analytics panel -->
+  <rect x="600" y="120" width="540" height="520" rx="26" fill="#ffffff" stroke="#ccd6eb" stroke-width="4"/>
+  <text x="630" y="180" font-size="36" fill="#2d4059">Analytics Snapshot</text>
+
+  <g font-size="22" fill="#1f2b3d">
+    <text x="630" y="230">Streak: 6 correct answers</text>
+    <text x="630" y="265">Focus area: Electrophysiology (65% accuracy)</text>
+    <text x="630" y="300">Suggested set: Post-operative complications</text>
+  </g>
+
+  <!-- Heatmap -->
+  <g font-size="20" fill="#1f2b3d">
+    <rect x="630" y="330" width="90" height="90" rx="14" fill="#d6e8f8" stroke="#9fb4d8"/>
+    <text x="660" y="385">78%</text>
+    <rect x="730" y="330" width="90" height="90" rx="14" fill="#b8d8f2" stroke="#9fb4d8"/>
+    <text x="760" y="385">73%</text>
+    <rect x="830" y="330" width="90" height="90" rx="14" fill="#87c4eb" stroke="#9fb4d8"/>
+    <text x="860" y="385">68%</text>
+    <rect x="930" y="330" width="90" height="90" rx="14" fill="#5ca3db" stroke="#9fb4d8"/>
+    <text x="960" y="385">63%</text>
+
+    <rect x="630" y="430" width="90" height="90" rx="14" fill="#e2edf9" stroke="#9fb4d8"/>
+    <text x="660" y="485">82%</text>
+    <rect x="730" y="430" width="90" height="90" rx="14" fill="#c6dff5" stroke="#9fb4d8"/>
+    <text x="760" y="485">77%</text>
+    <rect x="830" y="430" width="90" height="90" rx="14" fill="#a0c8ec" stroke="#9fb4d8"/>
+    <text x="860" y="485">71%</text>
+    <rect x="930" y="430" width="90" height="90" rx="14" fill="#75b1e0" stroke="#9fb4d8"/>
+    <text x="960" y="485">66%</text>
+
+    <rect x="630" y="530" width="90" height="90" rx="14" fill="#eaf1fc" stroke="#9fb4d8"/>
+    <text x="660" y="585">85%</text>
+    <rect x="730" y="530" width="90" height="90" rx="14" fill="#cde2f4" stroke="#9fb4d8"/>
+    <text x="760" y="585">80%</text>
+    <rect x="830" y="530" width="90" height="90" rx="14" fill="#add2ed" stroke="#9fb4d8"/>
+    <text x="860" y="585">74%</text>
+    <rect x="930" y="530" width="90" height="90" rx="14" fill="#89c0e7" stroke="#9fb4d8"/>
+    <text x="960" y="585">69%</text>
+  </g>
+
+  <!-- Legend -->
+  <g font-size="22" fill="#2d4059">
+    <rect x="630" y="640" width="28" height="28" fill="#d6e8f8" stroke="#9fb4d8"/>
+    <text x="670" y="662">Perfusion</text>
+    <rect x="820" y="640" width="28" height="28" fill="#a0c8ec" stroke="#9fb4d8"/>
+    <text x="860" y="662">Electrophysiology</text>
+    <rect x="1040" y="640" width="28" height="28" fill="#75b1e0" stroke="#9fb4d8"/>
+    <text x="1080" y="662">Surgery</text>
+  </g>
+</svg>
