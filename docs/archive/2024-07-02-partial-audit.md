@@ -1,5 +1,7 @@
 # CHD QBank Partial Audit (2024-07-02)
 
+> **Status:** Archived for historical reference on 2024-09-10 after migrating outstanding findings into GitHub issues (`security`, `ops`, and `analytics` labels). Consult the active issue tracker for current remediation status.
+
 > **Scope note:** This document captures the highest-impact findings that could be validated within the time allotted. Sections are intentionally concise; items marked "Deferred" require deeper inspection during a follow-up audit.
 
 ## 0) Executive Summary
