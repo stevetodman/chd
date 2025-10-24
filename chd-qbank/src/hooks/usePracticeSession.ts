@@ -48,6 +48,29 @@ export type PracticeSessionStats = {
   flagged: number;
 };
 
+export type PracticeFilters = {
+  topic: string | null;
+  lesion: string | null;
+  flagged: "all" | "flagged";
+  status: "all" | "new" | "seen";
+  sessionLength: number;
+};
+
+export const DEFAULT_PRACTICE_FILTERS: PracticeFilters = {
+  topic: null,
+  lesion: null,
+  flagged: "all",
+  status: "all",
+  sessionLength: PRACTICE_PAGE_SIZE
+};
+
+type FilterOptions = {
+  topics: string[];
+  lesions: string[];
+};
+
+const formatNotIn = (values: string[]): string => `(${values.map((value) => `'${value}'`).join(",")})`;
+
 export function usePracticeSession() {
   const [questions, setQuestions] = useState<QuestionRow[]>([]);
   const [index, setIndex] = useState(0);
@@ -62,6 +85,15 @@ export function usePracticeSession() {
   const [responses, setResponses] = useState<ResponseMap>({});
   const responsesRef = useRef<ResponseMap>({});
   const filterVersionRef = useRef(0);
+  const [filters, setFilters] = useState<PracticeFilters>({ ...DEFAULT_PRACTICE_FILTERS });
+  const filtersRef = useRef<PracticeFilters>({ ...DEFAULT_PRACTICE_FILTERS });
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>({ topics: [], lesions: [] });
+  const [filterOptionsLoading, setFilterOptionsLoading] = useState(false);
+  const [filterOptionsError, setFilterOptionsError] = useState<string | null>(null);
+  const flaggedIdsRef = useRef<Set<string>>(new Set());
+  const seenIdsRef = useRef<Set<string>>(new Set());
+  const [flaggedVersion, setFlaggedVersion] = useState(0);
+  const [seenVersion, setSeenVersion] = useState(0);
   const { session } = useSessionStore();
 
   useEffect(() => {
@@ -71,6 +103,162 @@ export function usePracticeSession() {
   useEffect(() => {
     responsesRef.current = responses;
   }, [responses]);
+
+  useEffect(() => {
+    filtersRef.current = filters;
+  }, [filters]);
+
+  useEffect(() => {
+    let active = true;
+    setFilterOptionsLoading(true);
+    setFilterOptionsError(null);
+
+    supabase
+      .from("questions")
+      .select("topic, lesion")
+      .eq("status", "published")
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) {
+          setFilterOptions({ topics: [], lesions: [] });
+          setFilterOptionsError("We couldn't load filter options. Try again later.");
+          return;
+        }
+
+        const topics = new Set<string>();
+        const lesions = new Set<string>();
+
+        for (const row of data ?? []) {
+          if (row.topic && row.topic.trim().length > 0) {
+            topics.add(row.topic.trim());
+          }
+          if (row.lesion && row.lesion.trim().length > 0) {
+            lesions.add(row.lesion.trim());
+          }
+        }
+
+        setFilterOptions({
+          topics: Array.from(topics).sort((a, b) => a.localeCompare(b)),
+          lesions: Array.from(lesions).sort((a, b) => a.localeCompare(b))
+        });
+      })
+      .catch(() => {
+        if (!active) return;
+        setFilterOptions({ topics: [], lesions: [] });
+        setFilterOptionsError("We couldn't load filter options. Try again later.");
+      })
+      .finally(() => {
+        if (!active) return;
+        setFilterOptionsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!session) {
+      flaggedIdsRef.current = new Set();
+      seenIdsRef.current = new Set();
+      setFlaggedVersion((version) => version + 1);
+      setSeenVersion((version) => version + 1);
+      return;
+    }
+
+    let active = true;
+
+    supabase
+      .from("responses")
+      .select("question_id, flagged, choice_id")
+      .eq("user_id", session.user.id)
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) {
+          return;
+        }
+
+        const flagged = new Set<string>();
+        const seen = new Set<string>();
+
+        for (const row of data ?? []) {
+          if (!row?.question_id) continue;
+          if (row.flagged) flagged.add(row.question_id);
+          if (row.choice_id) seen.add(row.question_id);
+        }
+
+        flaggedIdsRef.current = flagged;
+        seenIdsRef.current = seen;
+        setFlaggedVersion((version) => version + 1);
+        setSeenVersion((version) => version + 1);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [session]);
+
+  const updateFlaggedSet = useCallback((questionId: string, isFlagged: boolean) => {
+    const next = new Set(flaggedIdsRef.current);
+    const hadValue = next.has(questionId);
+    if (isFlagged) {
+      next.add(questionId);
+    } else {
+      next.delete(questionId);
+    }
+    const changed = hadValue !== next.has(questionId);
+    flaggedIdsRef.current = next;
+    if (changed) {
+      setFlaggedVersion((version) => version + 1);
+    }
+  }, []);
+
+  const markQuestionSeen = useCallback((questionId: string) => {
+    if (seenIdsRef.current.has(questionId)) return;
+    const next = new Set(seenIdsRef.current);
+    next.add(questionId);
+    seenIdsRef.current = next;
+    setSeenVersion((version) => version + 1);
+  }, []);
+
+  const syncSetsFromResponses = useCallback(
+    (rows: ResponseRow[]) => {
+      if (rows.length === 0) return;
+      let flaggedChanged = false;
+      let seenChanged = false;
+      const flagged = new Set(flaggedIdsRef.current);
+      const seen = new Set(seenIdsRef.current);
+
+      for (const row of rows) {
+        if (!row.question_id) continue;
+        if (row.flagged) {
+          if (!flagged.has(row.question_id)) {
+            flagged.add(row.question_id);
+            flaggedChanged = true;
+          }
+        } else if (flagged.delete(row.question_id)) {
+          flaggedChanged = true;
+        }
+
+        if (row.choice_id) {
+          if (!seen.has(row.question_id)) {
+            seen.add(row.question_id);
+            seenChanged = true;
+          }
+        }
+      }
+
+      if (flaggedChanged) {
+        flaggedIdsRef.current = flagged;
+        setFlaggedVersion((version) => version + 1);
+      }
+      if (seenChanged) {
+        seenIdsRef.current = seen;
+        setSeenVersion((version) => version + 1);
+      }
+    },
+    []
+  );
 
   const loadPage = useCallback(
     async (pageToLoad: number, replace = false) => {
@@ -82,6 +270,34 @@ export function usePracticeSession() {
         filterVersionRef.current = requestVersion;
       }
 
+      const activeFilters = filtersRef.current;
+      const flaggedOnly = activeFilters.flagged === "flagged";
+      const seenFilter = activeFilters.status;
+      const flaggedIds = Array.from(flaggedIdsRef.current);
+      const seenIds = Array.from(seenIdsRef.current);
+
+      if (flaggedOnly && flaggedIds.length === 0) {
+        setQuestions([]);
+        setHasMore(false);
+        setPage(0);
+        setIndex(0);
+        setResponses({});
+        responsesRef.current = {};
+        loadingRef.current = false;
+        setLoading(false);
+        return 0;
+      }
+
+      if (seenFilter === "seen" && seenIds.length === 0) {
+        setQuestions([]);
+        setHasMore(false);
+        setPage(0);
+        setIndex(0);
+        loadingRef.current = false;
+        setLoading(false);
+        return 0;
+      }
+
       inFlightRequests.current += 1;
       loadingRef.current = true;
       setLoading(true);
@@ -91,15 +307,35 @@ export function usePracticeSession() {
       const to = from + PRACTICE_PAGE_SIZE - 1;
 
       try {
-        const { data, error: fetchError, count } = await supabase
+        let query = supabase
           .from("questions")
           .select(
             "id, slug, stem_md, lead_in, explanation_brief_md, explanation_deep_md, topic, subtopic, lesion, context_panels, media_bundle:media_bundles(id, murmur_url, cxr_url, ekg_url, diagram_url, alt_text), choices(id,label,text_md,is_correct)",
             { count: "exact" }
           )
-          .eq("status", "published")
-          .order("id", { ascending: true })
-          .range(from, to);
+          .eq("status", "published");
+
+        if (activeFilters.topic) {
+          query = query.eq("topic", activeFilters.topic);
+        }
+
+        if (activeFilters.lesion) {
+          query = query.eq("lesion", activeFilters.lesion);
+        }
+
+        if (flaggedOnly && flaggedIds.length > 0) {
+          query = query.in("id", flaggedIds);
+        }
+
+        if (seenFilter === "seen" && seenIds.length > 0) {
+          query = query.in("id", seenIds);
+        }
+
+        if (seenFilter === "new" && seenIds.length > 0) {
+          query = query.not("id", "in", formatNotIn(seenIds));
+        }
+
+        const { data, error: fetchError, count } = await query.order("id", { ascending: true }).range(from, to);
 
         if (requestVersion !== filterVersionRef.current) {
           return 0;
@@ -114,9 +350,11 @@ export function usePracticeSession() {
         const randomized = shuffleQuestions(normalized);
 
         const base = replace ? [] : questionsRef.current;
-        const nextQuestions = mergeQuestionPages(base, randomized);
-        setQuestions(nextQuestions);
-        questionsRef.current = nextQuestions;
+        const merged = mergeQuestionPages(base, randomized);
+        const targetLength = Math.max(activeFilters.sessionLength, 1);
+        const limited = merged.slice(0, targetLength);
+        setQuestions(limited);
+        questionsRef.current = limited;
 
         if (replace) {
           loadedPages.current = new Set([pageToLoad]);
@@ -126,7 +364,9 @@ export function usePracticeSession() {
         }
 
         setPage(pageToLoad);
-        setHasMore(determineHasMore(count, nextQuestions.length, normalized.length));
+        const reachedLimit = limited.length >= targetLength;
+        const moreAvailable = determineHasMore(count, limited.length, normalized.length);
+        setHasMore(!reachedLimit && moreAvailable);
 
         if (session) {
           const questionIds = randomized.map((question) => question.id);
@@ -165,6 +405,7 @@ export function usePracticeSession() {
             if (!responsesError) {
               const typedRows = (responseRows ?? []) as ResponseRow[];
               if (typedRows.length > 0) {
+                syncSetsFromResponses(typedRows);
                 setResponses((prev) => {
                   const base: ResponseMap = { ...prev };
 
@@ -184,7 +425,7 @@ export function usePracticeSession() {
           responsesRef.current = {};
         }
 
-        return randomized.length;
+        return Math.max(0, limited.length - base.length);
       } finally {
         inFlightRequests.current = Math.max(0, inFlightRequests.current - 1);
         const stillLoading = inFlightRequests.current > 0;
@@ -192,12 +433,28 @@ export function usePracticeSession() {
         setLoading(stillLoading);
       }
     },
-    [session]
+    [session, syncSetsFromResponses]
   );
 
   useEffect(() => {
     void loadPage(0, true);
   }, [loadPage]);
+
+  useEffect(() => {
+    void loadPage(0, true);
+  }, [filters.topic, filters.lesion, filters.sessionLength, loadPage]);
+
+  useEffect(() => {
+    if (filters.flagged === "flagged") {
+      void loadPage(0, true);
+    }
+  }, [filters.flagged, flaggedVersion, loadPage]);
+
+  useEffect(() => {
+    if (filters.status !== "all") {
+      void loadPage(0, true);
+    }
+  }, [filters.status, seenVersion, loadPage]);
 
   useEffect(() => {
     if (!shouldLoadNextPage(index, questions.length, hasMore)) return;
@@ -267,6 +524,9 @@ export function usePracticeSession() {
         [current.id]: saved
       }));
 
+      markQuestionSeen(current.id);
+      updateFlaggedSet(current.id, saved?.flagged ?? flagged);
+
       if (saved?.is_correct && !wasCorrect) {
         const { error: rpcError } = await supabase.rpc("increment_points", {
           source: "practice_response",
@@ -280,7 +540,7 @@ export function usePracticeSession() {
 
       setError(null);
     },
-    [index, session]
+    [index, session, markQuestionSeen, updateFlaggedSet]
   );
 
   const handleFlagChange = useCallback(
@@ -305,15 +565,17 @@ export function usePracticeSession() {
           fail("We couldn't update the flag. Please try again.");
         }
 
-        setResponses((prev) => ({
-          ...prev,
-          [current.id]: mapResponse(data)
-        }));
-      } else {
-        const { data, error } = await supabase
-          .from("responses")
-          .insert({
-            user_id: session.user.id,
+      setResponses((prev) => ({
+        ...prev,
+        [current.id]: mapResponse(data)
+      }));
+
+      updateFlaggedSet(current.id, flagged);
+    } else {
+      const { data, error } = await supabase
+        .from("responses")
+        .insert({
+          user_id: session.user.id,
             question_id: current.id,
             flagged,
             choice_id: null,
@@ -327,15 +589,17 @@ export function usePracticeSession() {
           fail("We couldn't save the flag. Please check your connection and try again.");
         }
 
-        setResponses((prev) => ({
-          ...prev,
-          [current.id]: mapResponse(data)
-        }));
-      }
+      setResponses((prev) => ({
+        ...prev,
+        [current.id]: mapResponse(data)
+      }));
+
+      updateFlaggedSet(current.id, flagged);
+    }
 
       setError(null);
     },
-    [index, session]
+    [index, session, updateFlaggedSet]
   );
 
   useEffect(() => {
@@ -357,6 +621,18 @@ export function usePracticeSession() {
           ...prev,
           [currentQuestion.id]: data ? mapResponse(data) : null
         }));
+        if (data) {
+          syncSetsFromResponses([
+            {
+              id: data.id,
+              question_id: currentQuestion.id,
+              flagged: data.flagged,
+              choice_id: data.choice_id,
+              is_correct: data.is_correct,
+              ms_to_answer: data.ms_to_answer
+            }
+          ]);
+        }
       });
   }, [index, questions, session]);
 
@@ -434,6 +710,11 @@ export function usePracticeSession() {
     handleAnswer,
     handleFlagChange,
     sessionStats,
-    sessionComplete
+    sessionComplete,
+    filters,
+    applyFilters: setFilters,
+    filterOptions,
+    filterOptionsLoading,
+    filterOptionsError
   } as const;
 }

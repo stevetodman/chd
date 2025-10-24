@@ -1,3 +1,4 @@
+import { useId } from "react";
 import ReactMarkdown from "react-markdown";
 import type { FormulaReference } from "../lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/Card";
@@ -21,35 +22,42 @@ export default function FormulaPanel({ title = "Formula Quick Ref", formulas, bo
   }
 
   const trimmedBody = typeof bodyMd === "string" ? bodyMd.trim() : "";
+  const headingId = useId();
 
   return (
-    <Card>
-      {title ? (
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
-        </CardHeader>
-      ) : null}
-      <CardContent className="space-y-3 text-sm">
-        {Array.isArray(formulas) && formulas.length > 0 ? (
-          <ul className="space-y-2">
-            {formulas.map((formula) => (
-              <li key={`${formula.name}-${formula.expression}`}>
-                <p className="font-semibold text-neutral-900">{formula.name}</p>
-                <p className="text-neutral-600">{formula.expression}</p>
-              </li>
-            ))}
-          </ul>
+    <section
+      role="complementary"
+      aria-labelledby={title ? headingId : undefined}
+      aria-label={title ? undefined : "Formula reference"}
+    >
+      <Card>
+        {title ? (
+          <CardHeader>
+            <CardTitle id={headingId}>{title}</CardTitle>
+          </CardHeader>
         ) : null}
-        {trimmedBody ? (
-          <ReactMarkdown
-            remarkPlugins={markdownRemarkPlugins}
-            rehypePlugins={markdownRehypePlugins}
-            className="prose prose-sm max-w-none text-neutral-700"
-          >
-            {trimmedBody}
-          </ReactMarkdown>
-        ) : null}
-      </CardContent>
-    </Card>
+        <CardContent className="space-y-3 text-sm">
+          {Array.isArray(formulas) && formulas.length > 0 ? (
+            <ul className="space-y-2">
+              {formulas.map((formula) => (
+                <li key={`${formula.name}-${formula.expression}`}>
+                  <p className="font-semibold text-neutral-900">{formula.name}</p>
+                  <p className="text-neutral-600">{formula.expression}</p>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {trimmedBody ? (
+            <ReactMarkdown
+              remarkPlugins={markdownRemarkPlugins}
+              rehypePlugins={markdownRehypePlugins}
+              className="prose prose-sm max-w-none text-neutral-700"
+            >
+              {trimmedBody}
+            </ReactMarkdown>
+          ) : null}
+        </CardContent>
+      </Card>
+    </section>
   );
 }

@@ -1,10 +1,14 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import PageState from "../components/PageState";
 import QuestionCard from "../components/QuestionCard";
 import { Button } from "../components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card";
-import { usePracticeSession } from "../hooks/usePracticeSession";
+import {
+  DEFAULT_PRACTICE_FILTERS,
+  type PracticeFilters,
+  usePracticeSession
+} from "../hooks/usePracticeSession";
 
 export default function Practice() {
   const {
@@ -19,8 +23,50 @@ export default function Practice() {
     handleAnswer,
     handleFlagChange,
     sessionStats,
-    sessionComplete
+    sessionComplete,
+    filters,
+    applyFilters,
+    filterOptions,
+    filterOptionsLoading,
+    filterOptionsError
   } = usePracticeSession();
+  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [pendingFilters, setPendingFilters] = useState<PracticeFilters>({ ...filters });
+
+  useEffect(() => {
+    setPendingFilters({ ...filters });
+  }, [filters]);
+
+  const filterSummary = useMemo(() => {
+    const parts: string[] = [];
+    if (filters.topic) parts.push(filters.topic);
+    if (filters.lesion) parts.push(filters.lesion);
+    if (filters.flagged === "flagged") parts.push("Flagged only");
+    if (filters.status === "new") parts.push("New questions");
+    if (filters.status === "seen") parts.push("Seen questions");
+    parts.push(`${filters.sessionLength} question session`);
+    return parts.join(" • ");
+  }, [filters]);
+
+  const filterChanged = useMemo(() => {
+    return (
+      filters.topic !== pendingFilters.topic ||
+      filters.lesion !== pendingFilters.lesion ||
+      filters.flagged !== pendingFilters.flagged ||
+      filters.status !== pendingFilters.status ||
+      filters.sessionLength !== pendingFilters.sessionLength
+    );
+  }, [filters, pendingFilters]);
+
+  const applyPendingFilters = () => {
+    if (!filterChanged) return;
+    applyFilters({ ...pendingFilters });
+  };
+
+  const resetFilters = () => {
+    setPendingFilters({ ...DEFAULT_PRACTICE_FILTERS });
+    applyFilters({ ...DEFAULT_PRACTICE_FILTERS });
+  };
 
   if (loading && questions.length === 0) {
     return (
@@ -84,6 +130,140 @@ export default function Practice() {
 
   return (
     <div className="space-y-6">
+      <Card>
+        <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <CardTitle className="text-base">Practice session settings</CardTitle>
+            <p className="mt-1 text-sm text-neutral-600">
+              Choose the topics you want to drill and how long this session should run.
+            </p>
+            <p className="mt-2 text-xs uppercase tracking-wide text-neutral-500">{filterSummary}</p>
+          </div>
+          <Button type="button" variant="secondary" onClick={() => setFiltersOpen((open) => !open)}>
+            {filtersOpen ? "Hide filters" : "Show filters"}
+          </Button>
+        </CardHeader>
+        {filtersOpen ? (
+          <CardContent className="space-y-6 text-sm text-neutral-700">
+            {filterOptionsError ? (
+              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
+                {filterOptionsError}
+              </div>
+            ) : null}
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="flex flex-col gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Topic</span>
+                <select
+                  className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  value={pendingFilters.topic ?? ""}
+                  onChange={(event) =>
+                    setPendingFilters((prev) => ({
+                      ...prev,
+                      topic: event.target.value ? event.target.value : null
+                    }))
+                  }
+                  disabled={filterOptionsLoading}
+                >
+                  <option value="">All topics</option>
+                  {filterOptions.topics.map((topic) => (
+                    <option key={topic} value={topic}>
+                      {topic}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Lesion</span>
+                <select
+                  className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  value={pendingFilters.lesion ?? ""}
+                  onChange={(event) =>
+                    setPendingFilters((prev) => ({
+                      ...prev,
+                      lesion: event.target.value ? event.target.value : null
+                    }))
+                  }
+                  disabled={filterOptionsLoading}
+                >
+                  <option value="">All lesions</option>
+                  {filterOptions.lesions.map((lesion) => (
+                    <option key={lesion} value={lesion}>
+                      {lesion}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <fieldset className="space-y-3">
+              <legend className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Question status</legend>
+              <div className="flex flex-wrap gap-3">
+                {[
+                  { value: "all", label: "All questions" },
+                  { value: "new", label: "New to me" },
+                  { value: "seen", label: "Seen before" }
+                ].map((option) => (
+                  <label key={option.value} className="inline-flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="question-status"
+                      value={option.value}
+                      checked={pendingFilters.status === option.value}
+                      onChange={() =>
+                        setPendingFilters((prev) => ({
+                          ...prev,
+                          status: option.value as PracticeFilters["status"]
+                        }))
+                      }
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={pendingFilters.flagged === "flagged"}
+                onChange={(event) =>
+                  setPendingFilters((prev) => ({
+                    ...prev,
+                    flagged: event.target.checked ? "flagged" : "all"
+                  }))
+                }
+              />
+              <span>Show only questions I’ve flagged</span>
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Session length</span>
+              <select
+                className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500 md:w-auto"
+                value={pendingFilters.sessionLength}
+                onChange={(event) =>
+                  setPendingFilters((prev) => ({
+                    ...prev,
+                    sessionLength: Number(event.target.value)
+                  }))
+                }
+              >
+                {[10, 20, 30, 40].map((length) => (
+                  <option key={length} value={length}>
+                    {length} questions
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="button" onClick={applyPendingFilters} disabled={!filterChanged}>
+                Apply filters
+              </Button>
+              <Button type="button" variant="secondary" onClick={resetFilters}>
+                Reset to defaults
+              </Button>
+              {filterOptionsLoading ? <span className="text-xs text-neutral-500">Loading filter options…</span> : null}
+            </div>
+          </CardContent>
+        ) : null}
+      </Card>
       <QuestionCard
         question={currentQuestion}
         onAnswer={handleAnswer}
