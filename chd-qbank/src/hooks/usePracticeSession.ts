@@ -57,9 +57,11 @@ export function usePracticeSession() {
   const [page, setPage] = useState(0);
   const questionsRef = useRef<QuestionRow[]>([]);
   const loadingRef = useRef(false);
+  const inFlightRequests = useRef(0);
   const loadedPages = useRef(new Set<number>());
   const [responses, setResponses] = useState<ResponseMap>({});
   const responsesRef = useRef<ResponseMap>({});
+  const filterVersionRef = useRef(0);
   const { session } = useSessionStore();
 
   useEffect(() => {
@@ -75,98 +77,120 @@ export function usePracticeSession() {
       if (loadingRef.current && !replace) return 0;
       if (!replace && loadedPages.current.has(pageToLoad)) return 0;
 
+      const requestVersion = replace ? filterVersionRef.current + 1 : filterVersionRef.current;
+      if (replace) {
+        filterVersionRef.current = requestVersion;
+      }
+
+      inFlightRequests.current += 1;
       loadingRef.current = true;
       setLoading(true);
       setError(null);
 
       const from = pageToLoad * PRACTICE_PAGE_SIZE;
       const to = from + PRACTICE_PAGE_SIZE - 1;
-      const { data, error: fetchError, count } = await supabase
-        .from("questions")
-        .select(
-          "id, slug, stem_md, lead_in, explanation_brief_md, explanation_deep_md, topic, subtopic, lesion, context_panels, media_bundle:media_bundles(id, murmur_url, cxr_url, ekg_url, diagram_url, alt_text), choices(id,label,text_md,is_correct)",
-          { count: "exact" }
-        )
-        .eq("status", "published")
-        .order("id", { ascending: true })
-        .range(from, to);
 
-      if (fetchError) {
-        setError(fetchError.message);
-        setLoading(false);
-        loadingRef.current = false;
-        return 0;
-      }
+      try {
+        const { data, error: fetchError, count } = await supabase
+          .from("questions")
+          .select(
+            "id, slug, stem_md, lead_in, explanation_brief_md, explanation_deep_md, topic, subtopic, lesion, context_panels, media_bundle:media_bundles(id, murmur_url, cxr_url, ekg_url, diagram_url, alt_text), choices(id,label,text_md,is_correct)",
+            { count: "exact" }
+          )
+          .eq("status", "published")
+          .order("id", { ascending: true })
+          .range(from, to);
 
-      const normalized = normalizeQuestionRows((data ?? []) as QuestionQueryRow[]);
-      const randomized = shuffleQuestions(normalized);
+        if (requestVersion !== filterVersionRef.current) {
+          return 0;
+        }
 
-      const base = replace ? [] : questionsRef.current;
-      const nextQuestions = mergeQuestionPages(base, randomized);
-      setQuestions(nextQuestions);
-      questionsRef.current = nextQuestions;
+        if (fetchError) {
+          setError(fetchError.message);
+          return 0;
+        }
 
-      if (replace) {
-        loadedPages.current = new Set([pageToLoad]);
-        setIndex(0);
-      } else {
-        loadedPages.current.add(pageToLoad);
-      }
+        const normalized = normalizeQuestionRows((data ?? []) as QuestionQueryRow[]);
+        const randomized = shuffleQuestions(normalized);
 
-      setPage(pageToLoad);
-      setHasMore(determineHasMore(count, nextQuestions.length, normalized.length));
+        const base = replace ? [] : questionsRef.current;
+        const nextQuestions = mergeQuestionPages(base, randomized);
+        setQuestions(nextQuestions);
+        questionsRef.current = nextQuestions;
 
-      if (session) {
-        const questionIds = randomized.map((question) => question.id);
-        if (replace && questionIds.length === 0) {
+        if (replace) {
+          loadedPages.current = new Set([pageToLoad]);
+          setIndex(0);
+        } else {
+          loadedPages.current.add(pageToLoad);
+        }
+
+        setPage(pageToLoad);
+        setHasMore(determineHasMore(count, nextQuestions.length, normalized.length));
+
+        if (session) {
+          const questionIds = randomized.map((question) => question.id);
+          if (replace && questionIds.length === 0) {
+            setResponses({});
+            responsesRef.current = {};
+          }
+
+          if (questionIds.length > 0) {
+            if (requestVersion !== filterVersionRef.current) {
+              return randomized.length;
+            }
+
+            setResponses((prev) => {
+              const base: ResponseMap = replace ? {} : { ...prev };
+              for (const id of questionIds) {
+                if (!(id in base)) {
+                  base[id] = null;
+                }
+              }
+
+              responsesRef.current = base;
+              return base;
+            });
+
+            const { data: responseRows, error: responsesError } = await supabase
+              .from("responses")
+              .select("id, flagged, choice_id, is_correct, ms_to_answer, question_id")
+              .eq("user_id", session.user.id)
+              .in("question_id", questionIds);
+
+            if (requestVersion !== filterVersionRef.current) {
+              return randomized.length;
+            }
+
+            if (!responsesError) {
+              const typedRows = (responseRows ?? []) as ResponseRow[];
+              if (typedRows.length > 0) {
+                setResponses((prev) => {
+                  const base: ResponseMap = { ...prev };
+
+                  for (const row of typedRows) {
+                    if (!row.question_id) continue;
+                    base[row.question_id] = mapResponse(row);
+                  }
+
+                  responsesRef.current = base;
+                  return base;
+                });
+              }
+            }
+          }
+        } else if (replace) {
           setResponses({});
           responsesRef.current = {};
         }
 
-        if (questionIds.length > 0) {
-          setResponses((prev) => {
-            const base: ResponseMap = replace ? {} : { ...prev };
-            for (const id of questionIds) {
-              if (!(id in base)) {
-                base[id] = null;
-              }
-            }
-
-            responsesRef.current = base;
-            return base;
-          });
-
-          const { data: responseRows, error: responsesError } = await supabase
-            .from("responses")
-            .select("id, flagged, choice_id, is_correct, ms_to_answer, question_id")
-            .eq("user_id", session.user.id)
-            .in("question_id", questionIds);
-
-          if (!responsesError) {
-            const typedRows = (responseRows ?? []) as ResponseRow[];
-            if (typedRows.length > 0) {
-              setResponses((prev) => {
-                const base: ResponseMap = { ...prev };
-
-                for (const row of typedRows) {
-                  if (!row.question_id) continue;
-                  base[row.question_id] = mapResponse(row);
-                }
-
-                responsesRef.current = base;
-                return base;
-              });
-            }
-          }
-        }
-      } else if (replace) {
-        setResponses({});
-        responsesRef.current = {};
+        return randomized.length;
+      } finally {
+        inFlightRequests.current = Math.max(0, inFlightRequests.current - 1);
+        const stillLoading = inFlightRequests.current > 0;
+        loadingRef.current = stillLoading;
+        setLoading(stillLoading);
       }
-
-      setLoading(false);
-      loadingRef.current = false;
-      return randomized.length;
     },
     [session]
   );
