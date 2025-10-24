@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
+import Skeleton from "../components/ui/Skeleton";
 import { supabase } from "../lib/supabaseClient";
 import { useSessionStore } from "../lib/auth";
 import type { DashboardMetrics } from "../lib/constants";
@@ -145,7 +146,15 @@ export default function Dashboard() {
             </div>
           ) : null}
           {!metricsLoaded && metricsLoading ? (
-            <p className="text-sm text-neutral-500">Loading progress…</p>
+            <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="rounded-lg border border-neutral-200 bg-white p-4">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="mt-4 h-6 w-16" />
+                  <Skeleton className="mt-3 h-3 w-28" />
+                </div>
+              ))}
+            </dl>
           ) : (
             <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-lg border border-neutral-200 bg-white p-4">
@@ -204,16 +213,26 @@ export default function Dashboard() {
           <CardTitle>Published content</CardTitle>
         </CardHeader>
         <CardContent>
-          <ul className="list-disc space-y-1 pl-6 text-sm text-neutral-700">
-            {featured.map((q) => (
-              <li key={q.id}>{q.lead_in ?? "Practice question"}</li>
-            ))}
-          </ul>
-          {loadingFeatured ? <p className="mt-2 text-xs text-neutral-500">Loading fresh questions…</p> : null}
-          {featuredError ? <p className="mt-2 text-xs text-red-600">{featuredError}</p> : null}
-          {!loadingFeatured && featured.length === 0 && !featuredError ? (
-            <p className="mt-2 text-xs text-neutral-500">No published questions yet.</p>
-          ) : null}
+          {loadingFeatured ? (
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Skeleton key={index} className="h-4 w-full" />
+              ))}
+              <Skeleton className="h-4 w-32" />
+            </div>
+          ) : (
+            <>
+              <ul className="list-disc space-y-1 pl-6 text-sm text-neutral-700">
+                {featured.map((q) => (
+                  <li key={q.id}>{q.lead_in ?? "Practice question"}</li>
+                ))}
+              </ul>
+              {featuredError ? <p className="mt-2 text-xs text-red-600">{featuredError}</p> : null}
+              {!featuredError && featured.length === 0 ? (
+                <p className="mt-2 text-xs text-neutral-500">No published questions yet.</p>
+              ) : null}
+            </>
+          )}
         </CardContent>
       </Card>
       <Card className="md:col-span-2">

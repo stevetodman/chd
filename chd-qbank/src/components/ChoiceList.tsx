@@ -9,9 +9,10 @@ type Props = {
   disabled?: boolean;
   onSelect: (choice: Choice) => void;
   selectedId?: string | null;
+  reveal?: boolean;
 };
 
-export default function ChoiceList({ choices, disabled, onSelect, selectedId }: Props) {
+export default function ChoiceList({ choices, disabled, onSelect, selectedId, reveal }: Props) {
   const [struck, setStruck] = useState<Record<string, boolean>>({});
 
   const toggleStrike = useCallback((id: string) => {
@@ -61,6 +62,8 @@ export default function ChoiceList({ choices, disabled, onSelect, selectedId }: 
       {choices.map((choice) => {
         const isSelected = selectedId === choice.id;
         const isStruck = struck[choice.id];
+        const isCorrect = choice.is_correct;
+        const showReveal = Boolean(reveal);
         return (
           <button
             key={choice.id}
@@ -75,8 +78,11 @@ export default function ChoiceList({ choices, disabled, onSelect, selectedId }: 
             }}
             className={classNames(
               "w-full rounded-md border border-neutral-200 bg-white p-4 text-left shadow-sm transition focus:outline-none focus:ring-2 focus:ring-brand-500",
-              isSelected && "border-brand-500 ring-2 ring-brand-500",
-              isStruck && "line-through text-neutral-400"
+              isSelected && !showReveal && "border-brand-500 ring-2 ring-brand-500",
+              isStruck && !showReveal && "line-through text-neutral-400",
+              showReveal && isCorrect && "border-emerald-500 bg-emerald-50 text-emerald-900",
+              showReveal && isSelected && !isCorrect && "border-red-500 bg-red-50 text-red-900",
+              showReveal && !isSelected && !isCorrect && "opacity-70"
             )}
           >
             <span className="mr-2 font-semibold">{choice.label}.</span>
@@ -87,6 +93,11 @@ export default function ChoiceList({ choices, disabled, onSelect, selectedId }: 
             >
               {choice.text_md}
             </ReactMarkdown>
+            {showReveal && (isCorrect || isSelected) ? (
+              <div className="mt-2 text-xs font-medium">
+                {isCorrect ? "Correct answer" : "Your choice"}
+              </div>
+            ) : null}
           </button>
         );
       })}
