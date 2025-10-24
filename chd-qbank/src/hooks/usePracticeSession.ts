@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Choice } from "../lib/constants";
+import type { Choice, QuestionDifficulty } from "../lib/constants";
 import { useSessionStore } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
 import {
@@ -12,6 +12,17 @@ import {
   shuffleQuestions,
   shouldLoadNextPage
 } from "../lib/practice";
+
+export type PracticeFilters = {
+  topic?: string | null;
+  difficulty?: QuestionDifficulty | null;
+};
+
+const difficultyTargetFilter: Record<QuestionDifficulty, number[]> = {
+  easy: [1, 2],
+  med: [3],
+  hard: [4, 5]
+};
 
 export type PracticeResponse = {
   id: string;
@@ -37,7 +48,7 @@ const mapResponse = (data: {
   ms_to_answer: data.ms_to_answer
 });
 
-export function usePracticeSession() {
+export function usePracticeSession(filters: PracticeFilters = {}) {
   const [questions, setQuestions] = useState<QuestionRow[]>([]);
   const [index, setIndex] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -70,13 +81,27 @@ export function usePracticeSession() {
 
       const from = pageToLoad * PRACTICE_PAGE_SIZE;
       const to = from + PRACTICE_PAGE_SIZE - 1;
-      const { data, error: fetchError, count } = await supabase
+
+      let query = supabase
         .from("questions")
         .select(
-          "id, slug, stem_md, lead_in, explanation_brief_md, explanation_deep_md, topic, subtopic, lesion, context_panels, media_bundle:media_bundles(id, murmur_url, cxr_url, ekg_url, diagram_url, alt_text), choices(id,label,text_md,is_correct)",
+          "id, slug, stem_md, lead_in, explanation_brief_md, explanation_deep_md, topic, subtopic, lesion, difficulty_target, context_panels, media_bundle:media_bundles(id, murmur_url, cxr_url, ekg_url, diagram_url, alt_text), choices(id,label,text_md,is_correct)",
           { count: "exact" }
         )
-        .eq("status", "published")
+        .eq("status", "published");
+
+      if (filters.topic) {
+        query = query.eq("topic", filters.topic);
+      }
+
+      if (filters.difficulty) {
+        const targets = difficultyTargetFilter[filters.difficulty];
+        if (targets?.length) {
+          query = query.in("difficulty_target", targets);
+        }
+      }
+
+      const { data, error: fetchError, count } = await query
         .order("id", { ascending: true })
         .range(from, to);
 
@@ -98,6 +123,8 @@ export function usePracticeSession() {
       if (replace) {
         loadedPages.current = new Set([pageToLoad]);
         setIndex(0);
+        setResponses({});
+        responsesRef.current = {};
       } else {
         loadedPages.current.add(pageToLoad);
       }
@@ -109,7 +136,7 @@ export function usePracticeSession() {
       loadingRef.current = false;
       return randomized.length;
     },
-    []
+    [filters]
   );
 
   useEffect(() => {

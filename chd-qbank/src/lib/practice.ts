@@ -1,4 +1,4 @@
-import type { Choice, ContextPanel, Question } from "./constants";
+import type { Choice, ContextPanel, Question, QuestionDifficulty } from "./constants";
 
 export type QuestionRow = Question & { choices: Choice[] };
 
@@ -12,12 +12,20 @@ export type QuestionQueryRow = {
   topic: string | null;
   subtopic: string | null;
   lesion: string | null;
+  difficulty_target: number | null;
   media_bundle: Question["media_bundle"];
   context_panels: ContextPanel[] | null;
   choices: Choice[] | null;
 };
 
 export const PRACTICE_PAGE_SIZE = 10;
+
+const mapDifficulty = (target: number | null): QuestionDifficulty | null => {
+  if (target == null) return null;
+  if (target <= 2) return "easy";
+  if (target === 3) return "med";
+  return "hard";
+};
 
 export function normalizeQuestionRows(rows: QuestionQueryRow[]): QuestionRow[] {
   return rows.map((item) => ({
@@ -30,6 +38,7 @@ export function normalizeQuestionRows(rows: QuestionQueryRow[]): QuestionRow[] {
     topic: item.topic,
     subtopic: item.subtopic,
     lesion: item.lesion,
+    difficulty: mapDifficulty(item.difficulty_target ?? null),
     media_bundle: item.media_bundle ?? null,
     context_panels: item.context_panels ?? null,
     choices: (item.choices ?? [])

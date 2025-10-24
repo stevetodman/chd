@@ -50,6 +50,8 @@ export type ContextFormulaPanel = {
 
 export type ContextPanel = ContextLabsPanel | ContextFormulaPanel;
 
+export type QuestionDifficulty = "easy" | "med" | "hard";
+
 export type Question = {
   id: string;
   slug: string;
@@ -60,6 +62,7 @@ export type Question = {
   topic?: string | null;
   subtopic?: string | null;
   lesion?: string | null;
+  difficulty?: QuestionDifficulty | null;
   media_bundle?: MediaBundle | null;
   choices: Choice[];
   context_panels?: ContextPanel[] | null;
