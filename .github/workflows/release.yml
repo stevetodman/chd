@@ -1,0 +1,144 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Build artifacts and publish release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    env:
+      NODE_VERSION: '20'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a25f0e4a72 # v4.1.6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@5e21ff4d9f0f45a73d87940c49aa5addf5328d0f # v4.0.2
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: chd-qbank/package-lock.json
+
+      - name: Install dependencies
+        working-directory: chd-qbank
+        run: npm ci
+
+      - name: Lint
+        working-directory: chd-qbank
+        run: npm run lint
+
+      - name: Typecheck
+        working-directory: chd-qbank
+        run: npm run typecheck
+
+      - name: Test
+        working-directory: chd-qbank
+        run: npm run test -- --run --reporter=dot
+
+      - name: Build application
+        working-directory: chd-qbank
+        run: npm run build
+
+      - name: Generate NOTICE and license inventory
+        working-directory: chd-qbank
+        run: npm run notice
+
+      - name: Generate repository license inventory
+        run: npm run license:inventory
+
+      - name: Enforce license policy
+        run: npm run license:check
+
+      - name: Generate SBOM (CycloneDX)
+        working-directory: chd-qbank
+        run: |
+          mkdir -p compliance-artifacts
+          npx --yes @cyclonedx/cyclonedx-npm --output-file compliance-artifacts/chd-qbank-cyclonedx.json --output-format json
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-artifacts
+          tar -czf release-artifacts/chd-qbank-dist.tar.gz -C chd-qbank/dist .
+          cp NOTICE release-artifacts/NOTICE
+          cp docs/compliance/license-inventory.json release-artifacts/license-inventory.json
+          cp chd-qbank/compliance-artifacts/chd-qbank-cyclonedx.json release-artifacts/chd-qbank-cyclonedx.json
+
+      - name: Capture npm audit report
+        working-directory: chd-qbank
+        run: |
+          mkdir -p compliance-artifacts
+          npm audit --json > compliance-artifacts/npm-audit.json || true
+
+      - name: Include compliance reports
+        run: |
+          cp chd-qbank/compliance-artifacts/npm-audit.json release-artifacts/npm-audit.json
+
+      - name: Derive image metadata
+        run: |
+          IMAGE_NAME="ghcr.io/${GITHUB_REPOSITORY,,}"
+          TAG_NAME="${GITHUB_REF_NAME}"
+          VERSION="${TAG_NAME#v}"
+          echo "IMAGE_NAME=$IMAGE_NAME" >> "$GITHUB_ENV"
+          echo "TAG_NAME=$TAG_NAME" >> "$GITHUB_ENV"
+          echo "RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ env.TAG_NAME }}
+            type=raw,value=${{ env.RELEASE_VERSION }}
+            type=raw,value=latest
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VITE_SUPABASE_URL=
+            VITE_SUPABASE_ANON_KEY=
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            release-artifacts/chd-qbank-dist.tar.gz
+            release-artifacts/NOTICE
+            release-artifacts/license-inventory.json
+            release-artifacts/chd-qbank-cyclonedx.json
+            release-artifacts/npm-audit.json
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: release-artifacts
+
