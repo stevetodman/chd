@@ -5,9 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/Card";
 type Props = {
   labs?: LabValue[] | null;
   title?: string | null;
+  labelId?: string;
+  showTitle?: boolean;
 };
 
-export default function LabPanel({ labs, title = "Vitals & Labs" }: Props) {
+export default function LabPanel({ labs, title = "Vitals & Labs", labelId, showTitle = true }: Props) {
   if (!labs || labs.length === 0) {
     return null;
   }
@@ -17,16 +19,16 @@ export default function LabPanel({ labs, title = "Vitals & Labs" }: Props) {
   return (
     <section
       role="complementary"
-      aria-labelledby={title ? headingId : undefined}
-      aria-label={title ? undefined : "Vitals and labs"}
+      aria-labelledby={showTitle && title ? headingId : labelId}
+      aria-label={showTitle && title ? undefined : "Vitals and labs"}
     >
-      <Card className="bg-white">
-        {title ? (
+      <Card className={showTitle ? "bg-white" : "border-0 bg-transparent shadow-none p-0"}>
+        {showTitle && title ? (
           <CardHeader>
             <CardTitle id={headingId}>{title}</CardTitle>
           </CardHeader>
         ) : null}
-        <CardContent>
+        <CardContent className={showTitle ? undefined : "p-0"}>
           <dl className="grid grid-cols-2 gap-3 text-sm">
             {labs.map((lab) => (
               <div key={`${lab.label}-${lab.value}`} className="flex flex-col">
