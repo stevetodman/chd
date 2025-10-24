@@ -3,5 +3,13 @@
   "private": true,
   "workspaces": [
     "chd-qbank"
-  ]
+  ],
+  "scripts": {
+    "sbom": "cyclonedx-npm --output sbom.xml",
+    "license:audit": "node scripts/generate-notice.mjs"
+  },
+  "devDependencies": {
+    "cyclonedx-npm": "^1.9.0",
+    "license-checker": "^25.0.1"
+  }
 }
