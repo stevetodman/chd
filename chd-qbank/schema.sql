@@ -128,11 +128,13 @@ exception
 end;
 $$;
 
--- SETTINGS (invite code) -- read only by admin; Edge Function (service role) reads it server-side
+-- SETTINGS (admin toggles and secure defaults)
 create table if not exists app_settings (
   key text primary key,
   value text not null
 );
+-- Remove legacy invite secrets so fresh environments never expose stale tokens
+delete from app_settings where key = 'invite_code';
 insert into app_settings(key, value)
   values ('leaderboard_enabled','true')
 on conflict (key) do nothing;
