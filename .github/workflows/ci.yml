@@ -13,13 +13,13 @@ jobs:
       run:
         working-directory: chd-qbank
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a25f0e4a72 # v4.1.6
+      - uses: actions/setup-node@5e21ff4d9f0f45a73d87940c49aa5addf5328d0f # v4.0.2
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: 'chd-qbank/package-lock.json'
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@8d6a028232b48cf9449877dc87aef5d30daeb4c3 # v3.0.2
         id: changes
         with:
           filters: |
@@ -44,8 +44,8 @@ jobs:
       run:
         working-directory: chd-qbank/supabase/functions/signup-with-code
     steps:
-      - uses: actions/checkout@v4
-      - uses: denoland/setup-deno@v1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a25f0e4a72 # v4.1.6
+      - uses: denoland/setup-deno@db94c30a7d69dbab71c373b72ed9d6d8d3e15794 # v1.1.1
         with:
           deno-version: v1.x
       - run: deno lint

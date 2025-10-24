@@ -11,8 +11,8 @@ jobs:
       run:
         working-directory: chd-qbank
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a25f0e4a72 # v4.1.6
+      - uses: actions/setup-node@5e21ff4d9f0f45a73d87940c49aa5addf5328d0f # v4.0.2
         with:
           node-version: '20'
           cache: 'npm'
