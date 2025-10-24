@@ -13,7 +13,7 @@ export type QuestionQueryRow = {
   subtopic: string | null;
   lesion: string | null;
   media_bundle: Question["media_bundle"];
-  context_panels: ContextPanel[] | null;
+  context_panels: ContextPanel[];
   choices: Choice[] | null;
 };
 
@@ -31,7 +31,7 @@ export function normalizeQuestionRows(rows: QuestionQueryRow[]): QuestionRow[] {
     subtopic: item.subtopic,
     lesion: item.lesion,
     media_bundle: item.media_bundle ?? null,
-    context_panels: item.context_panels ?? null,
+    context_panels: item.context_panels,
     choices: (item.choices ?? [])
       .slice()
       .sort((a, b) => a.label.localeCompare(b.label))

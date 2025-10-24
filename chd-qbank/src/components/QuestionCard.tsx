@@ -154,7 +154,7 @@ export default function QuestionCard({
         </CardFooter>
       </Card>
       <div className="space-y-4">
-        {(question.context_panels ?? []).map((panel, index) => {
+        {question.context_panels.map((panel, index) => {
           if (!panel) return null;
           const sectionId = panel.id ? `panel-${panel.id}` : `panel-${panel.kind}-${index}`;
           const sectionTitle =

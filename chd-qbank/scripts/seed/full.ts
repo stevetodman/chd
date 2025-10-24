@@ -147,7 +147,7 @@ async function upsertQuestion(question: QuestionSeed): Promise<void> {
     lecture_link: question.lecture_link ?? null,
     media_bundle_id: question.mediaBundleId ?? null,
     status: question.status,
-    context_panels: question.context_panels ?? null
+    context_panels: question.context_panels ?? []
   };
 
   let questionId: string;

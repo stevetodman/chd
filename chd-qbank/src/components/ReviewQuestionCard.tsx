@@ -65,7 +65,7 @@ export default function ReviewQuestionCard({ flag, onMarkReviewed, processing = 
             Great job! You got it correct.
           </div>
         ) : null}
-        {(question.context_panels ?? []).map((panel) => {
+        {question.context_panels.map((panel) => {
           if (!panel) return null;
           switch (panel.kind) {
             case "labs":
