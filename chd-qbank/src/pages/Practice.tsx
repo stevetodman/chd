@@ -31,7 +31,10 @@ export default function Practice() {
     filterOptionsLoading,
     filterOptionsError
   } = usePracticeSession();
-  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return window.localStorage.getItem("practice:has-started") !== "true";
+  });
   const [pendingFilters, setPendingFilters] = useState<PracticeFilters>({ ...filters });
   const [filtersSheetOpen, setFiltersSheetOpen] = useState(false);
 
@@ -71,6 +74,12 @@ export default function Practice() {
     setPendingFilters({ ...DEFAULT_PRACTICE_FILTERS });
     applyFilters({ ...DEFAULT_PRACTICE_FILTERS });
   };
+
+  useEffect(() => {
+    if (questions.length === 0) return;
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("practice:has-started", "true");
+  }, [questions.length]);
 
   if (loading && questions.length === 0) {
     return (
