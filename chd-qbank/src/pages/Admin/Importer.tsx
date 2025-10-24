@@ -52,31 +52,36 @@ export default function Importer() {
     setPublishing(true);
 
     // Translate CSV columns into the payload expected by the Supabase RPC function.
-    const payload = rows.map((row) => ({
-      slug: row.slug?.trim(),
-      stem_md: row.stem_md,
-      lead_in: row.lead_in,
-      explanation_brief_md: row.explanation_brief_md,
-      explanation_deep_md: row.explanation_deep_md,
-      topic: row.topic,
-      subtopic: row.subtopic,
-      lesion: row.lesion,
-      difficulty: row.difficulty,
-      bloom: row.bloom,
-      lecture_link: row.lecture_link,
-      status: row.status,
-      media_murmur: row.media_murmur,
-      media_cxr: row.media_cxr,
-      media_ekg: row.media_ekg,
-      media_diagram: row.media_diagram,
-      alt_text: row.alt_text,
-      choiceA: row.choiceA,
-      choiceB: row.choiceB,
-      choiceC: row.choiceC,
-      choiceD: row.choiceD,
-      choiceE: row.choiceE,
-      correct_label: row.correct_label?.toUpperCase()
-    }));
+    const payload = rows.map((row) => {
+      const slug = row.slug?.trim();
+      const correctLabel = row.correct_label?.trim();
+
+      return {
+        slug,
+        stem_md: row.stem_md,
+        lead_in: row.lead_in,
+        explanation_brief_md: row.explanation_brief_md,
+        explanation_deep_md: row.explanation_deep_md,
+        topic: row.topic,
+        subtopic: row.subtopic,
+        lesion: row.lesion,
+        difficulty: row.difficulty,
+        bloom: row.bloom,
+        lecture_link: row.lecture_link,
+        status: row.status,
+        media_murmur: row.media_murmur,
+        media_cxr: row.media_cxr,
+        media_ekg: row.media_ekg,
+        media_diagram: row.media_diagram,
+        alt_text: row.alt_text,
+        choiceA: row.choiceA,
+        choiceB: row.choiceB,
+        choiceC: row.choiceC,
+        choiceD: row.choiceD,
+        choiceE: row.choiceE,
+        correct_label: correctLabel ? correctLabel.toUpperCase() : null
+      };
+    });
 
     const { data, error } = await supabase.rpc("import_question_rows", { rows: payload });
 
