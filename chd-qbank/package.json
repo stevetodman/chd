@@ -23,7 +23,9 @@
     "verify:storage": "node scripts/verify-storage-buckets.mjs",
     "migrate:qbank": "npm run build:scripts && node scripts/dist/migrate-qbank.js",
     "migrate:qbank:dry": "npm run build:scripts && DRY_RUN=1 node scripts/dist/migrate-qbank.js",
-    "blueprint:coverage": "npm run build:scripts && node scripts/dist/blueprint-coverage.js"
+    "blueprint:coverage": "npm run build:scripts && node scripts/dist/blueprint-coverage.js",
+    "lint:fix": "eslint --ext .ts,.tsx src --fix",
+    "prepare": "husky install"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.0.5",
@@ -75,6 +77,23 @@
     "@typescript-eslint/parser": "^6.21.0",
     "@types/papaparse": "^5.3.7",
     "fast-glob": "^3.3.2",
-    "picocolors": "^1.0.0"
+    "picocolors": "^1.0.0",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.7",
+    "prettier": "^3.3.3",
+    "@commitlint/cli": "^19.2.2",
+    "@commitlint/config-conventional": "^19.2.2"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": "prettier --write"
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
   }
 }
