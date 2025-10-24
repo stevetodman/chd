@@ -4,46 +4,13 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { TEN_MINUTES_MS, validateInviteCode, withinTtl, type IdempotencyRow, type StoredResponse } from "./logic.ts";
 
-const TEN_MINUTES_MS = 10 * 60 * 1000;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const sb = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false }
 });
-
-type StoredResponse = {
-  status: number;
-  body: unknown;
-  headers?: Record<string, string>;
-};
-
-type IdempotencyRow = {
-  key: string;
-  response: StoredResponse | null;
-  status_code: number | null;
-  created_at: string;
-};
-
-async function hashInviteCode(code: string, salt: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const payload = encoder.encode(`${salt}:${code}`);
-  const digest = await crypto.subtle.digest("SHA-256", payload);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) {
-    return false;
-  }
-  let mismatch = 0;
-  for (let i = 0; i < a.length; i++) {
-    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return mismatch === 0;
-}
 
 function genAlias(): string {
   const adjectives = ["Brisk","Calm","Keen","Nimble","Quiet","Spry","Sturdy","Swift","Tidy","Witty"];
@@ -56,10 +23,6 @@ function genAlias(): string {
 
 async function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function withinTtl(row: IdempotencyRow): boolean {
-  return Date.now() - new Date(row.created_at).getTime() < TEN_MINUTES_MS;
 }
 
 async function fetchIdempotencyRow(key: string): Promise<IdempotencyRow | null> {
@@ -199,39 +162,9 @@ serve(async (req) => {
     if (typeof invite_code !== "string" || invite_code.trim() === "") {
       throw new Error("Invite code required");
     }
-
-    const { data: settings, error: settingsErr } = await sb
-      .from("app_settings")
-      .select("key,value")
-      .in("key", ["invite_code_hash", "invite_code_salt", "invite_expires"]);
-    if (settingsErr) throw settingsErr;
-
-    const inviteCodeHash = settings?.find((s) => s.key === "invite_code_hash")?.value;
-    const inviteCodeSalt = settings?.find((s) => s.key === "invite_code_salt")?.value;
-    const expires = settings?.find((s) => s.key === "invite_expires")?.value;
-    if (!inviteCodeHash || !inviteCodeSalt) {
-      throw new Error("Invite not configured securely");
-    }
-    if (!expires) {
-      throw new Error("Invite expiration missing");
-    }
-
-    const submittedHash = await hashInviteCode(invite_code.trim(), inviteCodeSalt);
-    if (!timingSafeEqual(inviteCodeHash, submittedHash)) {
-      storedResponse = {
-        status: 403,
-        body: { ok: false, error: "Invalid invite code" },
-        headers: { "content-type": "application/json" }
-      };
-      await storeResponseForKey(idempotencyKey, storedResponse);
-      return buildResponse(storedResponse);
-    }
-    if (new Date() > new Date(expires)) {
-      storedResponse = {
-        status: 403,
-        body: { ok: false, error: "Invite expired" },
-        headers: { "content-type": "application/json" }
-      };
+    const inviteValidation = await validateInviteCode({ supabase: sb, inviteCode: invite_code });
+    if (inviteValidation) {
+      storedResponse = inviteValidation;
       await storeResponseForKey(idempotencyKey, storedResponse);
       return buildResponse(storedResponse);
     }
