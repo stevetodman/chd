@@ -14,18 +14,25 @@ export default function Settings() {
   const [maintenanceMode, setMaintenanceMode] = useState(globalMaintenance);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ text: string; tone: "success" | "error" } | null>(null);
+  const hasChanges =
+    leaderboardEnabled !== globalLeaderboard || maintenanceMode !== globalMaintenance;
 
   useEffect(() => { void loadSettings(); }, [loadSettings]);
   useEffect(() => { setLeaderboardEnabled(globalLeaderboard); }, [globalLeaderboard]);
   useEffect(() => { setMaintenanceMode(globalMaintenance); }, [globalMaintenance]);
 
   const saveSettings = async () => {
+    if (!hasChanges) {
+      setMessage({ text: "No changes to save.", tone: "success" });
+      return;
+    }
+
     setMessage(null);
     setSaving(true);
     try {
       const rows = [
         { key: "leaderboard_enabled", value: leaderboardEnabled ? "true" : "false" },
-        { key: "maintenance_mode",    value: maintenanceMode ? "true" : "false" }
+        { key: "maintenance_mode", value: maintenanceMode ? "true" : "false" }
       ];
       const { error } = await supabase.from("app_settings").upsert(rows, { onConflict: "key" });
       if (error) throw error;
@@ -41,9 +48,8 @@ export default function Settings() {
   };
 
   const resetLeaderboard = async () => {
-    if (typeof window !== "undefined") {
-      const ok = window.confirm("This will clear all all-time leaderboard scores. Continue?");
-      if (!ok) return;
+    if (typeof window !== "undefined" && !window.confirm("This will clear all-time leaderboard scores. Continue?")) {
+      return;
     }
     setMessage(null);
     try {
@@ -62,21 +68,29 @@ export default function Settings() {
 
       <div className="rounded-lg border border-neutral-200 bg-white p-4 space-y-3">
         <label className="flex items-center gap-3 text-sm">
-          <input type="checkbox" className="h-4 w-4"
+          <input
+            type="checkbox"
+            className="h-4 w-4"
             checked={leaderboardEnabled}
-            onChange={(e) => setLeaderboardEnabled(e.target.checked)} />
+            onChange={(e) => setLeaderboardEnabled(e.target.checked)}
+          />
           <span>Enable leaderboard for all users</span>
         </label>
 
         <label className="flex items-center gap-3 text-sm">
-          <input type="checkbox" className="h-4 w-4"
+          <input
+            type="checkbox"
+            className="h-4 w-4"
             checked={maintenanceMode}
-            onChange={(e) => setMaintenanceMode(e.target.checked)} />
+            onChange={(e) => setMaintenanceMode(e.target.checked)}
+          />
           <span>Enable maintenance mode (lock out non-admins)</span>
         </label>
 
         <div className="flex items-center gap-3">
-          <Button onClick={saveSettings} disabled={saving}>{saving ? "Saving…" : "Save settings"}</Button>
+          <Button onClick={saveSettings} disabled={saving || !hasChanges}>
+            {saving ? "Saving…" : "Save settings"}
+          </Button>
           <Button onClick={resetLeaderboard} variant="secondary">Reset all-time leaderboard</Button>
         </div>
 
