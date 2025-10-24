@@ -11,14 +11,9 @@ import {
   Filler
 } from "chart.js";
 import { Chart } from "react-chartjs-2";
+import type { PracticeTrendDatum } from "../../types/practice";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend, Filler);
-
-export type PracticeTrendDatum = {
-  label: string;
-  attempts: number;
-  accuracy: number | null;
-};
 
 type Props = {
   data: PracticeTrendDatum[];
