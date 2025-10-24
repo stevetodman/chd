@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
+import PageState from "../components/PageState";
 import QuestionCard from "../components/QuestionCard";
 import { Button } from "../components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card";
@@ -22,14 +23,35 @@ export default function Practice() {
   } = usePracticeSession();
 
   if (loading && questions.length === 0) {
-    return <div>Loading questions…</div>;
+    return (
+      <PageState
+        title="Loading practice session"
+        description="We’re generating the next set of questions for you."
+        fullHeight
+      />
+    );
   }
 
   if (error && questions.length === 0) {
-    return <div className="text-red-600">{error}</div>;
+    return (
+      <PageState
+        title="We couldn’t load questions"
+        description={error}
+        variant="error"
+        fullHeight
+      />
+    );
   }
 
-  if (!currentQuestion) return <div>No questions found.</div>;
+  if (!currentQuestion)
+    return (
+      <PageState
+        title="No questions found"
+        description="Adjust your filters or try refreshing to start a new session."
+        variant="empty"
+        fullHeight
+      />
+    );
 
   const canAdvance = !(
     (!hasMore && index >= questions.length - 1) || questions.length === 0

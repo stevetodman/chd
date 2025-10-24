@@ -4,6 +4,7 @@ import { useSessionStore } from "../lib/auth";
 import { normalizeQuestionRows, type QuestionQueryRow } from "../lib/practice";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
+import PageState from "../components/PageState";
 import ReviewQuestionCard, { type ReviewFlag } from "../components/ReviewQuestionCard";
 
 type FlaggedResponseRow = {
@@ -134,7 +135,11 @@ export default function Review() {
       ) : null}
 
       {loading && !flags.length ? (
-        <div className="rounded-md border border-neutral-200 bg-white p-4 text-sm text-neutral-600">Loading flagged questions…</div>
+        <PageState
+          title="Loading your review queue"
+          description="Pulling in the questions you flagged during practice."
+          fullHeight
+        />
       ) : null}
 
       <div className="space-y-4">

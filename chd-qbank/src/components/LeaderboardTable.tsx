@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import PageState from "./PageState";
 import { Button } from "./ui/Button";
 
 type LeaderRow = {
@@ -98,9 +99,11 @@ export default function LeaderboardTable() {
         </div>
       ) : null}
       {loading && rows.length === 0 ? (
-        <div className="rounded-md border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-600">
-          Loading leaderboard…
-        </div>
+        <PageState
+          title="Loading leaderboard"
+          description="Fetching the latest rankings."
+          fullHeight
+        />
       ) : null}
       <table className="min-w-full divide-y divide-neutral-200 overflow-hidden rounded-lg bg-white shadow-sm">
         <thead className="bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">

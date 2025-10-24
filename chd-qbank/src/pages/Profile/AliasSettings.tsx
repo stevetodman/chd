@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
+import PageState from "../../components/PageState";
 import { supabase } from "../../lib/supabaseClient";
 import { useSessionStore } from "../../lib/auth";
 
@@ -95,7 +96,13 @@ export default function AliasSettings() {
   };
 
   if (loading) {
-    return <div className="p-6 text-sm text-neutral-600">Loading profile…</div>;
+    return (
+      <PageState
+        title="Loading your profile"
+        description="Fetching your leaderboard alias settings."
+        fullHeight
+      />
+    );
   }
 
   return (

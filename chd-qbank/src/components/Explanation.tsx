@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { forwardRef, useState } from "react";
+import type { ComponentPropsWithoutRef } from "react";
 import ReactMarkdown from "react-markdown";
 import { markdownRemarkPlugins, markdownRehypePlugins } from "../lib/markdown";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/Card";
@@ -9,10 +10,15 @@ type Props = {
   deep?: string | null;
 };
 
-export default function Explanation({ brief, deep }: Props) {
+type ExplanationProps = Props & ComponentPropsWithoutRef<typeof Card>;
+
+const Explanation = forwardRef<HTMLDivElement, ExplanationProps>(function Explanation(
+  { brief, deep, ...cardProps },
+  ref
+) {
   const [open, setOpen] = useState(false);
   return (
-    <Card>
+    <Card ref={ref} {...cardProps}>
       <CardHeader className="flex items-center justify-between">
         <CardTitle>Explanation</CardTitle>
         {deep ? (
@@ -43,4 +49,6 @@ export default function Explanation({ brief, deep }: Props) {
       </CardContent>
     </Card>
   );
-}
+});
+
+export default Explanation;
