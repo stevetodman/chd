@@ -6,6 +6,7 @@ import { supabase } from "../lib/supabaseClient";
 import { useSessionStore } from "../lib/auth";
 import type { DashboardMetrics } from "../lib/constants";
 import { EMPTY_DASHBOARD_METRICS, fetchDashboardMetrics } from "../lib/dashboard";
+import PracticeTrendChart, { type PracticeTrendDatum } from "../components/Charts/PracticeTrendChart";
 
 interface FeaturedQuestion {
   id: string;
@@ -32,6 +33,9 @@ export default function Dashboard() {
   const [metricsLoaded, setMetricsLoaded] = useState(false);
   const [metricsError, setMetricsError] = useState<string | null>(null);
   const [metricsReloadKey, setMetricsReloadKey] = useState(0);
+  const [trendData, setTrendData] = useState<PracticeTrendDatum[]>([]);
+  const [trendLoading, setTrendLoading] = useState(false);
+  const [trendError, setTrendError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session) return;
@@ -108,6 +112,92 @@ export default function Dashboard() {
     setMetricsReloadKey((key) => key + 1);
   };
 
+  useEffect(() => {
+    if (!session) {
+      setTrendData([]);
+      setTrendError(null);
+      setTrendLoading(false);
+      return;
+    }
+
+    let active = true;
+    setTrendLoading(true);
+    setTrendError(null);
+
+    const weeksToShow = 8;
+    const toUtcWeekStart = (value: Date): Date => {
+      const base = new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
+      const day = base.getUTCDay();
+      const diff = (day + 6) % 7;
+      base.setUTCDate(base.getUTCDate() - diff);
+      base.setUTCHours(0, 0, 0, 0);
+      return base;
+    };
+
+    const now = new Date();
+    const latestWeek = toUtcWeekStart(now);
+    const earliestWeek = new Date(latestWeek);
+    earliestWeek.setUTCDate(earliestWeek.getUTCDate() - (weeksToShow - 1) * 7);
+
+    supabase
+      .from("responses")
+      .select("created_at, is_correct")
+      .eq("user_id", session.user.id)
+      .gte("created_at", earliestWeek.toISOString())
+      .order("created_at", { ascending: true })
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) {
+          setTrendError("We couldn't load your recent practice. Try again shortly.");
+          setTrendData([]);
+          return;
+        }
+
+        const aggregates = new Map<string, { attempts: number; correct: number }>();
+        for (const row of data ?? []) {
+          if (!row?.created_at) continue;
+          const createdAt = new Date(row.created_at);
+          const weekStart = toUtcWeekStart(createdAt);
+          const key = weekStart.toISOString().slice(0, 10);
+          const entry = aggregates.get(key) ?? { attempts: 0, correct: 0 };
+          entry.attempts += 1;
+          if (row.is_correct) entry.correct += 1;
+          aggregates.set(key, entry);
+        }
+
+        const formatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
+        const points: PracticeTrendDatum[] = [];
+
+        for (let i = 0; i < weeksToShow; i += 1) {
+          const cursor = new Date(earliestWeek);
+          cursor.setUTCDate(cursor.getUTCDate() + i * 7);
+          const key = cursor.toISOString().slice(0, 10);
+          const summary = aggregates.get(key) ?? { attempts: 0, correct: 0 };
+          const accuracy = summary.attempts > 0 ? (summary.correct / summary.attempts) * 100 : null;
+          points.push({
+            label: formatter.format(cursor),
+            attempts: summary.attempts,
+            accuracy
+          });
+        }
+
+        setTrendData(points);
+      })
+      .catch(() => {
+        if (!active) return;
+        setTrendError("We couldn't load your recent practice. Try again shortly.");
+        setTrendData([]);
+      })
+      .finally(() => {
+        if (!active) return;
+        setTrendLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [session, metricsReloadKey]);
+
   const accuracy = metrics.total_attempts > 0 ? Math.round((metrics.correct_attempts / metrics.total_attempts) * 100) : 0;
 
   return (
@@ -138,7 +228,7 @@ export default function Dashboard() {
           <CardTitle>Your progress</CardTitle>
           <p className="text-sm text-neutral-600">Real-time metrics from tutor mode and learning games.</p>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           {metricsError ? (
             <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
               {metricsError}
@@ -147,34 +237,40 @@ export default function Dashboard() {
           {!metricsLoaded && metricsLoading ? (
             <p className="text-sm text-neutral-500">Loading progress…</p>
           ) : (
-            <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-lg border border-neutral-200 bg-white p-4">
-                <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Practice attempts</dt>
-                <dd className="mt-2 text-2xl font-semibold text-neutral-900">{metrics.total_attempts}</dd>
-                <p className="mt-1 text-xs text-neutral-500">{metrics.correct_attempts} correct</p>
+            <>
+              <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-lg border border-neutral-200 bg-white p-4">
+                  <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Practice attempts</dt>
+                  <dd className="mt-2 text-2xl font-semibold text-neutral-900">{metrics.total_attempts}</dd>
+                  <p className="mt-1 text-xs text-neutral-500">{metrics.correct_attempts} correct</p>
+                </div>
+                <div className="rounded-lg border border-neutral-200 bg-white p-4">
+                  <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Accuracy</dt>
+                  <dd className="mt-2 text-2xl font-semibold text-neutral-900">{accuracy}%</dd>
+                  <p className="mt-1 text-xs text-neutral-500">
+                    Based on your lifetime practice and game attempts.
+                  </p>
+                </div>
+                <div className="rounded-lg border border-neutral-200 bg-white p-4">
+                  <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Flagged for review</dt>
+                  <dd className="mt-2 text-2xl font-semibold text-neutral-900">{metrics.flagged_count}</dd>
+                  <p className="mt-1 text-xs text-neutral-500">
+                    <Link to="/review" className="underline">
+                      Review flagged questions
+                    </Link>
+                  </p>
+                </div>
+                <div className="rounded-lg border border-neutral-200 bg-white p-4">
+                  <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Weekly points</dt>
+                  <dd className="mt-2 text-2xl font-semibold text-neutral-900">{metrics.weekly_points}</dd>
+                  <p className="mt-1 text-xs text-neutral-500">All-time total: {metrics.all_time_points}</p>
+                </div>
+              </dl>
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-neutral-700">Weekly trend (last 8 weeks)</h3>
+                <PracticeTrendChart data={trendData} loading={trendLoading} error={trendError} />
               </div>
-              <div className="rounded-lg border border-neutral-200 bg-white p-4">
-                <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Accuracy</dt>
-                <dd className="mt-2 text-2xl font-semibold text-neutral-900">{accuracy}%</dd>
-                <p className="mt-1 text-xs text-neutral-500">
-                  Based on your lifetime practice and game attempts.
-                </p>
-              </div>
-              <div className="rounded-lg border border-neutral-200 bg-white p-4">
-                <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Flagged for review</dt>
-                <dd className="mt-2 text-2xl font-semibold text-neutral-900">{metrics.flagged_count}</dd>
-                <p className="mt-1 text-xs text-neutral-500">
-                  <Link to="/review" className="underline">
-                    Review flagged questions
-                  </Link>
-                </p>
-              </div>
-              <div className="rounded-lg border border-neutral-200 bg-white p-4">
-                <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Weekly points</dt>
-                <dd className="mt-2 text-2xl font-semibold text-neutral-900">{metrics.weekly_points}</dd>
-                <p className="mt-1 text-xs text-neutral-500">All-time total: {metrics.all_time_points}</p>
-              </div>
-            </dl>
+            </>
           )}
         </CardContent>
         <CardFooter className="flex flex-col gap-3 border-t border-neutral-100 bg-neutral-50 p-4 text-xs text-neutral-500 sm:flex-row sm:items-center sm:justify-between">

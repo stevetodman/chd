@@ -90,7 +90,7 @@ export default function QuestionCard({ question, onAnswer, onFlagChange, initial
           <CardTitle>{question.lead_in ?? "Question"}</CardTitle>
           <StemHighlighter stem={question.stem_md} />
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <ChoiceList
             choices={question.choices}
             onSelect={handleSelect}
@@ -98,6 +98,9 @@ export default function QuestionCard({ question, onAnswer, onFlagChange, initial
             showFeedback={!!selected}
             autoFocusFirst
           />
+          <p className="text-xs text-neutral-500" id="choice-shortcuts-hint">
+            Pro tip: press A–E or 1–5 to choose an answer instantly. Press X to strike out the focused option.
+          </p>
         </CardContent>
         <CardFooter className="flex items-center justify-between gap-3">
           <FlagButton flagged={flagged} onToggle={toggleFlag} />
