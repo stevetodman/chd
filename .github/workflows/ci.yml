@@ -13,8 +13,8 @@ jobs:
       run:
         working-directory: chd-qbank
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@b4ffde5b487c6d2d87a12cbf20f4dfe110836de4
+      - uses: actions/setup-node@60d36d521d80ce658e3335a2f92736b6be9ba8ce
         with:
           node-version: '20'
           cache: 'npm'
@@ -24,3 +24,38 @@ jobs:
       - run: npm run typecheck
       - run: npm run test -- --run --reporter=dot
       - run: npm run build
+
+  policy-regression:
+    runs-on: ubuntu-latest
+    needs: build-test
+    defaults:
+      run:
+        working-directory: chd-qbank
+    steps:
+      - uses: actions/checkout@b4ffde5b487c6d2d87a12cbf20f4dfe110836de4
+      - uses: actions/setup-node@60d36d521d80ce658e3335a2f92736b6be9ba8ce
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'chd-qbank/package-lock.json'
+      - run: npm ci
+      - run: npm run test:policies
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history for accurate scan)
+        uses: actions/checkout@b4ffde5b487c6d2d87a12cbf20f4dfe110836de4
+        with:
+          fetch-depth: 0
+
+      - name: Install gitleaks
+        run: |
+          GL_VERSION=8.18.4
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v${GL_VERSION}/gitleaks_${GL_VERSION}_linux_x64.tar.gz \
+            | tar -xz gitleaks
+          sudo mv gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+
+      - name: Run gitleaks (fail on findings, redact output)
+        run: gitleaks detect --source . --redact --exit-code 1

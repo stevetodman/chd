@@ -4,8 +4,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@b4ffde5b487c6d2d87a12cbf20f4dfe110836de4
+      - uses: actions/setup-node@60d36d521d80ce658e3335a2f92736b6be9ba8ce
         with:
           node-version: "20"
       - run: npm ci || npm i
