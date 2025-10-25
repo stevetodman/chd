@@ -49,7 +49,7 @@ function normalizeOptions(options = {}) {
   const cwd = options.start || process.cwd();
   const outputPath = options.outputPath
     ? path.resolve(cwd, options.outputPath)
-    : path.resolve(cwd, 'docs/NOTICE.md');
+    : path.resolve(cwd, 'NOTICE');
 
   return {
     start: cwd,
