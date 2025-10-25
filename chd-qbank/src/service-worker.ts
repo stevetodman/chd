@@ -18,6 +18,10 @@ type SkipWaitingMessage = {
   type: "SKIP_WAITING";
 };
 
+type LogoutMessage = {
+  type: "LOGOUT";
+};
+
 const BUILD_HASH = typeof __BUILD_HASH__ === "string" ? __BUILD_HASH__ : "dev";
 const APP_SHELL_CACHE = `app-shell-v${BUILD_HASH}`;
 const STATIC_CACHE = `static-v${BUILD_HASH}`;
@@ -124,26 +128,37 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("message", (event: ExtendableMessageEvent) => {
-  const data = event.data as SkipWaitingMessage | ServiceWorkerClientMessage | undefined;
+  const data = event.data as
+    | SkipWaitingMessage
+    | LogoutMessage
+    | ServiceWorkerClientMessage
+    | undefined;
 
-  if (!data || data.type !== "SKIP_WAITING") {
+  if (!data) {
     return;
   }
 
-  event.waitUntil(
-    (async () => {
-      await self.skipWaiting();
-      await self.clients.claim();
-      const clients = await self.clients.matchAll({
-        type: "window",
-        includeUncontrolled: true
-      });
+  if (data.type === "SKIP_WAITING") {
+    event.waitUntil(
+      (async () => {
+        await self.skipWaiting();
+        await self.clients.claim();
+        const clients = await self.clients.matchAll({
+          type: "window",
+          includeUncontrolled: true
+        });
 
-      for (const client of clients) {
-        client.postMessage({ type: "UPDATED", version: BUILD_HASH });
-      }
-    })()
-  );
+        for (const client of clients) {
+          client.postMessage({ type: "UPDATED", version: BUILD_HASH });
+        }
+      })()
+    );
+    return;
+  }
+
+  if (data.type === "LOGOUT") {
+    event.waitUntil(clearDynamicCache());
+  }
 });
 
 function isApiRequest(request: Request): boolean {
@@ -253,5 +268,13 @@ async function logCacheUsage(): Promise<void> {
     const cache = await caches.open(cacheName);
     const keys = await cache.keys();
     console.info(`[Service Worker] Cache ${cacheName}: ${keys.length} entries`);
+  }
+}
+
+async function clearDynamicCache(): Promise<void> {
+  const deleted = await caches.delete(DYNAMIC_CACHE);
+
+  if (deleted) {
+    console.info(`[Service Worker] Cleared cache ${DYNAMIC_CACHE} after logout`);
   }
 }

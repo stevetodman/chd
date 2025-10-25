@@ -30,6 +30,7 @@ export async function signIn(email: string, password: string) {
 export async function signOut() {
   await supabase.auth.signOut();
   useSessionStore.getState().setSession(null);
+  void notifyServiceWorkerAboutLogout();
 }
 
 export async function getSession() {
@@ -73,3 +74,26 @@ supabase.auth.onAuthStateChange((_event, session) => {
     sessionStore.setLoading(false);
   }
 });
+
+async function notifyServiceWorkerAboutLogout() {
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
+    return;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.getRegistration();
+    const targets = [
+      navigator.serviceWorker.controller,
+      registration?.active ?? null,
+      registration?.waiting ?? null
+    ];
+
+    for (const worker of targets) {
+      if (worker) {
+        worker.postMessage({ type: "LOGOUT" });
+      }
+    }
+  } catch (error) {
+    console.warn("Failed to notify service worker about logout", error);
+  }
+}
