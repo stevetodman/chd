@@ -82,9 +82,24 @@ function timingSafeEqual(a: string, b: string): boolean {
 function genAlias(): string {
   const adjectives = ["Brisk","Calm","Keen","Nimble","Quiet","Spry","Sturdy","Swift","Tidy","Witty"];
   const birds = ["Sparrow","Finch","Wren","Robin","Heron","Swift","Kite","Tern","Lark","Ibis"];
-  const a = adjectives[Math.floor(Math.random() * adjectives.length)];
-  const b = birds[Math.floor(Math.random() * birds.length)];
-  const n = (100 + Math.floor(Math.random() * 900)).toString();
+
+  const pick = (count: number): number => {
+    if (count <= 0) {
+      throw new Error("Cannot pick an index from an empty collection");
+    }
+    const candidates = new Uint32Array(1);
+    const limit = Math.floor(0xffffffff / count) * count;
+    let value = 0xffffffff;
+    while (value >= limit) {
+      crypto.getRandomValues(candidates);
+      value = candidates[0];
+    }
+    return value % count;
+  };
+
+  const a = adjectives[pick(adjectives.length)];
+  const b = birds[pick(birds.length)];
+  const n = (100 + pick(900)).toString();
   return `${a}-${b}-${n}`;
 }
 
