@@ -1,20 +1,12 @@
-# Release Process (Staging → Prod)
+# Release Process
 
-## CI Gates (must be green)
-- Lint, Types, Unit Tests, Build (CI)
-- E2E on staging (Playwright) – happy path passes
+The detailed release checklist now lives in [`docs/ops/release-runbook.md`](./docs/ops/release-runbook.md).
 
-## Manual Rehearsal (staging)
-- Signup with invite → Login → Answer question → See explanation
-- Leaderboard on/off behaves as expected
-- Mobile Safari quick check
+Refer to that consolidated guide for:
 
-## Go/No-Go
-- Supabase app_settings sane:
-  - leaderboard_enabled = true
-  - maintenance_mode = false (or true during cutover)
-- Seeds applied; admin user present for prod
+- Required CI gates and manual rehearsal flows.
+- Supabase `app_settings` expectations before cutover.
+- Seeding, verification, and post-release spot checks.
+- Rollback and communication steps.
 
-## Promote
-- Merge to main → Vercel prod deploy
-- If issues: Vercel → Deployments → Promote previous
+Please update internal links or documentation that previously referenced this file.

@@ -107,28 +107,13 @@ All commands below run from `chd-qbank/`:
 
 ## Environment variables
 
-Create environment files in `chd-qbank/` with the variables required for your workflow (e.g. `.env.development`, `.env.staging`,
-or a shared `.env`). `.env.example` documents every variable with placeholder values—copy the file and replace only the entries you need for local development. Keep the `INVITE_CODE` and `INVITE_EXPIRES` placeholders intact; real values should be injected only when you execute the seeding script or stored securely in your deployment secret manager.
+The full catalog of environment variables and recommended workflows now lives in [`docs/runtime/environment-configuration.md`](./docs/runtime/environment-configuration.md). It covers:
 
-Automation helpers automatically load `.env`, `.env.local`, `.env.<environment>`, and `.env.<environment>.local` files in that
-order. Set `APP_ENV` (or `NODE_ENV`) to `development`, `staging`, or `production` when running scripts to select the appropriate
-configuration. Supply invite credentials on the command line when seeding:
+- Mandatory frontend (`VITE_*`) values for local and hosted builds.
+- Backend-only secrets consumed by automation scripts and Supabase Edge Functions.
+- Strategies for selecting `.env` files, exporting invite codes securely, and running scripts against staging or production.
 
-```bash
-INVITE_CODE="<secure-value>" INVITE_EXPIRES="2025-12-31" APP_ENV=staging npm run seed:invite
-APP_ENV=production npm run verify:policies
-```
-
-Vite commands accept the same environment names via `--mode`. Convenience scripts are available for staging builds and previews:
-
-```bash
-npm run dev:staging
-npm run build:staging
-npm run preview:staging
-```
-
-Invite codes are only written to the `app_settings` table via `npm run seed:invite`—do **not** expose them through Vite
-environment variables or commit them to version control. When deploying Edge Functions, configure their environment variables separately inside Supabase or your secret manager, and rotate invite codes if exposure is suspected.
+Keep sensitive values out of version control and rotate invite codes immediately if exposure is suspected.
 
 ## Testing expectations
 
@@ -161,10 +146,15 @@ environment variables or commit them to version control. When deploying Edge Fun
 
 ## Additional documentation
 
-- Analytics heatmap operations: [`docs/analytics/heatmap.md`](./docs/analytics/heatmap.md)
-- Event retention jobs: [`docs/ops/event-retention.md`](./docs/ops/event-retention.md)
-- Service worker behavior: [`docs/runtime/service-worker.md`](./docs/runtime/service-worker.md)
-- Admin role management: [`docs/security/admin-roles.md`](./docs/security/admin-roles.md)
+- [`CONTRIBUTING.md`](./CONTRIBUTING.md) – branch strategy, code review expectations, linting and testing notes.
+- [`SECURITY.md`](./SECURITY.md) – vulnerability reporting process and incident response guidance.
+- [`docs/architecture.md`](./docs/architecture.md) – high-level system design and component relationships.
+- [`docs/runtime/environment-configuration.md`](./docs/runtime/environment-configuration.md) – comprehensive environment variable reference.
+- [`docs/runtime/service-worker.md`](./docs/runtime/service-worker.md) – offline caching and synchronization behavior.
+- [`docs/ops/release-runbook.md`](./docs/ops/release-runbook.md) – release checklist, seeding guidance, and rollback steps.
+- [`docs/analytics/heatmap.md`](./docs/analytics/heatmap.md) – explanation of the analytics aggregates and verification harness.
+- [`docs/ops/event-retention.md`](./docs/ops/event-retention.md) – analytics retention windows and automated cleanup.
+- [`docs/security/admin-roles.md`](./docs/security/admin-roles.md) – admin role management procedures.
 
 ## License
 
