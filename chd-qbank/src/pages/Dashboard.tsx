@@ -344,6 +344,41 @@ export default function Dashboard() {
     ? `Next badge: ${nextBadge.label} (${Math.max(0, nextBadge.progressTarget - Math.floor(nextBadge.progressCurrent))} to go).`
     : "All milestone badges unlocked. Great job!";
 
+  const readinessMessage = (() => {
+    if (accuracy >= 85 && goalProgress >= 1) {
+      return "On track for exam readiness—consider a timed mock to simulate test day.";
+    }
+    if (accuracy >= 75 && goalProgress >= 0.75) {
+      return "Solid fundamentals. Keep reinforcing weaker topics to push accuracy into the 80s.";
+    }
+    if (goalProgress < 0.5) {
+      return "Focus on consistent weekly practice to build confidence before tackling full-length exams.";
+    }
+    return "Mix in targeted review sessions to balance speed and accuracy.";
+  })();
+
+  const cta = (() => {
+    if (metrics.flagged_count > 0) {
+      return {
+        label: "Review flagged questions",
+        description: "Clear out tricky items while the explanations are fresh.",
+        href: "/review"
+      };
+    }
+    if (weeklyAttempts < weeklyGoalAttempts) {
+      return {
+        label: "Schedule a focused quiz",
+        description: "A 10-question tutor mode session will nudge you toward this week's goal.",
+        href: "/practice"
+      };
+    }
+    return {
+      label: "Sharpen with learning games",
+      description: "Switch it up with Murmurs or CXR Match to reinforce pattern recognition.",
+      href: "/games"
+    };
+  })();
+
   const narrativeSnapshots = useMemo(
     () => [
       {
@@ -469,41 +504,6 @@ export default function Dashboard() {
     window.print();
     setCopyFeedback("Opened print preview for your report.");
   };
-
-  const readinessMessage = (() => {
-    if (accuracy >= 85 && goalProgress >= 1) {
-      return "On track for exam readiness—consider a timed mock to simulate test day.";
-    }
-    if (accuracy >= 75 && goalProgress >= 0.75) {
-      return "Solid fundamentals. Keep reinforcing weaker topics to push accuracy into the 80s.";
-    }
-    if (goalProgress < 0.5) {
-      return "Focus on consistent weekly practice to build confidence before tackling full-length exams.";
-    }
-    return "Mix in targeted review sessions to balance speed and accuracy.";
-  })();
-
-  const cta = (() => {
-    if (metrics.flagged_count > 0) {
-      return {
-        label: "Review flagged questions",
-        description: "Clear out tricky items while the explanations are fresh.",
-        href: "/review"
-      };
-    }
-    if (weeklyAttempts < weeklyGoalAttempts) {
-      return {
-        label: "Schedule a focused quiz",
-        description: "A 10-question tutor mode session will nudge you toward this week's goal.",
-        href: "/practice"
-      };
-    }
-    return {
-      label: "Sharpen with learning games",
-      description: "Switch it up with Murmurs or CXR Match to reinforce pattern recognition.",
-      href: "/games"
-    };
-  })();
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
