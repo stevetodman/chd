@@ -10,7 +10,7 @@ interface CliOptions {
 
 type StatusFilter = "published" | "draft" | "archived" | "all";
 
-type QuestionRecord = Record<string, any>;
+type QuestionRecord = Record<string, unknown>;
 
 type CoverageRow = {
   learningObjective: string;
@@ -23,6 +23,9 @@ const CSV_HEADER = "learning_objective,bloom,topic,count\n";
 const DEFAULT_STATUS: StatusFilter = "published";
 const PAGE_SIZE = 1000;
 
+/**
+ * Parse command line arguments provided to the coverage script.
+ */
 function parseArgs(argv: string[]): CliOptions {
   let outputPath: string | null = null;
   let status: StatusFilter = DEFAULT_STATUS;
@@ -59,6 +62,9 @@ function printUsage(): void {
     `The resulting CSV is printed to stdout unless --output is supplied.`);
 }
 
+/**
+ * Load questions from the local content directory when Supabase credentials are absent.
+ */
 async function loadLocalQuestions(status: StatusFilter): Promise<QuestionRecord[]> {
   const repoRoot = process.cwd();
   const contentDir = path.join(repoRoot, "chd-qbank", "content", "questions");
@@ -93,6 +99,9 @@ async function loadLocalQuestions(status: StatusFilter): Promise<QuestionRecord[
   return records;
 }
 
+/**
+ * Instantiate a Supabase client if the required environment variables are present.
+ */
 function createSupabaseClient(): SupabaseClient | null {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -100,6 +109,9 @@ function createSupabaseClient(): SupabaseClient | null {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
+/**
+ * Retrieve all questions from Supabase using cursor-style pagination.
+ */
 async function loadSupabaseQuestions(client: SupabaseClient, status: StatusFilter): Promise<QuestionRecord[]> {
   const rows: QuestionRecord[] = [];
   let from = 0;
@@ -130,6 +142,9 @@ function normalizeString(value: unknown, fallback: string): string {
   return fallback;
 }
 
+/**
+ * Recursively mine a value for plausible learning objective strings.
+ */
 function collectObjectiveCandidates(value: unknown, results: Set<string>): void {
   if (!value) return;
   if (typeof value === "string") {
