@@ -169,7 +169,7 @@ create table if not exists questions (
   lesion text,
   lecture_link text,
   media_bundle_id uuid references media_bundles(id),
-  context_panels jsonb,
+  context_panels jsonb not null default '[]'::jsonb,
   correct_choice_id uuid,
   updated_by uuid references app_users(id),
   updated_at timestamptz not null default now()
@@ -1141,7 +1141,7 @@ begin
 
   insert into leaderboard_events(user_id, source, source_id)
   values (v_user, source, source_id)
-  on conflict (source, source_id) do nothing;
+  on conflict (user_id, source, source_id) do nothing;
 
   if not found then
     return;

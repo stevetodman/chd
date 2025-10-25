@@ -233,7 +233,7 @@ export default function ItemEditor() {
       const { data, error } = await supabase
         .from("questions")
         .select(
-          "id, stem_md, lead_in, explanation_brief_md, explanation_deep_md, status, version, choices(id, label, text_md, is_correct)"
+          "id, stem_md, lead_in, explanation_brief_md, explanation_deep_md, status, version, context_panels, choices(id, label, text_md, is_correct)"
         )
         .eq("id", id)
         .maybeSingle();
