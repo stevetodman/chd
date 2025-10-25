@@ -9,13 +9,10 @@ This monorepo packages everything required to operate the **CHD QBank**: a conge
 - [Prerequisites](#prerequisites)
 - [Quick start](#quick-start)
 - [Supabase & data model](#supabase--data-model)
-- [Automation scripts](#automation-scripts)
+- [Development workflow](#development-workflow)
 - [Environment variables](#environment-variables)
 - [Testing expectations](#testing-expectations)
-- [Development workflow](#development-workflow)
-- [Deployment](#deployment)
-- [Security & compliance](#security--compliance)
-- [Additional documentation](#additional-documentation)
+- [Where to go next](#where-to-go-next)
 - [License](#license)
 
 ## Repository layout
@@ -75,51 +72,9 @@ This monorepo packages everything required to operate the **CHD QBank**: a conge
 
 ## Supabase & data model
 
-The application relies on a Postgres schema defined in [`chd-qbank/schema.sql`](./chd-qbank/schema.sql). Key tables include:
+The canonical schema lives in [`chd-qbank/schema.sql`](./chd-qbank/schema.sql) alongside supporting policies in `storage-policies.sql` and scheduled tasks in `cron.sql`. See the [analytics overview](./docs/analytics/heatmap.md) and [Supabase admin guide](./docs/security/admin-roles.md) for deeper dives into the data model and permissioning.
 
-- `app.app_settings` – singleton configuration row controlling retention windows and operational toggles.
-- `app_users` / `auth.users` – profile mirror storing learner role assignments, display preferences, and moderation flags.
-- `questions`, `choices`, `media_bundles` – question bank content with optional rich media attachments and Markdown explanations.
-- `responses`, `practice_sessions`, `answer_events` – gameplay telemetry and session metadata powering analytics and leaderboards.
-- `murmur_items`, `murmur_options`, `cxr_items`, `cxr_labels` – assets for the teaching games bundled with the platform.
-- `analytics_heatmap_agg` materialized view plus helper functions documented in [docs/analytics/heatmap.md](./docs/analytics/heatmap.md).
-
-Bootstrap a new project by running the schema, storage policy, and cron SQL files inside the Supabase SQL editor (or through the CLI). Once the schema exists you can seed representative content with `npm run seed:full` and keep invite codes synchronized via `npm run seed:invite`.
-
-## Automation scripts
-
-All commands below run from `chd-qbank/`:
-
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Launch the Vite development server on [http://localhost:5173](http://localhost:5173). |
-| `npm run build` | Produce an optimized production bundle in `dist/`. |
-| `npm run preview` | Serve the built assets locally for smoke testing. |
-| `npm run lint` | Run ESLint on the TypeScript/React source tree. |
-| `npm run test` | Execute the Vitest suite (unit tests plus utilities). |
-| `npm run build:scripts` | Compile TypeScript automation utilities located in `scripts/`. |
-| `npm run notice` | Regenerate the `NOTICE` file and JSON license inventory from installed dependencies. |
-| `npm run check:migration-safety` | Scan `supabase/migrations` for unsafe operations (non-concurrent indexes, destructive drops, etc.). |
-| `npm run seed:invite` | Upsert invite-code configuration in `app_settings` using service-role credentials. |
-| `npm run seed:full` | Synchronize questions, games, and media bundles from `data/templates` into Supabase. |
-| `npm run verify:seed` | Validate that the current database matches seed expectations without mutating data. |
-| `npm run verify:analytics:heatmap` | Run the synthetic-data harness that refreshes and validates `analytics_heatmap_agg`. |
-
-## Environment variables
-
-The full catalog of environment variables and recommended workflows now lives in [`docs/runtime/environment-configuration.md`](./docs/runtime/environment-configuration.md). It covers:
-
-- Mandatory frontend (`VITE_*`) values for local and hosted builds.
-- Backend-only secrets consumed by automation scripts and Supabase Edge Functions.
-- Strategies for selecting `.env` files, exporting invite codes securely, and running scripts against staging or production.
-
-Keep sensitive values out of version control and rotate invite codes immediately if exposure is suspected.
-
-## Testing expectations
-
-- Run `npm run lint` and `npm run test` before submitting feature or bug-fix pull requests.
-- The `tests/e2e` directory contains Vitest-powered UI flows (murmur drills, CXR labeling, onboarding) that rely on seeded content. Keep them in sync with seed templates when updating gameplay logic.
-- Document executed commands in your pull request; documentation-only updates can reference the exemption in the PR template.
+New environments follow the seeding workflow outlined in the [release runbook](./docs/ops/release-runbook.md).
 
 ## Development workflow
 
@@ -130,31 +85,21 @@ Keep sensitive values out of version control and rotate invite codes immediately
 5. Open a pull request describing the change, attaching screenshots for UI modifications when possible.
 6. Address review feedback promptly and keep scope tight—open draft pull requests if work is still in progress.
 
-## Deployment
+## Environment variables
 
-1. Build static assets (`npm run build`) and deploy them to a static host such as Vercel (Hobby tier works for previews).
-2. Point preview deployments at the development Supabase project; production deployments should target Supabase Pro to unlock `pg_cron`.
-3. Run `npm run seed:invite` after rotating invite codes or service-role keys.
-4. Refresh analytics materialized views (`select analytics_refresh_heatmap();`) post-deployment to keep dashboards current.
+Environment configuration (local, staging, production, and automation scripts) is covered in detail inside [`docs/runtime/environment-configuration.md`](./docs/runtime/environment-configuration.md).
 
-## Security & compliance
+## Testing expectations
 
-- Sensitive migrations (auth, RLS, analytics) require an additional reviewer and may necessitate credential rotation. Consult [`SECURITY.md`](./SECURITY.md) for disclosure contacts and processes.
-- Admin access is granted via the `app_roles` table. For detailed grant/revoke/audit procedures see [`docs/security/admin-roles.md`](./docs/security/admin-roles.md).
-- Event retention automation and service worker operations are documented in [`docs/ops/event-retention.md`](./docs/ops/event-retention.md) and [`docs/runtime/service-worker.md`](./docs/runtime/service-worker.md).
-- License inventory and the root `NOTICE` file are regenerated automatically in CI using `npm run notice`; commit updated artifacts when dependencies change.
+- Run `npm run lint` and `npm run test` before submitting feature or bug-fix pull requests.
+- The `tests/e2e` directory contains Vitest-powered UI flows (murmur drills, CXR labeling, onboarding) that rely on seeded content. Keep them in sync with seed templates when updating gameplay logic.
+- Document executed commands in your pull request; documentation-only updates can reference the exemption in the PR template.
 
-## Additional documentation
+## Where to go next
 
-- [`CONTRIBUTING.md`](./CONTRIBUTING.md) – branch strategy, code review expectations, linting and testing notes.
-- [`SECURITY.md`](./SECURITY.md) – vulnerability reporting process and incident response guidance.
-- [`docs/architecture.md`](./docs/architecture.md) – high-level system design and component relationships.
-- [`docs/runtime/environment-configuration.md`](./docs/runtime/environment-configuration.md) – comprehensive environment variable reference.
-- [`docs/runtime/service-worker.md`](./docs/runtime/service-worker.md) – offline caching and synchronization behavior.
-- [`docs/ops/release-runbook.md`](./docs/ops/release-runbook.md) – release checklist, seeding guidance, and rollback steps.
-- [`docs/analytics/heatmap.md`](./docs/analytics/heatmap.md) – explanation of the analytics aggregates and verification harness.
-- [`docs/ops/event-retention.md`](./docs/ops/event-retention.md) – analytics retention windows and automated cleanup.
-- [`docs/security/admin-roles.md`](./docs/security/admin-roles.md) – admin role management procedures.
+- Visit the [documentation index](./docs/README.md) for the complete list of operational runbooks and deep dives.
+- Consult [`SECURITY.md`](./SECURITY.md) for disclosure and credential rotation processes.
+- Review [`docs/ops/release-runbook.md`](./docs/ops/release-runbook.md) before shipping to staging or production.
 
 ## License
 

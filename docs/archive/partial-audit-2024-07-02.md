@@ -1,5 +1,7 @@
 # CHD QBank Partial Audit (2024-07-02)
 
+> **Status:** Archived for historical context. The remediation items below may be outdated; convert any still-relevant actions into tracked issues before working on them.
+
 > **Scope note:** This document captures the highest-impact findings that could be validated within the time allotted. Sections are intentionally concise; items marked "Deferred" require deeper inspection during a follow-up audit.
 
 ## 0) Executive Summary
