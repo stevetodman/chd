@@ -840,6 +840,10 @@ language plpgsql
 security definer
 set search_path = public as $$
 begin
+  if auth.role() <> 'service_role' and not is_admin() then
+    raise exception 'Admin privileges required';
+  end if;
+
   refresh materialized view concurrently leaderboard_weekly_cache;
 end;
 $$;

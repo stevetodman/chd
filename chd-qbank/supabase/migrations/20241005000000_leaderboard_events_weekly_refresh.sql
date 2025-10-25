@@ -29,6 +29,10 @@ security definer
 set search_path = public
 as $$
 begin
+  if auth.role() <> 'service_role' and not public.is_admin() then
+    raise exception 'Admin privileges required';
+  end if;
+
   refresh materialized view concurrently public.leaderboard_weekly_cache;
 end;
 $$;
