@@ -38,11 +38,14 @@ These values should never be shipped with the frontend bundle. They are read by 
 2. Populate the Supabase URL and anon key. Leave the invite placeholders untouched.
 3. Run `npm install` followed by `npm run dev` from `chd-qbank/`.
 
+When invoking workspace scripts from the repository root, prefix the command with `npm --prefix chd-qbank` so npm executes the
+script defined in the `chd-qbank` package.
+
 Automation scripts automatically read, in order, `.env`, `.env.local`, `.env.<environment>`, and `.env.<environment>.local`. More specific files override values from broader ones. Set `APP_ENV` when you need to target staging or production credentials:
 
 ```bash
-APP_ENV=staging npm run seed:invite
-APP_ENV=production npm run verify:policies
+APP_ENV=staging npm --prefix chd-qbank run seed:invite
+APP_ENV=production npm --prefix chd-qbank run verify:policies
 ```
 
 ### Seeding invite codes
@@ -51,7 +54,7 @@ Inject invite data through the shell rather than hard-coding it in files. A typi
 
 ```bash
 export $(cat chd-qbank/.env.staging | xargs)
-INVITE_CODE="<secure-value>" INVITE_EXPIRES="2025-12-31" APP_ENV=staging npm run seed:invite
+INVITE_CODE="<secure-value>" INVITE_EXPIRES="2025-12-31" APP_ENV=staging npm --prefix chd-qbank run seed:invite
 ```
 
 Rotate invite codes immediately if the values are ever exposed (logs, screenshots, or accidental commits).
