@@ -573,13 +573,11 @@ export function usePracticeSession() {
           ...prev,
           [current.id]: mapResponse(data)
         }));
-
-      updateFlaggedSet(current.id, flagged);
-    } else {
-      const { data, error } = await supabase
-        .from("responses")
-        .insert({
-          user_id: session.user.id,
+      } else {
+        const { data, error } = await supabase
+          .from("responses")
+          .insert({
+            user_id: session.user.id,
             question_id: current.id,
             flagged,
             choice_id: null,
@@ -593,14 +591,13 @@ export function usePracticeSession() {
           fail("We couldn't save the flag. Please check your connection and try again.");
         }
 
-      updateResponses((prev) => ({
-        ...prev,
-        [current.id]: mapResponse(data)
-      }));
+        updateResponses((prev) => ({
+          ...prev,
+          [current.id]: mapResponse(data)
+        }));
+      }
 
       updateFlaggedSet(current.id, flagged);
-    }
-
       setError(null);
     },
     [index, session, updateFlaggedSet, updateResponses]
