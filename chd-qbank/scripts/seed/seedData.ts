@@ -44,7 +44,7 @@ export type QuestionSeed = {
   lecture_link?: string | null;
   mediaBundleId?: string | null;
   status: "draft" | "published" | "archived";
-  context_panels?: ContextPanelSeed[] | null;
+  context_panels?: ContextPanelSeed[];
   choices: QuestionChoiceSeed[];
 };
 
