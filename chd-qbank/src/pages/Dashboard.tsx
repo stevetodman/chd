@@ -861,9 +861,12 @@ export default function Dashboard() {
         <CardHeader>
           <CardTitle>Games</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
+        <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Link to="/games/murmurs" className="rounded-lg border border-neutral-200 p-4 hover:border-brand-500">
             Guess the Murmur →
+          </Link>
+          <Link to="/games/embryology" className="rounded-lg border border-neutral-200 p-4 hover:border-brand-500">
+            Embryology Match →
           </Link>
           <Link to="/games/cxr" className="rounded-lg border border-neutral-200 p-4 hover:border-brand-500">
             CXR Sign Match →

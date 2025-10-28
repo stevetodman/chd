@@ -20,6 +20,7 @@ export default function Navbar() {
       { to: "/practice", label: t("nav.practice", { defaultValue: "Practice" }) },
       { to: "/review", label: t("nav.review", { defaultValue: "Review" }) },
       { to: "/games/murmurs", label: t("nav.games.murmurs", { defaultValue: "Murmurs" }) },
+      { to: "/games/embryology", label: t("nav.games.embryology", { defaultValue: "Embryology" }) },
       { to: "/games/cxr", label: t("nav.games.cxr", { defaultValue: "CXR Match" }) }
     ],
     [t]

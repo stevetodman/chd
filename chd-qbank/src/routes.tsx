@@ -14,6 +14,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Practice = lazy(() => import("./pages/Practice"));
 const Review = lazy(() => import("./pages/Review"));
 const Murmurs = lazy(() => import("./pages/Games/Murmurs"));
+const EmbryologyMatch = lazy(() => import("./pages/Games/EmbryologyMatch"));
 const CxrMatch = lazy(() => import("./pages/Games/CxrMatch"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const AliasSettings = lazy(() => import("./pages/Profile/AliasSettings"));
@@ -136,6 +137,14 @@ export function AppRoutes() {
           element: (
             <RequireAuth>
               <Murmurs />
+            </RequireAuth>
+          )
+        },
+        {
+          path: "/games/embryology",
+          element: (
+            <RequireAuth>
+              <EmbryologyMatch />
             </RequireAuth>
           )
         },
