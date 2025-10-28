@@ -3,6 +3,7 @@ import type { Choice, Question } from "../lib/constants";
 import ChoiceList from "./ChoiceList";
 import Explanation from "./Explanation";
 import FlagButton from "./FlagButton";
+import ReportQuestionIssueDialog from "./ReportQuestionIssueDialog";
 import LabPanel from "./LabPanel";
 import FormulaPanel from "./FormulaPanel";
 import ContextPanel from "./ContextPanel";
@@ -18,6 +19,7 @@ type Props = {
   question: Question;
   onAnswer: (choice: Choice, durationMs: number, flagged: boolean) => Promise<void> | void;
   onFlagChange?: (flagged: boolean) => Promise<void> | void;
+  onReportIssue?: (description: string) => Promise<void> | void;
   initialFlagged?: boolean;
   onNext?: () => void;
   canAdvance?: boolean;
@@ -36,6 +38,7 @@ export default function QuestionCard({
   question,
   onAnswer,
   onFlagChange,
+  onReportIssue,
   initialFlagged = false,
   onNext,
   canAdvance = true,
@@ -142,6 +145,8 @@ export default function QuestionCard({
     }
   };
 
+  const reportingEnabled = typeof onReportIssue === "function";
+
   return (
     <div
       className={classNames(
@@ -186,6 +191,9 @@ export default function QuestionCard({
               >
                 Reveal explanation
               </Button>
+            ) : null}
+            {reportingEnabled ? (
+              <ReportQuestionIssueDialog onSubmit={(details) => onReportIssue?.(details)} />
             ) : null}
           </div>
           {onNext || onPrevious ? (
