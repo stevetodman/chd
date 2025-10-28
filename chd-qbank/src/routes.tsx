@@ -13,8 +13,10 @@ const Terms = lazy(() => import("./pages/Terms"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Practice = lazy(() => import("./pages/Practice"));
 const Review = lazy(() => import("./pages/Review"));
+const GamesIndex = lazy(() => import("./pages/Games"));
 const Murmurs = lazy(() => import("./pages/Games/Murmurs"));
 const CxrMatch = lazy(() => import("./pages/Games/CxrMatch"));
+const EkgInterpretation = lazy(() => import("./pages/Games/EkgInterpretation"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const AliasSettings = lazy(() => import("./pages/Profile/AliasSettings"));
 const Items = lazy(() => import("./pages/Admin/Items"));
@@ -140,10 +142,26 @@ export function AppRoutes() {
           )
         },
         {
+          path: "/games/ekg",
+          element: (
+            <RequireAuth>
+              <EkgInterpretation />
+            </RequireAuth>
+          )
+        },
+        {
           path: "/games/cxr",
           element: (
             <RequireAuth>
               <CxrMatch />
+            </RequireAuth>
+          )
+        },
+        {
+          path: "/games",
+          element: (
+            <RequireAuth>
+              <GamesIndex />
             </RequireAuth>
           )
         },

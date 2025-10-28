@@ -57,6 +57,10 @@ The following sections summarize effective read and write access for each table.
 - **`cxr_items` & `cxr_labels`:** Read access mirrors the murmur policies—students see only published content while administrators manage drafts.【F:chd-qbank/schema.sql†L527-L545】
 - **`cxr_attempts`:** Users can submit and read their own attempts; administrators can oversee everything.【F:chd-qbank/schema.sql†L546-L549】
 
+### `ekg_*` practice tables
+- **`ekg_items` & `ekg_options`:** Authenticated users can load only published tracings and answer choices, while administrators maintain draft material.【F:chd-qbank/schema.sql†L332-L357】【F:chd-qbank/schema.sql†L502-L519】
+- **`ekg_attempts`:** Users record and view only their own responses; administrators retain full visibility for audits.【F:chd-qbank/schema.sql†L358-L370】【F:chd-qbank/schema.sql†L520-L549】
+
 ### `leaderboard_events`
 - **Read/Write:** Only administrators may access the audit trail of leaderboard point sources, which contains sensitive operational metadata.【F:chd-qbank/schema.sql†L1061-L1073】
 

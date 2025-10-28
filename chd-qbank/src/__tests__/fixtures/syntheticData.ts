@@ -177,3 +177,18 @@ export const syntheticCxrItems = [
     ]
   }
 ] as const;
+
+export const syntheticEkgItems = [
+  {
+    id: "ekg-item-1",
+    image_url: "https://example.com/media/ekg-complete-heart-block.png",
+    prompt_md: "Interpret the rhythm strip captured during a syncopal spell.",
+    explanation_md: "Atrioventricular dissociation with escape rhythm is consistent with complete heart block.",
+    rhythm: "Complete heart block",
+    ekg_options: [
+      { id: "ekg-opt-a", label: "A", text_md: "Atrial flutter", is_correct: false },
+      { id: "ekg-opt-b", label: "B", text_md: "Complete atrioventricular block", is_correct: true },
+      { id: "ekg-opt-c", label: "C", text_md: "Sinus tachycardia", is_correct: false }
+    ]
+  }
+] as const;

@@ -15,6 +15,7 @@
   "nav.review": "Review",
   "nav.games.murmurs": "Murmurs",
   "nav.games.cxr": "CXR Match",
+  "nav.games.ekg": "Read the EKG",
   "nav.leaderboard": "Leaderboard",
   "nav.profile": "Profile",
   "nav.login": "Login",
@@ -98,5 +99,14 @@
   "admin.settings.languageDescription": "Current language: {language}",
   "admin.settings.saving": "Saving…",
   "admin.settings.save": "Save settings",
-  "admin.settings.resetLeaderboard": "Reset all-time leaderboard"
+  "admin.settings.resetLeaderboard": "Reset all-time leaderboard",
+  "games.index.heading": "Learning games",
+  "games.index.description": "Reinforce high-yield patterns through focused mini-games alongside your question bank practice.",
+  "games.index.open": "Open game",
+  "games.index.cards.murmurs.title": "Guess the Murmur",
+  "games.index.cards.murmurs.description": "Match classic auscultation findings with the correct lesion after listening to real audio clips.",
+  "games.index.cards.cxr.title": "CXR Match",
+  "games.index.cards.cxr.description": "Drop labels onto congenital heart disease radiographs to reinforce imaging patterns.",
+  "games.index.cards.ekg.title": "Read the EKG",
+  "games.index.cards.ekg.description": "Practice spotting hallmark arrhythmias and conduction disturbances on 12-lead tracings."
 }

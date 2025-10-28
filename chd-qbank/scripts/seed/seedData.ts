@@ -68,6 +68,23 @@ export type CxrItemSeed = {
   labels: CxrLabelSeed[];
 };
 
+export type EkgOptionSeed = {
+  label: string;
+  text_md: string;
+  is_correct: boolean;
+};
+
+export type EkgItemSeed = {
+  id: string;
+  slug: string;
+  image_url: string;
+  prompt_md?: string | null;
+  explanation_md?: string | null;
+  rhythm?: string | null;
+  status: "draft" | "published" | "archived";
+  options: EkgOptionSeed[];
+};
+
 export const MEDIA_BUNDLES: MediaBundleSeed[] = [
   {
     id: "b9f56d5f-8d1a-4c64-8cb1-2d241c0861d1",
@@ -352,6 +369,41 @@ export const QUESTIONS: QuestionSeed[] = [
       { label: "B", text_md: "90-92%", is_correct: false },
       { label: "C", text_md: "80-85%", is_correct: true },
       { label: "D", text_md: "<70%", is_correct: false }
+    ]
+  }
+];
+
+export const EKG_ITEMS: EkgItemSeed[] = [
+  {
+    id: "d5f4f1b8-4c92-4f10-88d7-44d1d3c8f651",
+    slug: "ekg_complete_heart_block",
+    image_url: "https://cdn.example.com/chd/ekg-complete-heart-block.png",
+    prompt_md:
+      "Interpret this rhythm strip recorded during an episode of lethargy in a child after atrioventricular canal repair.",
+    explanation_md:
+      "Complete atrioventricular block shows AV dissociation with escape rhythms. Postoperative fibrosis near the conduction system makes this a known complication requiring pacing if symptomatic.",
+    rhythm: "Complete heart block",
+    status: "published",
+    options: [
+      { label: "A", text_md: "Atrial flutter", is_correct: false },
+      { label: "B", text_md: "Complete atrioventricular block", is_correct: true },
+      { label: "C", text_md: "Sinus tachycardia", is_correct: false }
+    ]
+  },
+  {
+    id: "3a9ef3c3-5f2d-4d38-9c6d-6e9aa6ea32d1",
+    slug: "ekg_delta_wave_preexcitation",
+    image_url: "https://cdn.example.com/chd/ekg-delta-wave.png",
+    prompt_md:
+      "This tracing was obtained from an adolescent with recurrent palpitations and Ebstein anomaly. Identify the key rhythm finding.",
+    explanation_md:
+      "A short PR interval with delta wave indicates ventricular pre-excitation consistent with Wolff-Parkinson-White physiology.",
+    rhythm: "Wolff-Parkinson-White pattern",
+    status: "published",
+    options: [
+      { label: "A", text_md: "Right bundle branch block", is_correct: false },
+      { label: "B", text_md: "Wolff-Parkinson-White pattern", is_correct: true },
+      { label: "C", text_md: "Atrial fibrillation", is_correct: false }
     ]
   }
 ];

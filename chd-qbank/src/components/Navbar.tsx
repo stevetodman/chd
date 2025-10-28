@@ -20,7 +20,8 @@ export default function Navbar() {
       { to: "/practice", label: t("nav.practice", { defaultValue: "Practice" }) },
       { to: "/review", label: t("nav.review", { defaultValue: "Review" }) },
       { to: "/games/murmurs", label: t("nav.games.murmurs", { defaultValue: "Murmurs" }) },
-      { to: "/games/cxr", label: t("nav.games.cxr", { defaultValue: "CXR Match" }) }
+      { to: "/games/cxr", label: t("nav.games.cxr", { defaultValue: "CXR Match" }) },
+      { to: "/games/ekg", label: t("nav.games.ekg", { defaultValue: "Read the EKG" }) }
     ],
     [t]
   );

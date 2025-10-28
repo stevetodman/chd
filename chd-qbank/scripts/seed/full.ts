@@ -5,11 +5,14 @@ import {
   MEDIA_BUNDLES,
   QUESTIONS,
   CXR_ITEMS,
+  EKG_ITEMS,
   type MediaBundleSeed,
   type QuestionSeed,
   type CxrItemSeed,
   type QuestionChoiceSeed,
-  type CxrLabelSeed
+  type CxrLabelSeed,
+  type EkgItemSeed,
+  type EkgOptionSeed
 } from "./seedData.js";
 
 loadEnvFile();
@@ -224,6 +227,48 @@ async function syncCxrLabels(itemId: string, labels: CxrLabelSeed[], slug: strin
   }
 }
 
+async function syncEkgOptions(itemId: string, options: EkgOptionSeed[], slug: string): Promise<void> {
+  const { data: existingOptions, error } = await supabase
+    .from("ekg_options")
+    .select("id,label")
+    .eq("item_id", itemId);
+  exitOnError(error, `Failed to load options for EKG item ${slug}`);
+
+  const existingMap = new Map(existingOptions?.map((option) => [option.label, option]) ?? []);
+  const desiredLabels = new Set<string>(options.map((option) => option.label));
+
+  for (const option of options) {
+    const payload = {
+      text_md: option.text_md,
+      is_correct: option.is_correct
+    };
+
+    const existing = existingMap.get(option.label);
+    if (existing) {
+      const { error: updateError } = await supabase
+        .from("ekg_options")
+        .update(payload)
+        .eq("id", existing.id);
+      exitOnError(updateError, `Failed to update EKG option ${option.label} for ${slug}`);
+    } else {
+      const { error: insertError } = await supabase
+        .from("ekg_options")
+        .insert({ item_id: itemId, label: option.label, ...payload });
+      exitOnError(insertError, `Failed to insert EKG option ${option.label} for ${slug}`);
+    }
+  }
+
+  for (const existing of existingOptions ?? []) {
+    if (!desiredLabels.has(existing.label)) {
+      const { error: deleteError } = await supabase
+        .from("ekg_options")
+        .delete()
+        .eq("id", existing.id);
+      exitOnError(deleteError, `Failed to remove stale EKG option ${existing.label} for ${slug}`);
+    }
+  }
+}
+
 async function upsertCxrItem(item: CxrItemSeed): Promise<void> {
   const { data: existing, error } = await supabase
     .from("cxr_items")
@@ -264,6 +309,48 @@ async function upsertCxrItem(item: CxrItemSeed): Promise<void> {
 }
 
   await syncCxrLabels(itemId, item.labels, item.slug);
+}
+
+async function upsertEkgItem(item: EkgItemSeed): Promise<void> {
+  const { data: existing, error } = await supabase
+    .from("ekg_items")
+    .select("id")
+    .eq("slug", item.slug)
+    .maybeSingle();
+  exitOnError(error, `Failed to look up EKG item ${item.slug}`);
+
+  const payload = {
+    image_url: item.image_url,
+    prompt_md: item.prompt_md ?? null,
+    explanation_md: item.explanation_md ?? null,
+    rhythm: item.rhythm ?? null,
+    status: item.status
+  };
+
+  let itemId: string;
+
+  if (existing) {
+    const { error: updateError } = await supabase
+      .from("ekg_items")
+      .update(payload)
+      .eq("id", existing.id);
+    exitOnError(updateError, `Failed to update EKG item ${item.slug}`);
+    itemId = existing.id;
+  } else {
+    const { data: inserted, error: insertError } = await supabase
+      .from("ekg_items")
+      .insert({ id: item.id, slug: item.slug, ...payload })
+      .select("id")
+      .single();
+    exitOnError(insertError, `Failed to insert EKG item ${item.slug}`);
+    const insertedId = inserted?.id;
+    if (!insertedId) {
+      throw new Error(`Inserted EKG item ${item.slug} did not return an id`);
+    }
+    itemId = insertedId;
+  }
+
+  await syncEkgOptions(itemId, item.options, item.slug);
 }
 
 async function ensureDefaultAdmin(): Promise<void> {
@@ -358,6 +445,10 @@ async function main(): Promise<void> {
 
   for (const cxrItem of CXR_ITEMS) {
     await upsertCxrItem(cxrItem);
+  }
+
+  for (const ekgItem of EKG_ITEMS) {
+    await upsertEkgItem(ekgItem);
   }
 
   await ensureDefaultAdmin();

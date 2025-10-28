@@ -374,7 +374,7 @@ export default function Dashboard() {
     }
     return {
       label: "Sharpen with learning games",
-      description: "Switch it up with Murmurs or CXR Match to reinforce pattern recognition.",
+      description: "Switch it up with Murmurs, CXR Match, or Read the EKG to reinforce pattern recognition.",
       href: "/games"
     };
   })();

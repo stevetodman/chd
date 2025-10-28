@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { loadEnvFile } from "./utils/loadEnv.js";
-import { MEDIA_BUNDLES, QUESTIONS, CXR_ITEMS } from "./seed/seedData.js";
+import { MEDIA_BUNDLES, QUESTIONS, CXR_ITEMS, EKG_ITEMS } from "./seed/seedData.js";
 
 loadEnvFile();
 
@@ -42,6 +42,12 @@ async function verifyCounts(): Promise<void> {
     .select("id", { count: "exact", head: true });
   if (cxrError) fail("Failed to count CXR items", cxrError);
   if ((cxrCount ?? 0) < 1) fail(`Expected at least 1 CXR item, found ${cxrCount ?? 0}`);
+
+  const { count: ekgCount, error: ekgError } = await supabase
+    .from("ekg_items")
+    .select("id", { count: "exact", head: true });
+  if (ekgError) fail("Failed to count EKG items", ekgError);
+  if ((ekgCount ?? 0) < 1) fail(`Expected at least 1 EKG item, found ${ekgCount ?? 0}`);
 }
 
 async function verifyQuestions(): Promise<void> {
@@ -130,11 +136,41 @@ async function verifyCxrItems(): Promise<void> {
   }
 }
 
+async function verifyEkgItems(): Promise<void> {
+  const slugs = EKG_ITEMS.map((item) => item.slug);
+  const { data, error } = await supabase
+    .from("ekg_items")
+    .select("id,slug,status,ekg_options(id,label,is_correct)")
+    .in("slug", slugs);
+  if (error) fail("Failed to fetch EKG items", error);
+  if (!data || data.length !== EKG_ITEMS.length) {
+    fail(`Expected ${EKG_ITEMS.length} EKG items, found ${data?.length ?? 0}`);
+  }
+
+  for (const seed of EKG_ITEMS) {
+    const row = data.find((item) => item.slug === seed.slug);
+    if (!row) fail(`Missing EKG item ${seed.slug}`);
+    if (row.status !== seed.status) {
+      fail(`EKG item ${seed.slug} status mismatch.`);
+    }
+
+    if (!row.ekg_options || row.ekg_options.length !== seed.options.length) {
+      fail(`EKG item ${seed.slug} option count mismatch.`);
+    }
+
+    const correct = row.ekg_options.find((option: { is_correct: boolean }) => option.is_correct);
+    if (!correct) {
+      fail(`EKG item ${seed.slug} missing correct option.`);
+    }
+  }
+}
+
 async function main(): Promise<void> {
   await verifyCounts();
   await verifyQuestions();
   await verifyMediaBundles();
   await verifyCxrItems();
+  await verifyEkgItems();
   console.log("Seed verification passed: counts and relationships are consistent.");
 }
 
