@@ -6,6 +6,7 @@ import { AppRoutes } from "./routes";
 import { getSession, useSessionStore } from "./lib/auth";
 import { useServiceWorkerUpdates } from "./hooks/useServiceWorkerUpdates";
 import { useI18n } from "./i18n";
+import { useFeatureFlagsStore } from "./store/featureFlags";
 
 const PUBLIC_ROUTES = new Set(["/login", "/signup", "/reset-password", "/privacy", "/terms"]);
 
@@ -15,10 +16,19 @@ export default function App() {
   const { session, loading, initialized } = useSessionStore();
   const { updateVersion, confirmUpdate, dismissUpdate } = useServiceWorkerUpdates();
   const { t } = useI18n();
+  const darkModeEnabled = useFeatureFlagsStore((state) => state.darkModeEnabled);
 
   useEffect(() => {
     void getSession();
   }, []);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const root = document.documentElement;
+    root.classList.toggle("dark", darkModeEnabled);
+    root.style.colorScheme = darkModeEnabled ? "dark" : "light";
+  }, [darkModeEnabled]);
 
   useEffect(() => {
     if (loading || !initialized) return;
