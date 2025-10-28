@@ -1,6 +1,24 @@
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vitest/config";
 
+const coverageEnabled = process.env.VITEST_ENABLE_COVERAGE === "true";
+
+const coverageConfig = coverageEnabled
+  ? {
+      provider: "v8" as const,
+      reporter: ["text", "html", "json-summary"],
+      thresholds: {
+        statements: 80,
+        branches: 80,
+        functions: 80,
+        lines: 80,
+      },
+    }
+  : {
+      enabled: false,
+      provider: "v8" as const,
+    };
+
 export default defineConfig({
   resolve: {
     alias: {
@@ -18,15 +36,6 @@ export default defineConfig({
       "tests/**/*.{test,spec}.{js,jsx,ts,tsx}",
     ],
     setupFiles: "./src/__tests__/setup.ts",
-    coverage: {
-      provider: "v8",
-      reporter: ["text", "html", "json-summary"],
-      thresholds: {
-        statements: 80,
-        branches: 80,
-        functions: 80,
-        lines: 80,
-      },
-    },
+    coverage: coverageConfig,
   },
 });

@@ -19,6 +19,12 @@ vi.mock("../lib/auth", () => ({
   signIn: signInMock
 }));
 
+vi.mock("../i18n", () => ({
+  useI18n: () => ({
+    t: (_key: string, options?: { defaultValue?: string }) => options?.defaultValue ?? _key
+  })
+}));
+
 import { MemoryRouter } from "react-router-dom";
 import Login from "../pages/Login";
 
@@ -39,7 +45,7 @@ describe("auth flow", () => {
     );
 
     await user.type(screen.getByLabelText(/email/i), "user@example.com");
-    await user.type(screen.getByLabelText(/password/i), "password");
+    await user.type(screen.getByLabelText(/^Password$/i), "password");
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() => expect(signInMock).toHaveBeenCalledWith("user@example.com", "password"));
@@ -57,7 +63,7 @@ describe("auth flow", () => {
     );
 
     await user.type(screen.getByLabelText(/email/i), "user@example.com");
-    await user.type(screen.getByLabelText(/password/i), "wrong-password");
+    await user.type(screen.getByLabelText(/^Password$/i), "wrong-password");
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     expect(await screen.findByText("Invalid credentials")).toBeInTheDocument();
