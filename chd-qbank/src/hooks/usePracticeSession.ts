@@ -110,6 +110,45 @@ export function usePracticeSession() {
   const [seenVersion, setSeenVersion] = useState(0);
   const { session } = useSessionStore();
 
+  const syncSetsFromResponses = useCallback(
+    (rows: ResponseRow[]) => {
+      if (rows.length === 0) return;
+      let flaggedChanged = false;
+      let seenChanged = false;
+      const flagged = new Set(flaggedIdsRef.current);
+      const seen = new Set(seenIdsRef.current);
+
+      for (const row of rows) {
+        if (!row.question_id) continue;
+        if (row.flagged) {
+          if (!flagged.has(row.question_id)) {
+            flagged.add(row.question_id);
+            flaggedChanged = true;
+          }
+        } else if (flagged.delete(row.question_id)) {
+          flaggedChanged = true;
+        }
+
+        if (row.choice_id) {
+          if (!seen.has(row.question_id)) {
+            seen.add(row.question_id);
+            seenChanged = true;
+          }
+        }
+      }
+
+      if (flaggedChanged) {
+        flaggedIdsRef.current = flagged;
+        setFlaggedVersion((version) => version + 1);
+      }
+      if (seenChanged) {
+        seenIdsRef.current = seen;
+        setSeenVersion((version) => version + 1);
+      }
+    },
+    []
+  );
+
   useEffect(() => {
     questionsRef.current = questions;
   }, [questions]);
@@ -244,45 +283,6 @@ export function usePracticeSession() {
     seenIdsRef.current = next;
     setSeenVersion((version) => version + 1);
   }, []);
-
-  const syncSetsFromResponses = useCallback(
-    (rows: ResponseRow[]) => {
-      if (rows.length === 0) return;
-      let flaggedChanged = false;
-      let seenChanged = false;
-      const flagged = new Set(flaggedIdsRef.current);
-      const seen = new Set(seenIdsRef.current);
-
-      for (const row of rows) {
-        if (!row.question_id) continue;
-        if (row.flagged) {
-          if (!flagged.has(row.question_id)) {
-            flagged.add(row.question_id);
-            flaggedChanged = true;
-          }
-        } else if (flagged.delete(row.question_id)) {
-          flaggedChanged = true;
-        }
-
-        if (row.choice_id) {
-          if (!seen.has(row.question_id)) {
-            seen.add(row.question_id);
-            seenChanged = true;
-          }
-        }
-      }
-
-      if (flaggedChanged) {
-        flaggedIdsRef.current = flagged;
-        setFlaggedVersion((version) => version + 1);
-      }
-      if (seenChanged) {
-        seenIdsRef.current = seen;
-        setSeenVersion((version) => version + 1);
-      }
-    },
-    []
-  );
 
   const loadPage = useCallback(
     async (pageToLoad: number, replace = false) => {
@@ -606,6 +606,48 @@ export function usePracticeSession() {
     [index, session, updateFlaggedSet, updateResponses]
   );
 
+  const reportIssue = useCallback(
+    async (description: string) => {
+      const current = questionsRef.current[index];
+      if (!current) {
+        throw new Error("We couldn't identify the current question. Please try again.");
+      }
+
+      if (!session) {
+        const message = "You must be signed in to report an issue.";
+        setError(message);
+        throw new Error(message);
+      }
+
+      const trimmed = description.trim();
+      if (!trimmed) {
+        throw new Error("Tell us what needs attention before sending the report.");
+      }
+
+      const existing = responsesRef.current[current.id];
+
+      const { error: insertError } = await supabase
+        .from("question_issue_reports")
+        .insert({
+          user_id: session.user.id,
+          question_id: current.id,
+          response_id: existing?.id ?? null,
+          description: trimmed
+        })
+        .select("id")
+        .single();
+
+      if (insertError) {
+        const message = "We couldn't send your report. Please try again.";
+        setError(message);
+        throw new Error(message);
+      }
+
+      setError(null);
+    },
+    [index, session]
+  );
+
   useEffect(() => {
     const currentQuestion = questions[index];
     if (!currentQuestion || !session) return;
@@ -747,6 +789,7 @@ export function usePracticeSession() {
     previous,
     handleAnswer,
     handleFlagChange,
+    reportIssue,
     sessionStats,
     sessionComplete,
     filters,

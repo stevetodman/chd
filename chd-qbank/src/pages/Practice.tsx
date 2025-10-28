@@ -31,6 +31,7 @@ export default function Practice() {
     previous,
     handleAnswer,
     handleFlagChange,
+    reportIssue,
     sessionStats,
     sessionComplete,
     filters,
@@ -183,43 +184,6 @@ export default function Practice() {
 
   const canGoBack = index > 0;
 
-  if (loading && questions.length === 0) {
-    return (
-      <PageState
-        title={formatMessage({ id: "practice.loading.title", defaultMessage: "Loading practice session" })}
-        description={formatMessage({
-          id: "practice.loading.description",
-          defaultMessage: "We’re generating the next set of questions for you."
-        })}
-        fullHeight
-      />
-    );
-  }
-
-  if (error && questions.length === 0) {
-    return (
-      <PageState
-        title={formatMessage({ id: "practice.error.title", defaultMessage: "We couldn’t load questions" })}
-        description={error}
-        variant="error"
-        fullHeight
-      />
-    );
-  }
-
-  if (!currentQuestion)
-    return (
-      <PageState
-        title={formatMessage({ id: "practice.empty.title", defaultMessage: "No questions found" })}
-        description={formatMessage({
-          id: "practice.empty.description",
-          defaultMessage: "Adjust your filters or try refreshing to start a new session."
-        })}
-        variant="empty"
-        fullHeight
-      />
-    );
-
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
@@ -256,6 +220,43 @@ export default function Practice() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [canAdvance, canGoBack, next, previous]);
+
+  if (loading && questions.length === 0) {
+    return (
+      <PageState
+        title={formatMessage({ id: "practice.loading.title", defaultMessage: "Loading practice session" })}
+        description={formatMessage({
+          id: "practice.loading.description",
+          defaultMessage: "We’re generating the next set of questions for you."
+        })}
+        fullHeight
+      />
+    );
+  }
+
+  if (error && questions.length === 0) {
+    return (
+      <PageState
+        title={formatMessage({ id: "practice.error.title", defaultMessage: "We couldn’t load questions" })}
+        description={error}
+        variant="error"
+        fullHeight
+      />
+    );
+  }
+
+  if (!currentQuestion)
+    return (
+      <PageState
+        title={formatMessage({ id: "practice.empty.title", defaultMessage: "No questions found" })}
+        description={formatMessage({
+          id: "practice.empty.description",
+          defaultMessage: "Adjust your filters or try refreshing to start a new session."
+        })}
+        variant="empty"
+        fullHeight
+      />
+    );
 
   return (
     <div className="pb-10">
@@ -386,6 +387,7 @@ export default function Practice() {
             question={currentQuestion}
             onAnswer={handleAnswer}
             onFlagChange={handleFlagChange}
+            onReportIssue={reportIssue}
             initialFlagged={currentResponse?.flagged ?? false}
             onNext={next}
             canAdvance={canAdvance}

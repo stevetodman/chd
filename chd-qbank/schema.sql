@@ -199,6 +199,18 @@ create table if not exists responses (
   constraint responses_unique_user_question unique (user_id, question_id)
 );
 
+create table if not exists question_issue_reports (
+  id uuid primary key default gen_random_uuid(),
+  question_id uuid not null references questions(id) on delete cascade,
+  user_id uuid not null references app_users(id) on delete cascade,
+  response_id uuid references responses(id) on delete set null,
+  description text not null check (char_length(btrim(description)) > 0),
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists idx_question_issue_reports_question on question_issue_reports(question_id);
+create index if not exists idx_question_issue_reports_created on question_issue_reports(created_at desc);
+
 create table if not exists answer_events (
   id uuid primary key default gen_random_uuid(),
   response_id uuid not null references responses(id) on delete cascade,
@@ -402,6 +414,7 @@ alter table media_bundles enable row level security;
 alter table questions enable row level security;
 alter table choices enable row level security;
 alter table responses enable row level security;
+alter table question_issue_reports enable row level security;
 alter table item_stats enable row level security;
 alter table distractor_stats enable row level security;
 alter table assessment_reliability enable row level security;
@@ -502,6 +515,15 @@ create policy "responses update self" on responses
 for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "responses delete self" on responses
 for delete using (auth.uid() = user_id);
+
+create policy "question_issue_reports insert self" on question_issue_reports
+for insert with check (auth.uid() = user_id);
+
+create policy "question_issue_reports read" on question_issue_reports
+for select using (auth.uid() = user_id or is_admin());
+
+create policy "question_issue_reports manage admin" on question_issue_reports
+for all using (is_admin()) with check (is_admin());
 
 create policy "item_stats read" on item_stats
 for select using (true);
