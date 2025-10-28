@@ -6,13 +6,16 @@ import {
   QUESTIONS,
   CXR_ITEMS,
   EKG_ITEMS,
+  MURMUR_ITEMS,
   type MediaBundleSeed,
   type QuestionSeed,
   type CxrItemSeed,
   type QuestionChoiceSeed,
   type CxrLabelSeed,
   type EkgItemSeed,
-  type EkgOptionSeed
+  type EkgOptionSeed,
+  type MurmurItemSeed,
+  type MurmurOptionSeed
 } from "./seedData.js";
 
 loadEnvFile();
@@ -133,6 +136,62 @@ async function syncQuestionChoices(
   exitOnError(setCorrectError, `Failed to set correct choice for ${questionSlug}`);
 }
 
+async function syncMurmurOptions(
+  itemId: string,
+  options: MurmurOptionSeed[],
+  slug: string
+): Promise<void> {
+  const { data: existingOptions, error } = await supabase
+    .from("murmur_options")
+    .select("id,label")
+    .eq("item_id", itemId);
+  exitOnError(error, `Failed to load options for murmur item ${slug}`);
+
+  const existingMap = new Map(existingOptions?.map((option) => [option.label, option]) ?? []);
+  const desiredLabels = new Set<string>(options.map((option) => option.label));
+
+  for (const option of options) {
+    const payload = {
+      text_md: option.text_md,
+      is_correct: option.is_correct
+    };
+
+    const existing = existingMap.get(option.label);
+    if (existing) {
+      const { error: updateError } = await supabase
+        .from("murmur_options")
+        .update(payload)
+        .eq("id", existing.id);
+      exitOnError(updateError, `Failed to update murmur option ${option.label} for ${slug}`);
+    } else {
+      const { error: insertError } = await supabase
+        .from("murmur_options")
+        .insert({ item_id: itemId, label: option.label, ...payload });
+      exitOnError(insertError, `Failed to insert murmur option ${option.label} for ${slug}`);
+    }
+  }
+
+  for (const existing of existingOptions ?? []) {
+    if (!desiredLabels.has(existing.label)) {
+      const { error: deleteError } = await supabase
+        .from("murmur_options")
+        .delete()
+        .eq("id", existing.id);
+      exitOnError(deleteError, `Failed to remove stale murmur option ${existing.label} for ${slug}`);
+    }
+  }
+
+  const { data: refreshedOptions, error: refreshError } = await supabase
+    .from("murmur_options")
+    .select("is_correct")
+    .eq("item_id", itemId);
+  exitOnError(refreshError, `Failed to verify murmur options for ${slug}`);
+
+  if (!(refreshedOptions ?? []).some((option) => option?.is_correct)) {
+    throw new Error(`No correct option defined for murmur item ${slug}`);
+  }
+}
+
 async function upsertQuestion(question: QuestionSeed): Promise<void> {
   const { data: existing, error } = await supabase
     .from("questions")
@@ -181,6 +240,50 @@ async function upsertQuestion(question: QuestionSeed): Promise<void> {
   }
 
   await syncQuestionChoices(questionId, question.choices, question.slug);
+}
+
+async function upsertMurmurItem(item: MurmurItemSeed): Promise<void> {
+  const { data: existing, error } = await supabase
+    .from("murmur_items")
+    .select("id")
+    .eq("slug", item.slug)
+    .maybeSingle();
+  exitOnError(error, `Failed to look up murmur item ${item.slug}`);
+
+  const payload = {
+    media_url: item.media_url,
+    prompt_md: item.prompt_md ?? null,
+    rationale_md: item.rationale_md ?? null,
+    lesion: item.lesion ?? null,
+    topic: item.topic ?? null,
+    difficulty: item.difficulty ?? null,
+    status: item.status
+  };
+
+  let itemId: string;
+
+  if (existing) {
+    const { error: updateError } = await supabase
+      .from("murmur_items")
+      .update(payload)
+      .eq("id", existing.id);
+    exitOnError(updateError, `Failed to update murmur item ${item.slug}`);
+    itemId = existing.id;
+  } else {
+    const { data: inserted, error: insertError } = await supabase
+      .from("murmur_items")
+      .insert({ id: item.id, slug: item.slug, ...payload })
+      .select("id")
+      .single();
+    exitOnError(insertError, `Failed to insert murmur item ${item.slug}`);
+    const insertedId = inserted?.id;
+    if (!insertedId) {
+      throw new Error(`Inserted murmur item ${item.slug} did not return an id`);
+    }
+    itemId = insertedId;
+  }
+
+  await syncMurmurOptions(itemId, item.options, item.slug);
 }
 
 async function syncCxrLabels(itemId: string, labels: CxrLabelSeed[], slug: string): Promise<void> {
@@ -441,6 +544,10 @@ async function main(): Promise<void> {
 
   for (const question of QUESTIONS) {
     await upsertQuestion(question);
+  }
+
+  for (const murmurItem of MURMUR_ITEMS) {
+    await upsertMurmurItem(murmurItem);
   }
 
   for (const cxrItem of CXR_ITEMS) {
