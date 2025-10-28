@@ -12,6 +12,7 @@ import {
   MurmurOption,
   normalizeMurmurItems
 } from "../../lib/games/murmurs";
+import { resolveSupabaseAssetUrl } from "../../lib/storage";
 
 export default function Murmurs() {
   const { session } = useSessionStore();
@@ -50,8 +51,16 @@ export default function Murmurs() {
       }
 
       const normalized = normalizeMurmurItems((data ?? []) as MurmurItemRow[]);
+      const withResolvedMedia = await Promise.all(
+        normalized.map(async (item) => ({
+          ...item,
+          media_url: await resolveSupabaseAssetUrl(item.media_url, { defaultBucket: "murmurs" })
+        }))
+      );
 
-      setItems(normalized);
+      if (!active) return;
+
+      setItems(withResolvedMedia);
       setIndex(0);
       setSelected(null);
       setFeedback(null);

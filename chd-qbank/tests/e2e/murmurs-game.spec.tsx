@@ -1,9 +1,11 @@
 let murmurItemsBuilder: ReturnType<typeof createMurmurItemsBuilder>;
 let murmurAttemptsBuilder: ReturnType<typeof createMurmurAttemptsBuilder>;
+let storageBuilder: ReturnType<typeof createStorageBuilder>;
 
 const supabaseState = vi.hoisted(() => ({
   from: vi.fn(),
-  rpc: vi.fn()
+  rpc: vi.fn(),
+  storageFrom: vi.fn()
 }));
 
 function createMurmurItemsBuilder() {
@@ -30,10 +32,19 @@ function createMurmurAttemptsBuilder() {
   return builder;
 }
 
+function createStorageBuilder() {
+  return {
+    createSignedUrl: vi.fn()
+  };
+}
+
 vi.mock("../../src/lib/supabaseClient", () => ({
   supabase: {
     from: (...args: unknown[]) => supabaseState.from(...args),
     rpc: (...args: unknown[]) => supabaseState.rpc(...args),
+    storage: {
+      from: (...args: unknown[]) => supabaseState.storageFrom(...args)
+    },
     auth: {
       signInWithPassword: vi.fn(),
       signOut: vi.fn(),
@@ -48,6 +59,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import Murmurs from "../../src/pages/Games/Murmurs";
 import { useSessionStore } from "../../src/lib/auth";
+import { clearSupabaseAssetUrlCache } from "../../src/lib/storage";
 
 describe("murmurs game flow", () => {
   const rows = [
@@ -55,7 +67,7 @@ describe("murmurs game flow", () => {
       id: "item-1",
       prompt_md: "Prompt **1**",
       rationale_md: "Rationale 1",
-      media_url: "https://example.com/clip1.mp3",
+      media_url: "clip1.mp3",
       murmur_options: [
         { id: "opt-1", label: "A", text_md: "Systolic ejection", is_correct: false },
         { id: "opt-2", label: "B", text_md: "Holosystolic murmur", is_correct: true }
@@ -65,7 +77,7 @@ describe("murmurs game flow", () => {
       id: "item-2",
       prompt_md: "Prompt 2",
       rationale_md: null,
-      media_url: "https://example.com/clip2.mp3",
+      media_url: "clip2.mp3",
       murmur_options: [
         { id: "opt-3", label: "A", text_md: "Diastolic rumble", is_correct: true },
         { id: "opt-4", label: "B", text_md: "Continuous murmur", is_correct: false }
@@ -74,16 +86,23 @@ describe("murmurs game flow", () => {
   ];
 
   beforeEach(() => {
+    clearSupabaseAssetUrlCache();
     murmurItemsBuilder = createMurmurItemsBuilder();
     murmurAttemptsBuilder = createMurmurAttemptsBuilder();
+    storageBuilder = createStorageBuilder();
 
     supabaseState.from.mockReset();
     supabaseState.rpc.mockReset();
+    supabaseState.storageFrom.mockReset();
 
     supabaseState.from.mockImplementation((table: string) => {
       if (table === "murmur_items") return murmurItemsBuilder;
       if (table === "murmur_attempts") return murmurAttemptsBuilder;
       throw new Error(`Unexpected table: ${table}`);
+    });
+    supabaseState.storageFrom.mockImplementation((bucket: string) => {
+      if (bucket === "murmurs") return storageBuilder;
+      throw new Error(`Unexpected bucket: ${bucket}`);
     });
     supabaseState.rpc.mockResolvedValue({ data: null, error: null });
 
@@ -91,6 +110,11 @@ describe("murmurs game flow", () => {
     murmurAttemptsBuilder.single
       .mockResolvedValueOnce({ data: { id: "attempt-incorrect" }, error: null })
       .mockResolvedValueOnce({ data: { id: "attempt-correct" }, error: null });
+
+    storageBuilder.createSignedUrl.mockImplementation(async (path: string, expiresIn: number) => ({
+      data: { signedUrl: `https://signed.example.com/${path}?expires=${expiresIn}` },
+      error: null
+    }));
 
     const session = { user: { id: "user-42" } } as ReturnType<typeof useSessionStore.getState>["session"];
     useSessionStore.setState({ session, loading: false, initialized: true });
@@ -105,7 +129,8 @@ describe("murmurs game flow", () => {
 
     render(<Murmurs />);
 
-    expect(supabaseState.from).toHaveBeenCalledWith("murmur_items");
+    await waitFor(() => expect(supabaseState.from).toHaveBeenCalledWith("murmur_items"));
+    await waitFor(() => expect(storageBuilder.createSignedUrl).toHaveBeenCalledWith("clip1.mp3", 3600));
 
     const incorrectButton = await screen.findByRole("button", { name: /A\.\s*Systolic ejection/i });
     await user.click(incorrectButton);
@@ -142,5 +167,6 @@ describe("murmurs game flow", () => {
       source: "murmur_attempt",
       source_id: "attempt-correct"
     });
+    await waitFor(() => expect(storageBuilder.createSignedUrl).toHaveBeenLastCalledWith("clip2.mp3", 3600));
   });
 });
