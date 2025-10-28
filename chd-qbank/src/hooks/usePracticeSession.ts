@@ -110,6 +110,45 @@ export function usePracticeSession() {
   const [seenVersion, setSeenVersion] = useState(0);
   const { session } = useSessionStore();
 
+  const syncSetsFromResponses = useCallback(
+    (rows: ResponseRow[]) => {
+      if (rows.length === 0) return;
+      let flaggedChanged = false;
+      let seenChanged = false;
+      const flagged = new Set(flaggedIdsRef.current);
+      const seen = new Set(seenIdsRef.current);
+
+      for (const row of rows) {
+        if (!row.question_id) continue;
+        if (row.flagged) {
+          if (!flagged.has(row.question_id)) {
+            flagged.add(row.question_id);
+            flaggedChanged = true;
+          }
+        } else if (flagged.delete(row.question_id)) {
+          flaggedChanged = true;
+        }
+
+        if (row.choice_id) {
+          if (!seen.has(row.question_id)) {
+            seen.add(row.question_id);
+            seenChanged = true;
+          }
+        }
+      }
+
+      if (flaggedChanged) {
+        flaggedIdsRef.current = flagged;
+        setFlaggedVersion((version) => version + 1);
+      }
+      if (seenChanged) {
+        seenIdsRef.current = seen;
+        setSeenVersion((version) => version + 1);
+      }
+    },
+    []
+  );
+
   useEffect(() => {
     questionsRef.current = questions;
   }, [questions]);
@@ -244,45 +283,6 @@ export function usePracticeSession() {
     seenIdsRef.current = next;
     setSeenVersion((version) => version + 1);
   }, []);
-
-  const syncSetsFromResponses = useCallback(
-    (rows: ResponseRow[]) => {
-      if (rows.length === 0) return;
-      let flaggedChanged = false;
-      let seenChanged = false;
-      const flagged = new Set(flaggedIdsRef.current);
-      const seen = new Set(seenIdsRef.current);
-
-      for (const row of rows) {
-        if (!row.question_id) continue;
-        if (row.flagged) {
-          if (!flagged.has(row.question_id)) {
-            flagged.add(row.question_id);
-            flaggedChanged = true;
-          }
-        } else if (flagged.delete(row.question_id)) {
-          flaggedChanged = true;
-        }
-
-        if (row.choice_id) {
-          if (!seen.has(row.question_id)) {
-            seen.add(row.question_id);
-            seenChanged = true;
-          }
-        }
-      }
-
-      if (flaggedChanged) {
-        flaggedIdsRef.current = flagged;
-        setFlaggedVersion((version) => version + 1);
-      }
-      if (seenChanged) {
-        seenIdsRef.current = seen;
-        setSeenVersion((version) => version + 1);
-      }
-    },
-    []
-  );
 
   const loadPage = useCallback(
     async (pageToLoad: number, replace = false) => {

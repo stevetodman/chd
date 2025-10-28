@@ -106,6 +106,7 @@ describe("admin item editing flow", () => {
       lead_in: "Updated lead",
       explanation_brief_md: "Updated brief explanation",
       explanation_deep_md: "Original deep",
+      context_panels: [],
       status: "draft",
       version: 2
     });

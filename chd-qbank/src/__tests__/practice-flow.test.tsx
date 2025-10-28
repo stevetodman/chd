@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Practice from "../pages/Practice";
 import { useSessionStore } from "../lib/auth";
 import type { QuestionQueryRow } from "../lib/practice";
 import { createMockSession } from "./test-helpers";
 import { syntheticPracticeQuestions } from "./fixtures/syntheticData";
+import { renderWithProviders } from "./renderWithProviders";
 
 interface ResponseRecord {
   id: string;
@@ -74,6 +75,14 @@ vi.mock("../lib/supabaseClient", () => ({
         return {
           select: () => {
             const filters: Partial<Record<"user_id" | "question_id", string>> = {};
+            const execute = async () => {
+              const rows = Array.from(responsesById.values()).filter((row) => {
+                if (filters.user_id && row.user_id !== filters.user_id) return false;
+                if (filters.question_id && row.question_id !== filters.question_id) return false;
+                return true;
+              });
+              return { data: rows.map((row) => mapRecord(row)), error: null };
+            };
             const chain = {
               eq: (column: string, value: string) => {
                 filters[column as "user_id" | "question_id"] = value;
@@ -87,7 +96,11 @@ vi.mock("../lib/supabaseClient", () => ({
                     return { data: record ? mapRecord(record) : null, error: null };
                   }
                 })
-              })
+              }),
+              then: (onFulfilled?: (value: { data: ResponseRecord[]; error: null }) => unknown, onRejected?: (reason: unknown) => unknown) =>
+                execute().then(onFulfilled, onRejected),
+              catch: (onRejected?: (reason: unknown) => unknown) => execute().catch(onRejected),
+              finally: (onFinally?: () => void) => execute().finally(onFinally)
             };
             return chain;
           },
@@ -155,7 +168,7 @@ describe("practice flow", () => {
     const user = userEvent.setup();
     const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0.99);
 
-    render(<Practice />);
+    renderWithProviders(<Practice />);
 
     await screen.findByText("What is the next best step in management?");
 
@@ -182,7 +195,10 @@ describe("practice flow", () => {
       source_id: "response-1"
     });
 
-    await user.click(screen.getByRole("button", { name: /next question/i }));
+    const [firstNextButton, ...restNextButtons] = screen.getAllByRole("button", { name: /next question/i });
+    const nextQuestionButton = restNextButtons.at(-1) ?? firstNextButton;
+
+    await user.click(nextQuestionButton);
     await screen.findByText("Which intervention improves systemic oxygenation immediately?");
 
     randomSpy.mockRestore();

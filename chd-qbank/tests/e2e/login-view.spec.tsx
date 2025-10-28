@@ -22,11 +22,11 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Login from "../../src/pages/Login";
-import { MemoryRouter } from "react-router-dom";
+import { renderWithProviders } from "../../src/__tests__/renderWithProviders";
 
 describe("login helpers", () => {
   beforeEach(() => {
@@ -40,11 +40,7 @@ describe("login helpers", () => {
   });
 
   it("sends password reset instructions", async () => {
-    render(
-      <MemoryRouter>
-        <Login />
-      </MemoryRouter>
-    );
+    renderWithProviders(<Login />);
 
     const user = userEvent.setup();
 
@@ -56,7 +52,7 @@ describe("login helpers", () => {
       expect(supabaseMock.auth.resetPasswordForEmail).toHaveBeenCalledWith(
         "user@example.com",
         expect.objectContaining({
-          redirectTo: "http://localhost/reset-password?email=user%40example.com"
+          redirectTo: `${window.location.origin}/reset-password?email=user%40example.com`
         })
       );
     });
@@ -65,11 +61,7 @@ describe("login helpers", () => {
   });
 
   it("directs users to request invite codes from administrators", async () => {
-    render(
-      <MemoryRouter>
-        <Login />
-      </MemoryRouter>
-    );
+    renderWithProviders(<Login />);
 
     expect(
       screen.getByText(/invite codes are issued by administrators/i)

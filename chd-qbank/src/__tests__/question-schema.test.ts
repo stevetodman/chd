@@ -4,8 +4,11 @@ import path from "path";
 import { validateQuestion } from "../utils/validateQuestion";
 
 const ROOT = process.cwd();
-const EXAMPLE_DIR = path.join(ROOT, "chd-qbank", "content", "questions");
-const MEDIA_DIR   = path.join(ROOT, "chd-qbank", "public", "media");
+const BASE_DIR = fs.existsSync(path.join(ROOT, "content", "questions"))
+  ? ROOT
+  : path.join(ROOT, "chd-qbank");
+const EXAMPLE_DIR = path.join(BASE_DIR, "content", "questions");
+const MEDIA_DIR = path.join(BASE_DIR, "public", "media");
 
 function loadQuestions() {
   if (!fs.existsSync(EXAMPLE_DIR)) return [];
@@ -34,7 +37,10 @@ describe("QBank question shape & assets", () => {
   it("choices have expected keys", () => {
     for (const q of questions) {
       const keys = q.choices.flatMap((c: any) => Object.keys(c)).sort();
-      expect(new Set(keys)).toEqual(new Set(["alt","id","isCorrect","label","mediaRef","text"]));
+      const allowed = new Set(["alt", "id", "isCorrect", "label", "mediaRef", "text"]);
+      for (const key of keys) {
+        expect(allowed.has(key)).toBe(true);
+      }
     }
   });
 

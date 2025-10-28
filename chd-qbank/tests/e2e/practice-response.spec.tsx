@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Practice from "../../src/pages/Practice";
@@ -7,6 +7,7 @@ import type { HeatmapAggregateRow, ReliabilitySnapshot } from "../../src/lib/con
 import type { QuestionQueryRow } from "../../src/lib/practice";
 import { supabase } from "../../src/lib/supabaseClient";
 import { createMockSession } from "../../src/__tests__/test-helpers";
+import { renderWithProviders } from "../../src/__tests__/renderWithProviders";
 
 type ResponseRow = {
   id: string;
@@ -42,6 +43,16 @@ type SupabaseMockState = {
   nextEventId: number;
   timestamp: string;
   lastIncrementPayload: { source: string; source_id: string } | null;
+};
+
+type SupabaseQueryChain<T> = {
+  eq(column: string, value: unknown): SupabaseQueryChain<T>;
+  order(column: string, options?: { ascending?: boolean }): SupabaseQueryChain<T>;
+  limit(count: number): SupabaseQueryChain<T>;
+  maybeSingle(): Promise<{ data: T | null; error: null }>;
+  then: Promise<{ data: T[]; error: null }>["then"];
+  catch: Promise<{ data: T[]; error: null }>["catch"];
+  finally: Promise<{ data: T[]; error: null }>["finally"];
 };
 
 const supabaseState = vi.hoisted(() => ({
@@ -160,9 +171,21 @@ function logAnswerEvent(state: SupabaseMockState, response: ResponseRow, op: "in
 
 function createQuestionsBuilder(state: SupabaseMockState) {
   const builder = {
-    select: (_columns?: string, _options?: unknown) => builder,
-    eq: (_column: string, _value: unknown) => builder,
-    order: (_column: string, _options?: { ascending?: boolean }) => builder,
+    select: (columns?: string, options?: unknown) => {
+      void columns;
+      void options;
+      return builder;
+    },
+    eq: (column: string, value: unknown) => {
+      void column;
+      void value;
+      return builder;
+    },
+    order: (column: string, options?: { ascending?: boolean }) => {
+      void column;
+      void options;
+      return builder;
+    },
     range: async (from: number, to: number) => ({
       data: state.questions.slice(from, to + 1),
       error: null,
@@ -174,12 +197,14 @@ function createQuestionsBuilder(state: SupabaseMockState) {
 
 function createResponsesBuilder(state: SupabaseMockState) {
   return {
-    select: (_columns?: string) => {
+    select: (columns?: string, options?: unknown) => {
+      void columns;
+      void options;
       const filters: Partial<ResponseRow> = {};
       let orderColumn: keyof ResponseRow | null = null;
       let ascending = true;
       let limitCount: number | null = null;
-      const chain: any = {
+      const chain: SupabaseQueryChain<ResponseRow> = {
         eq(column: string, value: unknown) {
           filters[column as keyof ResponseRow] = value as ResponseRow[keyof ResponseRow];
           return chain;
@@ -198,7 +223,23 @@ function createResponsesBuilder(state: SupabaseMockState) {
           const ordered = sortRecords(filtered, orderColumn, ascending);
           const [record] = typeof limitCount === "number" ? ordered.slice(0, limitCount) : ordered;
           return { data: record ? mapResponseRecord(record) : null, error: null };
+        },
+        then(onFulfilled?: (value: { data: ResponseRow[]; error: null }) => unknown, onRejected?: (reason: unknown) => unknown) {
+          return execute().then(onFulfilled, onRejected);
+        },
+        catch(onRejected?: (reason: unknown) => unknown) {
+          return execute().catch(onRejected);
+        },
+        finally(onFinally?: () => void) {
+          return execute().finally(onFinally);
         }
+      };
+      const execute = async () => {
+        const filtered = filterRecords(state.responses, filters);
+        const ordered = sortRecords(filtered, orderColumn, ascending);
+        const limited = typeof limitCount === "number" ? ordered.slice(0, limitCount) : ordered;
+        const mapped = limited.map((record) => mapResponseRecord(record));
+        return { data: mapped, error: null };
       };
       return chain;
     },
@@ -227,37 +268,42 @@ function createResponsesBuilder(state: SupabaseMockState) {
       };
     },
     update: (payload: Partial<ResponseRow>) => ({
-      eq: (_column: string, value: string) => ({
-        select: () => ({
-          maybeSingle: async () => {
-            const record = state.responses.find((row) => row.id === value);
-            if (!record) {
-              return { data: null, error: new Error("Missing response") };
+      eq: (column: string, value: string) => {
+        void column;
+        return {
+          select: () => ({
+            maybeSingle: async () => {
+              const record = state.responses.find((row) => row.id === value);
+              if (!record) {
+                return { data: null, error: new Error("Missing response") };
+              }
+              const previousCorrect = record.is_correct;
+              if (payload.choice_id !== undefined) record.choice_id = payload.choice_id;
+              if (payload.is_correct !== undefined) record.is_correct = Boolean(payload.is_correct);
+              if (payload.ms_to_answer !== undefined) record.ms_to_answer = payload.ms_to_answer ?? null;
+              if (payload.flagged !== undefined) record.flagged = Boolean(payload.flagged);
+              if (payload.is_correct !== undefined && payload.is_correct !== previousCorrect) {
+                logAnswerEvent(state, record, "update");
+              }
+              return { data: mapResponseRecord(record), error: null };
             }
-            const previousCorrect = record.is_correct;
-            if (payload.choice_id !== undefined) record.choice_id = payload.choice_id;
-            if (payload.is_correct !== undefined) record.is_correct = Boolean(payload.is_correct);
-            if (payload.ms_to_answer !== undefined) record.ms_to_answer = payload.ms_to_answer ?? null;
-            if (payload.flagged !== undefined) record.flagged = Boolean(payload.flagged);
-            if (payload.is_correct !== undefined && payload.is_correct !== previousCorrect) {
-              logAnswerEvent(state, record, "update");
-            }
-            return { data: mapResponseRecord(record), error: null };
-          }
-        })
-      })
+          })
+        };
+      }
     })
   };
 }
 
 function createAnswerEventsBuilder(state: SupabaseMockState) {
   return {
-    select: (_columns?: string) => {
+    select: (columns?: string, options?: unknown) => {
+      void columns;
+      void options;
       const filters: Partial<AnswerEventRow> = {};
       let orderColumn: keyof AnswerEventRow | null = null;
       let ascending = true;
       let limitCount: number | null = null;
-      const chain: any = {
+      const chain: SupabaseQueryChain<AnswerEventRow> = {
         eq(column: string, value: unknown) {
           filters[column as keyof AnswerEventRow] = value as AnswerEventRow[keyof AnswerEventRow];
           return chain;
@@ -276,7 +322,23 @@ function createAnswerEventsBuilder(state: SupabaseMockState) {
           const ordered = sortRecords(filtered, orderColumn, ascending);
           const [record] = typeof limitCount === "number" ? ordered.slice(0, limitCount) : ordered;
           return { data: record ? mapEventRecord(record) : null, error: null };
+        },
+        then(onFulfilled?: (value: { data: AnswerEventRow[]; error: null }) => unknown, onRejected?: (reason: unknown) => unknown) {
+          return execute().then(onFulfilled, onRejected);
+        },
+        catch(onRejected?: (reason: unknown) => unknown) {
+          return execute().catch(onRejected);
+        },
+        finally(onFinally?: () => void) {
+          return execute().finally(onFinally);
         }
+      };
+      const execute = async () => {
+        const filtered = filterRecords(state.events, filters);
+        const ordered = sortRecords(filtered, orderColumn, ascending);
+        const limited = typeof limitCount === "number" ? ordered.slice(0, limitCount) : ordered;
+        const mapped = limited.map((record) => mapEventRecord(record));
+        return { data: mapped, error: null };
       };
       return chain;
     }
@@ -474,7 +536,7 @@ describe("practice response analytics capture", () => {
     let now = 0;
     const nowSpy = vi.spyOn(performance, "now").mockImplementation(() => now);
 
-    render(<Practice />);
+    renderWithProviders(<Practice />);
 
     await screen.findByText(practiceQuestion.lead_in ?? "");
 

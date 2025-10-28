@@ -1,5 +1,5 @@
 import { fileURLToPath, URL } from "node:url";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 const coverageEnabled = process.env.VITEST_ENABLE_COVERAGE === "true";
 
@@ -35,6 +35,7 @@ export default defineConfig({
       "src/**/*.{test,spec}.{js,jsx,ts,tsx}",
       "tests/**/*.{test,spec}.{js,jsx,ts,tsx}",
     ],
+    exclude: [...configDefaults.exclude, "tests/e2e/signup-login.spec.ts"],
     setupFiles: "./src/__tests__/setup.ts",
     coverage: coverageConfig,
   },

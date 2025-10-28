@@ -31,3 +31,19 @@ globalThis.IntersectionObserver =
     unobserve() {}
     disconnect() {}
   };
+
+if (typeof window !== "undefined" && !window.matchMedia) {
+  window.matchMedia = (() => {
+    const mediaQueryList: MediaQueryList = {
+      matches: false,
+      media: "",
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false
+    };
+    return () => mediaQueryList;
+  })();
+}
