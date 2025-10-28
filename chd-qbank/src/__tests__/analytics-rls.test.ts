@@ -15,40 +15,37 @@ import { hasAnonCredentials, supabaseTestEnv } from "./supabase-env";
  */
 const { url: supabaseUrl, anonKey: supabaseAnonKey } = supabaseTestEnv;
 
-const describeOrSkip = hasAnonCredentials ? describe : describe.skip;
-
-describeOrSkip("analytics RLS policies", () => {
-  const supabase = createClient(supabaseUrl!, supabaseAnonKey!, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
+if (!hasAnonCredentials || !supabaseUrl || !supabaseAnonKey) {
+  describe.skip("analytics RLS policies", () => {
+    test("requires Supabase anonymous credentials", () => {});
   });
+} else {
+  describe("analytics RLS policies", () => {
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
 
-  const expectRpcToReject = async (functionName: string) => {
-    await expect(
-      (async () => {
-        const { error } = await supabase.rpc(functionName);
-        if (!error) {
-          throw new Error(
-            `Expected ${functionName} to reject anonymous access but it succeeded.`,
-          );
-        }
+    const expectRpcToReject = async (functionName: string) => {
+      await expect(
+        (async () => {
+          const { error } = await supabase.rpc(functionName);
+          if (!error) {
+            throw new Error(
+              `Expected ${functionName} to reject anonymous access but it succeeded.`,
+            );
+          }
 
-        throw error;
-      })(),
-    ).rejects.toThrow();
-  };
+          throw error;
+        })(),
+      ).rejects.toThrow();
+    };
 
-  test("anonymous clients cannot call analytics RPCs", async () => {
-    await expectRpcToReject("analytics_heatmap_admin");
-    await expectRpcToReject("analytics_refresh_heatmap");
+    test("anonymous clients cannot call analytics RPCs", async () => {
+      await expectRpcToReject("analytics_heatmap_admin");
+      await expectRpcToReject("analytics_refresh_heatmap");
+    });
   });
-});
-
-if (!hasAnonCredentials) {
-  test.skip(
-    "analytics RLS policies",
-    () => {},
-  );
 }

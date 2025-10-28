@@ -71,41 +71,32 @@ function runCommand(command: string, args: string[], options: RunCommandOptions 
 const { url: supabaseUrl, serviceRoleKey: supabaseServiceRoleKey } =
   supabaseTestEnv;
 
-const describeSeedIntegrity = hasServiceCredentials
-  ? describe.sequential
-  : describe.skip;
+if (!hasServiceCredentials || !supabaseUrl || !supabaseServiceRoleKey) {
+  describe.skip("database seed integrity", () => {
+    test("requires Supabase service credentials", () => {});
+  });
+} else {
+  describe.sequential("database seed integrity", () => {
+    beforeAll(async () => {
+      await runCommand("npm", ["run", "seed:full"]);
+    }, 600_000);
 
-describeSeedIntegrity("database seed integrity", () => {
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
-    throw new Error("Supabase service credentials are required to run this test.");
-  }
+    test(
+      "seeded content matches expectations",
+      async () => {
+        const result = await runCommand("npm", ["run", "verify:seed"]);
+        expect(result.stdout).toContain("Seed verification passed");
+      },
+      300_000,
+    );
 
-  beforeAll(async () => {
-    await runCommand("npm", ["run", "seed:full"]);
-  }, 600_000);
-
-  test(
-    "seeded content matches expectations",
-    async () => {
-      const result = await runCommand("npm", ["run", "verify:seed"]);
-      expect(result.stdout).toContain("Seed verification passed");
-    },
-    300_000,
-  );
-
-  test(
-    "analytics heatmap materialization stays consistent",
-    async () => {
-      const result = await runCommand("npm", ["run", "verify:analytics:heatmap"]);
-      expect(result.stdout).toContain("Verification complete.");
-    },
-    600_000,
-  );
-});
-
-if (!hasServiceCredentials) {
-  test.skip(
-    "database seed integrity",
-    () => {},
-  );
+    test(
+      "analytics heatmap materialization stays consistent",
+      async () => {
+        const result = await runCommand("npm", ["run", "verify:analytics:heatmap"]);
+        expect(result.stdout).toContain("Verification complete.");
+      },
+      600_000,
+    );
+  });
 }

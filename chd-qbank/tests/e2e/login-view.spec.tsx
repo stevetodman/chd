@@ -27,6 +27,8 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Login from "../../src/pages/Login";
 import { MemoryRouter } from "react-router-dom";
+import { I18nProvider } from "../../src/i18n";
+import { FALLBACK_LOCALE, messages } from "../../src/locales";
 
 describe("login helpers", () => {
   beforeEach(() => {
@@ -42,7 +44,13 @@ describe("login helpers", () => {
   it("sends password reset instructions", async () => {
     render(
       <MemoryRouter>
-        <Login />
+        <I18nProvider
+          messages={messages}
+          initialLocale="en"
+          fallbackLocale={FALLBACK_LOCALE}
+        >
+          <Login />
+        </I18nProvider>
       </MemoryRouter>
     );
 
@@ -52,11 +60,14 @@ describe("login helpers", () => {
     await user.type(screen.getByLabelText(/account email/i), "user@example.com");
     await user.click(screen.getByRole("button", { name: /send reset link/i }));
 
+    const expectedOrigin = (typeof window !== "undefined" && window.location?.origin) || "http://localhost";
+    const normalizedOrigin = expectedOrigin.replace(/\/$/, "");
+
     await waitFor(() => {
       expect(supabaseMock.auth.resetPasswordForEmail).toHaveBeenCalledWith(
         "user@example.com",
         expect.objectContaining({
-          redirectTo: "http://localhost/reset-password?email=user%40example.com"
+          redirectTo: `${normalizedOrigin}/reset-password?email=user%40example.com`
         })
       );
     });
@@ -67,7 +78,13 @@ describe("login helpers", () => {
   it("directs users to request invite codes from administrators", async () => {
     render(
       <MemoryRouter>
-        <Login />
+        <I18nProvider
+          messages={messages}
+          initialLocale="en"
+          fallbackLocale={FALLBACK_LOCALE}
+        >
+          <Login />
+        </I18nProvider>
       </MemoryRouter>
     );
 

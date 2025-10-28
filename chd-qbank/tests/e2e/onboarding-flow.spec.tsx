@@ -25,6 +25,8 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Signup from "../../src/pages/Signup";
 import { MemoryRouter } from "react-router-dom";
+import { I18nProvider } from "../../src/i18n";
+import { FALLBACK_LOCALE, messages } from "../../src/locales";
 
 describe("onboarding signup flow", () => {
   beforeEach(() => {
@@ -52,7 +54,13 @@ describe("onboarding signup flow", () => {
 
     render(
       <MemoryRouter>
-        <Signup />
+        <I18nProvider
+          messages={messages}
+          initialLocale="en"
+          fallbackLocale={FALLBACK_LOCALE}
+        >
+          <Signup />
+        </I18nProvider>
       </MemoryRouter>
     );
 
@@ -73,14 +81,15 @@ describe("onboarding signup flow", () => {
         email: "jane@example.com",
         password: "supersafe",
         invite_code: "ABC123",
-        desired_alias: "Swift-Swan-99"
+        alias: "Swift-Swan-99"
       },
       headers: { "Idempotency-Key": "idempotency-key-1" }
     });
 
-    await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith("/login");
-    });
+    const signInButton = await screen.findByRole("button", { name: /sign in/i });
+    await user.click(signInButton);
+
+    expect(navigateMock).toHaveBeenCalledWith("/login");
   });
 
   it("surfaces Supabase errors to the user", async () => {
@@ -89,7 +98,13 @@ describe("onboarding signup flow", () => {
 
     render(
       <MemoryRouter>
-        <Signup />
+        <I18nProvider
+          messages={messages}
+          initialLocale="en"
+          fallbackLocale={FALLBACK_LOCALE}
+        >
+          <Signup />
+        </I18nProvider>
       </MemoryRouter>
     );
 

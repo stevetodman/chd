@@ -1,12 +1,14 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import Practice from "../../src/pages/Practice";
 import { useSessionStore } from "../../src/lib/auth";
 import type { HeatmapAggregateRow, ReliabilitySnapshot } from "../../src/lib/constants";
 import type { QuestionQueryRow } from "../../src/lib/practice";
 import { supabase } from "../../src/lib/supabaseClient";
 import { createMockSession } from "../../src/__tests__/test-helpers";
+import { I18nProvider } from "../../src/i18n";
+import { FALLBACK_LOCALE, messages } from "../../src/locales";
 
 type ResponseRow = {
   id: string;
@@ -57,6 +59,23 @@ const supabaseState = vi.hoisted(() => ({
   timestamp: "2024-07-08T12:00:00.000Z",
   lastIncrementPayload: null as { source: string; source_id: string } | null
 })) as unknown as SupabaseMockState;
+
+beforeAll(() => {
+  if (typeof window !== "undefined" && !window.matchMedia) {
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn()
+      }))
+    });
+  }
+});
 
 vi.mock("../../src/lib/supabaseClient", () => ({
   supabase: {
@@ -193,12 +212,23 @@ function createResponsesBuilder(state: SupabaseMockState) {
           limitCount = count;
           return chain;
         },
+        then(onFulfilled: (value: { data: ResponseRow[]; error: null }) => unknown, onRejected?: (reason: unknown) => unknown) {
+          return execute().then(onFulfilled, onRejected);
+        },
         maybeSingle: async () => {
-          const filtered = filterRecords(state.responses, filters);
-          const ordered = sortRecords(filtered, orderColumn, ascending);
-          const [record] = typeof limitCount === "number" ? ordered.slice(0, limitCount) : ordered;
-          return { data: record ? mapResponseRecord(record) : null, error: null };
+          const { data } = await execute();
+          const [record] = data;
+          return { data: record ?? null, error: null };
         }
+      };
+      const execute = async () => {
+        const filtered = filterRecords(state.responses, filters);
+        const ordered = sortRecords(filtered, orderColumn, ascending);
+        const limited = typeof limitCount === "number" ? ordered.slice(0, limitCount) : ordered;
+        return {
+          data: limited.map(mapResponseRecord),
+          error: null
+        };
       };
       return chain;
     },
@@ -474,7 +504,15 @@ describe("practice response analytics capture", () => {
     let now = 0;
     const nowSpy = vi.spyOn(performance, "now").mockImplementation(() => now);
 
-    render(<Practice />);
+    render(
+      <I18nProvider
+        messages={messages}
+        initialLocale="en"
+        fallbackLocale={FALLBACK_LOCALE}
+      >
+        <Practice />
+      </I18nProvider>
+    );
 
     await screen.findByText(practiceQuestion.lead_in ?? "");
 

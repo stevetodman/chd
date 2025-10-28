@@ -27,6 +27,9 @@ export default defineConfig({
       ),
       "axe-core": fileURLToPath(new URL("./vendor/axe-core/index.js", import.meta.url)),
       "jest-axe": fileURLToPath(new URL("./vendor/jest-axe/index.js", import.meta.url)),
+      "@playwright/test": fileURLToPath(
+        new URL("./tests/__mocks__/playwright-test.ts", import.meta.url),
+      ),
     },
   },
   test: {
