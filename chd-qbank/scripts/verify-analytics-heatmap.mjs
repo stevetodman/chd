@@ -271,7 +271,6 @@ async function createSyntheticUsers(count, tag) {
       async () => {
         const { data: createdUser, error } = await supabase.auth.admin.createUser({
           email,
-          email_confirm: true,
           user_metadata: { synthetic: true, purpose: "heatmap-verification" }
         });
         if (error) throw error;

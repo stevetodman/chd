@@ -35,6 +35,10 @@ npm --prefix chd-qbank run seed:full
 npm --prefix chd-qbank run seed:invite
 ```
 
+`seed:full` no longer force-confirms the default admin account. Plan to complete the Supabase email verification step before
+production promotion, or explicitly opt-in to auto confirmation by exporting `SEED_ADMIN_AUTO_CONFIRM=true` for disposable
+environments.
+
 Post-deploy verification against the active database:
 
 ```bash
