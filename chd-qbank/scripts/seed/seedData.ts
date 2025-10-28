@@ -68,6 +68,25 @@ export type CxrItemSeed = {
   labels: CxrLabelSeed[];
 };
 
+export type MurmurOptionSeed = {
+  label: "A" | "B" | "C" | "D";
+  text_md: string;
+  is_correct: boolean;
+};
+
+export type MurmurItemSeed = {
+  id: string;
+  slug: string;
+  media_url: string;
+  prompt_md?: string | null;
+  rationale_md?: string | null;
+  lesion?: string | null;
+  topic?: string | null;
+  difficulty?: number | null;
+  status: "draft" | "published" | "archived";
+  options: MurmurOptionSeed[];
+};
+
 export type EkgOptionSeed = {
   label: string;
   text_md: string;
@@ -422,6 +441,47 @@ export const CXR_ITEMS: CxrItemSeed[] = [
       { label: "Main pulmonary artery", x: 0.47, y: 0.42, w: 0.18, h: 0.16, is_correct: true },
       { label: "Right hemidiaphragm", x: 0.53, y: 0.75, w: 0.3, h: 0.15, is_correct: false },
       { label: "Trachea", x: 0.5, y: 0.14, w: 0.08, h: 0.18, is_correct: false }
+    ]
+  }
+];
+
+export const MURMUR_ITEMS: MurmurItemSeed[] = [
+  {
+    id: "22222222-2222-2222-2222-222222222222",
+    slug: "demo_murmur_vsd",
+    media_url: "https://cdn.example.com/chd/audio-vsd.mp3",
+    prompt_md:
+      "Listen to this harsh holosystolic murmur heard best at the lower left sternal border in a 3-month-old with poor weight gain.",
+    rationale_md:
+      "A ventricular septal defect creates a high-velocity left-to-right shunt across the septum, producing a harsh holosystolic murmur.",
+    lesion: "ventricular septal defect",
+    topic: "acyanotic",
+    difficulty: 2,
+    status: "published",
+    options: [
+      { label: "A", text_md: "Supravalvar aortic stenosis", is_correct: false },
+      { label: "B", text_md: "Ventricular septal defect", is_correct: true },
+      { label: "C", text_md: "Pulmonary valve stenosis", is_correct: false },
+      { label: "D", text_md: "Patent ductus arteriosus", is_correct: false }
+    ]
+  },
+  {
+    id: "22222222-2222-2222-2222-333333333333",
+    slug: "demo_murmur_pda",
+    media_url: "https://cdn.example.com/chd/audio-pda.mp3",
+    prompt_md:
+      "Identify the lesion associated with this continuous machine-like murmur loudest below the left clavicle in a premature infant.",
+    rationale_md:
+      "A patent ductus arteriosus maintains flow from the aorta to the pulmonary artery, creating a continuous machinery murmur.",
+    lesion: "patent ductus arteriosus",
+    topic: "acyanotic",
+    difficulty: 1,
+    status: "published",
+    options: [
+      { label: "A", text_md: "Patent ductus arteriosus", is_correct: true },
+      { label: "B", text_md: "Coarctation of the aorta", is_correct: false },
+      { label: "C", text_md: "Ebstein anomaly", is_correct: false },
+      { label: "D", text_md: "Tetralogy of Fallot", is_correct: false }
     ]
   }
 ];
