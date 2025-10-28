@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Button } from "../../components/ui/Button";
+import { EkgCalipers } from "../../components/games/EkgCalipers";
 import { supabase } from "../../lib/supabaseClient";
 import { useSessionStore } from "../../lib/auth";
 import { markdownRemarkPlugins, markdownRehypePlugins } from "../../lib/markdown";
@@ -126,11 +127,7 @@ export default function EkgInterpretation() {
       {current ? (
         <div className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm">
           <div className="mb-4">
-            <img
-              src={current.image_url}
-              alt={altText ?? DEFAULT_EKG_ALT_TEXT}
-              className="mx-auto max-h-[360px] w-full max-w-2xl rounded border border-neutral-200 object-contain"
-            />
+            <EkgCalipers src={current.image_url} alt={altText ?? DEFAULT_EKG_ALT_TEXT} />
           </div>
           {current.prompt_md ? (
             <div className="mb-4 text-sm text-neutral-700">
