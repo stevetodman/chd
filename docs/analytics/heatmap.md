@@ -38,23 +38,7 @@ When scheduling the refresh via `pg_cron` or Supabase's scheduled functions, use
 
 ## Verification script
 
-`scripts/verify-analytics-heatmap.mjs` seeds synthetic responses, refreshes the materialized view, and reports timing statistics. Use it after schema or policy changes to verify that refreshes remain performant.
-
-```bash
-npm run verify:analytics:heatmap
-```
-
-Environment variables (typically loaded from `.env`) control the script:
-
-```bash
-SUPABASE_URL=...
-SUPABASE_SERVICE_ROLE_KEY=...
-HEATMAP_VERIFY_USERS=50        # optional override
-HEATMAP_VERIFY_QUESTIONS=200   # optional override
-HEATMAP_VERIFY_BATCH=500       # optional override
-```
-
-The script cleans up all inserted rows and issues a final refresh so the view returns to a clean state.
+`scripts/verify-analytics-heatmap.mjs` seeds synthetic responses, refreshes the materialized view, and reports timing statistics. Use it after schema or policy changes to verify that refreshes remain performant. Connection options, environment variables, and production safeguards are documented in the [Supabase verification appendix](../ops/supabase-verification.md).
 
 ### Safe staging workflow
 
@@ -67,5 +51,5 @@ Recommended checklist:
 
 1. Point `.env` at the staging project and run `npm run verify:analytics:heatmap -- --dry-run`.
 2. Review the output for “ready to write synthetic data.”
-3. Re-run without `--dry-run` to seed, refresh, and clean up.
+3. Re-run without `--dry-run` to seed, refresh, and clean up (the script removes test data automatically).
 4. Only pass `--allow-prod` for break-glass production debugging, and document the justification in the deployment log.

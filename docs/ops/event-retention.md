@@ -1,6 +1,6 @@
 # Event retention jobs
 
-Telemetry tables (`answer_events`, `leaderboard_events`) can grow quickly. The retention job keeps them trimmed to a rolling window while preserving recent activity for analytics and audit purposes. All logic lives under the `app` schema in [`chd-qbank/schema.sql`](../../chd-qbank/schema.sql).
+Telemetry tables (`answer_events`, `leaderboard_events`) can grow quickly. The retention job keeps them trimmed to a rolling window while preserving recent activity for analytics and audit purposes. See the automation overview in the [documentation index](../README.md) for schema and script locations.
 
 ## Configuration
 
@@ -23,7 +23,7 @@ update app.app_settings
 
 ## Manual execution
 
-Trigger pruning on demand:
+Trigger pruning on demand (connection options are summarized in the [Supabase verification appendix](./supabase-verification.md)):
 
 ```sql
 select * from app.prune_old_events();
@@ -51,7 +51,7 @@ The scheduled job executes the same function and therefore respects updated rete
 
 ### Supabase scheduled function fallback
 
-If `pg_cron` is unavailable, create a Supabase Edge Function that calls `app.prune_old_events` and schedule it through the Supabase dashboard. A minimal example:
+If `pg_cron` is unavailable, create a Supabase Edge Function that calls `app.prune_old_events` and schedule it through the Supabase dashboard. Follow the deployment pattern in the automation overview and adapt this minimal example:
 
 ```ts
 // supabase/functions/prune-events/index.ts
