@@ -45,18 +45,22 @@ export function classNames(...classes: Array<string | false | null | undefined>)
 }
 
 /**
- * Extract a human readable message from an unknown error-like value.
+ * Attempt to read a human-friendly message from an unknown error-like value.
  *
  * @param error - Value thrown by an async operation.
- * @param fallback - Message to use when a better one cannot be derived.
- * @returns The extracted or fallback message.
+ * @returns The extracted message when available; otherwise `null`.
  */
-export function getErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error) return error.message;
+export function extractErrorMessage(error: unknown): string | null {
+  if (error instanceof Error) {
+    const message = error.message.trim();
+    if (message) return message;
+  }
+
   if (typeof error === "string") {
     const trimmed = error.trim();
     if (trimmed) return trimmed;
   }
+
   if (
     error &&
     typeof error === "object" &&
@@ -66,5 +70,28 @@ export function getErrorMessage(error: unknown, fallback: string): string {
     const message = (error as { message: string }).message.trim();
     if (message) return message;
   }
-  return fallback;
+
+  return null;
+}
+
+/**
+ * Extract a human readable message from an unknown error-like value.
+ *
+ * @param error - Value thrown by an async operation.
+ * @param fallback - Message to use when a better one cannot be derived.
+ * @returns The extracted or fallback message.
+ */
+export function getErrorMessage(error: unknown, fallback: string): string {
+  return extractErrorMessage(error) ?? fallback;
+}
+
+/**
+ * Normalize a thrown error message into lower case text for comparisons.
+ *
+ * @param error - Value thrown by an async operation.
+ * @returns Lowercase message text when available, otherwise `null`.
+ */
+export function normalizeErrorMessage(error: unknown): string | null {
+  const message = extractErrorMessage(error);
+  return message ? message.toLowerCase() : null;
 }

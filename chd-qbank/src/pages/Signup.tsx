@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import config from "../config";
 import { useI18n } from "../i18n";
-import { getErrorMessage } from "../lib/utils";
+import { getErrorMessage, normalizeErrorMessage } from "../lib/utils";
 import { signUpWithInvite, SignupServiceUnavailableError } from "../lib/signUpWithInvite";
 
 export default function Signup() {
@@ -23,11 +23,12 @@ export default function Signup() {
     setSubmitting(true);
     setError(null);
     try {
-      await signUpWithInvite(email, password, inviteCode, alias || undefined);
+      const result = await signUpWithInvite(email, password, inviteCode, alias || undefined);
       setSuccessMessage(
-        t("auth.signup.success", {
-          defaultValue: "Account created. Check your email to confirm before signing in."
-        })
+        result.message ??
+          t("auth.signup.success", {
+            defaultValue: "Account created. Check your email to confirm before signing in."
+          })
       );
       setEmail("");
       setPassword("");
@@ -45,13 +46,19 @@ export default function Signup() {
       const fallback = t("auth.signup.submitError", {
         defaultValue: "Unable to sign up"
       });
+      const normalized = normalizeErrorMessage(err);
       const derived = getErrorMessage(err, fallback);
-      const normalized = derived.trim().toLowerCase();
+
       if (derived === "SIGNUP_FAILED") {
         setError(fallback);
         return;
       }
-      if (normalized === "failed to fetch" || normalized.includes("failed to fetch") || normalized.includes("network request failed")) {
+
+      if (
+        normalized?.includes("failed to fetch") ||
+        normalized?.includes("network request failed") ||
+        normalized?.includes("network error")
+      ) {
         setError(
           t("auth.signup.serviceUnavailable", {
             defaultValue: "Signup is temporarily unavailable. Try again in a few minutes."
@@ -59,7 +66,13 @@ export default function Signup() {
         );
         return;
       }
-      if (normalized.includes("already registered") || normalized.includes("already exists")) {
+
+      if (
+        normalized?.includes("already registered") ||
+        normalized?.includes("already exists") ||
+        normalized?.includes("duplicate") ||
+        normalized?.includes("conflict")
+      ) {
         setError(
           t("auth.signup.accountExists", {
             defaultValue: "An account already exists for that email. Sign in instead."
@@ -67,7 +80,8 @@ export default function Signup() {
         );
         return;
       }
-      if (normalized.includes("invite code required")) {
+
+      if (normalized?.includes("invite code required")) {
         setError(
           t("auth.signup.inviteRequired", {
             defaultValue: "Enter the invite code provided by your program lead."
@@ -75,7 +89,8 @@ export default function Signup() {
         );
         return;
       }
-      if (normalized.includes("invalid invite code")) {
+
+      if (normalized?.includes("invalid invite code")) {
         setError(
           t("auth.signup.inviteInvalid", {
             defaultValue: "That invite code isn’t recognized. Double-check the latest code."
@@ -83,7 +98,8 @@ export default function Signup() {
         );
         return;
       }
-      if (normalized.includes("invite expired")) {
+
+      if (normalized?.includes("invite expired")) {
         setError(
           t("auth.signup.inviteExpired", {
             defaultValue: "That invite code has expired. Request a fresh invite before signing up."
@@ -91,6 +107,16 @@ export default function Signup() {
         );
         return;
       }
+
+      if (normalized?.includes("rate limit") || normalized?.includes("too many requests")) {
+        setError(
+          t("auth.signup.serviceUnavailable", {
+            defaultValue: "Signup is temporarily unavailable. Try again in a few minutes."
+          })
+        );
+        return;
+      }
+
       setError(derived);
     } finally {
       setSubmitting(false);
