@@ -2,6 +2,10 @@ import { beforeAll, describe, expect, test } from "vitest";
 import { spawn } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  hasServiceCredentials,
+  supabaseTestEnv,
+} from "./supabase-env";
 
 type RunCommandResult = {
   stdout: string;
@@ -64,13 +68,18 @@ function runCommand(command: string, args: string[], options: RunCommandOptions 
   });
 }
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const { url: supabaseUrl, serviceRoleKey: supabaseServiceRoleKey } =
+  supabaseTestEnv;
 
-const describeSeedIntegrity =
-  supabaseUrl && supabaseServiceRoleKey ? describe.sequential : describe.skip;
+const describeSeedIntegrity = hasServiceCredentials
+  ? describe.sequential
+  : describe.skip;
 
 describeSeedIntegrity("database seed integrity", () => {
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
+    throw new Error("Supabase service credentials are required to run this test.");
+  }
+
   beforeAll(async () => {
     await runCommand("npm", ["run", "seed:full"]);
   }, 600_000);
@@ -94,7 +103,7 @@ describeSeedIntegrity("database seed integrity", () => {
   );
 });
 
-if (!supabaseUrl || !supabaseServiceRoleKey) {
+if (!hasServiceCredentials) {
   test.skip(
     "database seed integrity",
     () => {},

@@ -7,13 +7,8 @@ const defaultSupabaseAnonKey = "test-anon-key";
 
 vi.stubEnv("VITE_SUPABASE_URL", defaultSupabaseUrl);
 vi.stubEnv("VITE_SUPABASE_ANON_KEY", defaultSupabaseAnonKey);
-vi.stubEnv("SUPABASE_URL", defaultSupabaseUrl);
-vi.stubEnv("SUPABASE_ANON_KEY", defaultSupabaseAnonKey);
-
 process.env.VITE_SUPABASE_URL ||= defaultSupabaseUrl;
 process.env.VITE_SUPABASE_ANON_KEY ||= defaultSupabaseAnonKey;
-process.env.SUPABASE_URL ||= defaultSupabaseUrl;
-process.env.SUPABASE_ANON_KEY ||= defaultSupabaseAnonKey;
 
 afterEach(() => {
   cleanup();

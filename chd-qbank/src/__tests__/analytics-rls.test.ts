@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { describe, expect, test } from "vitest";
-import config from "../config";
+import { hasAnonCredentials, supabaseTestEnv } from "./supabase-env";
 
 /**
  * This test ensures that Supabase row-level security (RLS) prevents anonymous
@@ -13,10 +13,9 @@ import config from "../config";
  * SUPABASE_URL="https://<project>.supabase.co"
  * SUPABASE_ANON_KEY="<anon-public-key>"
  */
-const { url: supabaseUrl, anonKey: supabaseAnonKey } = config.optionalSupabase;
+const { url: supabaseUrl, anonKey: supabaseAnonKey } = supabaseTestEnv;
 
-const describeOrSkip =
-  supabaseUrl && supabaseAnonKey ? describe : describe.skip;
+const describeOrSkip = hasAnonCredentials ? describe : describe.skip;
 
 describeOrSkip("analytics RLS policies", () => {
   const supabase = createClient(supabaseUrl!, supabaseAnonKey!, {
@@ -47,7 +46,7 @@ describeOrSkip("analytics RLS policies", () => {
   });
 });
 
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!hasAnonCredentials) {
   test.skip(
     "analytics RLS policies",
     () => {},
