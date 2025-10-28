@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "../testing/render";
 import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import Practice from "../pages/Practice";
@@ -65,17 +65,6 @@ const nextId = () => {
   responseCounter += 1;
   return `response-${responseCounter}`;
 };
-
-vi.mock("../i18n", () => ({
-  useI18n: () => ({
-    locale: "en-US",
-    availableLocales: [],
-    setLocale: vi.fn(),
-    formatMessage: ({ defaultMessage }: { defaultMessage: string }) => defaultMessage,
-    formatNumber: (value: number) => value.toString(),
-    t: vi.fn()
-  })
-}));
 
 beforeAll(() => {
   vi.stubGlobal("matchMedia", (query: string) => ({

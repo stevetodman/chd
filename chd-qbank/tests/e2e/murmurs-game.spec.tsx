@@ -43,7 +43,7 @@ vi.mock("../../src/lib/supabaseClient", () => ({
   }
 }));
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "../../src/testing/render";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import Murmurs from "../../src/pages/Games/Murmurs";

@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "../../src/testing/render";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import Practice from "../../src/pages/Practice";
 import { useSessionStore } from "../../src/lib/auth";
 import type { HeatmapAggregateRow, ReliabilitySnapshot } from "../../src/lib/constants";
@@ -72,6 +72,23 @@ vi.mock("../../src/lib/supabaseClient", () => ({
 }));
 
 const TEST_USER_ID = "user-practice-analytics";
+
+beforeAll(() => {
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(() => false)
+  }));
+});
+
+afterAll(() => {
+  vi.unstubAllGlobals();
+});
 
 const practiceQuestion: QuestionQueryRow = {
   id: "practice-question-analytics",
@@ -192,6 +209,32 @@ function createResponsesBuilder(state: SupabaseMockState) {
         limit(count: number) {
           limitCount = count;
           return chain;
+        },
+        then<TResult1 = unknown, TResult2 = never>(
+          onfulfilled?:
+            | ((value: { data: ReturnType<typeof mapResponseRecord>[]; error: null }) =>
+                TResult1 | PromiseLike<TResult1>)
+            | null,
+          onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
+        ) {
+          try {
+            const filtered = filterRecords(state.responses, filters);
+            const ordered = sortRecords(filtered, orderColumn, ascending);
+            const limited = typeof limitCount === "number" ? ordered.slice(0, limitCount) : ordered;
+            const result = {
+              data: limited.map(mapResponseRecord),
+              error: null
+            } as const;
+            if (!onfulfilled) {
+              return Promise.resolve(result) as Promise<TResult1 | TResult2>;
+            }
+            return Promise.resolve(onfulfilled(result)) as Promise<TResult1 | TResult2>;
+          } catch (error) {
+            if (!onrejected) {
+              return Promise.reject(error);
+            }
+            return Promise.resolve(onrejected(error)) as Promise<TResult1 | TResult2>;
+          }
         },
         maybeSingle: async () => {
           const filtered = filterRecords(state.responses, filters);
