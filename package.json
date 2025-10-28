@@ -11,7 +11,6 @@
     "license:check": "node scripts/check-licenses.mjs"
   },
   "devDependencies": {
-    "cyclonedx-npm": "^1.9.0",
     "license-checker": "^25.0.1"
   }
 }
