@@ -30,6 +30,7 @@ These values should never be shipped with the frontend bundle. They are read by 
 | `BUILD_HASH` | Overrides the build hash stamp for static asset versioning. |
 | `APP_ENV` | Selects which `.env` files automation scripts load (`development`, `staging`, or `production`). |
 | `NODE_ENV` | Standard Node environment value; doubles as a fallback for selecting `.env` files. |
+| `SEED_ADMIN_AUTO_CONFIRM` | Set to `true`/`1` to bypass email verification when seeding the default admin (use only for throwaway environments). |
 
 ## Recommended workflows
 

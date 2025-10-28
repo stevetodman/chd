@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import type { PostgrestError } from "@supabase/supabase-js";
+import type { AdminUserAttributes, PostgrestError } from "@supabase/supabase-js";
 import { loadEnvFile } from "../utils/loadEnv.js";
 import {
   MEDIA_BUNDLES,
@@ -32,6 +32,9 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 const DEFAULT_ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? "admin@example.com";
 const DEFAULT_ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? "Admin123!";
 const DEFAULT_ADMIN_ALIAS = process.env.SEED_ADMIN_ALIAS ?? "demo-admin";
+const SHOULD_AUTO_CONFIRM_ADMIN = ["1", "true"].includes(
+  (process.env.SEED_ADMIN_AUTO_CONFIRM ?? "").toLowerCase()
+);
 
 function exitOnError(error: PostgrestError | null, message: string): void {
   if (error) {
@@ -369,12 +372,17 @@ async function ensureDefaultAdmin(): Promise<void> {
   let createdUser = false;
 
   if (!userId) {
-    const { data: created, error: createError } = await supabase.auth.admin.createUser({
+    const adminAttributes: AdminUserAttributes = {
       email: DEFAULT_ADMIN_EMAIL,
       password: DEFAULT_ADMIN_PASSWORD,
-      email_confirm: true,
       user_metadata: { seeded_admin: true }
-    });
+    };
+
+    if (SHOULD_AUTO_CONFIRM_ADMIN) {
+      adminAttributes.email_confirm = true;
+    }
+
+    const { data: created, error: createError } = await supabase.auth.admin.createUser(adminAttributes);
 
     if (createError) {
       throw new Error(`Failed to create default admin user: ${createError.message}`);
@@ -387,6 +395,21 @@ async function ensureDefaultAdmin(): Promise<void> {
 
     createdUser = true;
     console.log(`Created default admin account for ${DEFAULT_ADMIN_EMAIL}.`);
+
+    if (!SHOULD_AUTO_CONFIRM_ADMIN) {
+      const { error: resendError } = await supabase.auth.admin.resend({
+        type: "signup",
+        email: DEFAULT_ADMIN_EMAIL
+      });
+
+      if (resendError) {
+        console.warn(
+          `Default admin account requires email verification but delivery failed: ${resendError.message}`
+        );
+      } else {
+        console.log(`Sent confirmation email to ${DEFAULT_ADMIN_EMAIL}. Complete verification to enable login.`);
+      }
+    }
   }
 
   if (!userId) {
