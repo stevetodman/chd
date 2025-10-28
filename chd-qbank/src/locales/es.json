@@ -15,6 +15,7 @@
   "nav.review": "Repasar",
   "nav.games.murmurs": "Soplos",
   "nav.games.cxr": "Coincidencia de CXR",
+  "nav.games.ekg": "Lee el EKG",
   "nav.leaderboard": "Clasificación",
   "nav.profile": "Perfil",
   "nav.login": "Iniciar sesión",
@@ -98,5 +99,14 @@
   "admin.settings.languageDescription": "Idioma actual: {language}",
   "admin.settings.saving": "Guardando…",
   "admin.settings.save": "Guardar configuración",
-  "admin.settings.resetLeaderboard": "Restablecer la clasificación histórica"
+  "admin.settings.resetLeaderboard": "Restablecer la clasificación histórica",
+  "games.index.heading": "Juegos de aprendizaje",
+  "games.index.description": "Refuerza patrones de alto rendimiento con minijuegos enfocados junto con tu práctica del banco de preguntas.",
+  "games.index.open": "Abrir juego",
+  "games.index.cards.murmurs.title": "Adivina el soplo",
+  "games.index.cards.murmurs.description": "Relaciona hallazgos de auscultación clásicos con la lesión correcta tras escuchar clips reales.",
+  "games.index.cards.cxr.title": "Coincidencia de CXR",
+  "games.index.cards.cxr.description": "Coloca etiquetas sobre radiografías de cardiopatías congénitas para reforzar patrones de imagen.",
+  "games.index.cards.ekg.title": "Lee el EKG",
+  "games.index.cards.ekg.description": "Practica identificar arritmias y trastornos de conducción característicos en trazados de 12 derivaciones."
 }

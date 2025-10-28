@@ -364,6 +364,37 @@ create table if not exists cxr_attempts (
   created_at timestamptz not null default now()
 );
 
+create table if not exists ekg_items (
+  id uuid primary key default gen_random_uuid(),
+  slug text unique,
+  image_url text not null,
+  prompt_md text,
+  explanation_md text,
+  rhythm text,
+  status item_status not null default 'published',
+  updated_by uuid references app_users(id),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists ekg_options (
+  id uuid primary key default gen_random_uuid(),
+  item_id uuid not null references ekg_items(id) on delete cascade,
+  label text not null,
+  text_md text not null,
+  is_correct boolean not null default false,
+  unique (item_id, label)
+);
+
+create table if not exists ekg_attempts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references app_users(id) on delete cascade,
+  item_id uuid not null references ekg_items(id) on delete cascade,
+  option_id uuid not null references ekg_options(id) on delete restrict,
+  is_correct boolean not null,
+  ms_to_answer int check (ms_to_answer between 0 and 600000),
+  created_at timestamptz not null default now()
+);
+
 alter table app_users enable row level security;
 alter table idempotency_keys enable row level security;
 alter table app_settings enable row level security;
@@ -382,6 +413,9 @@ alter table murmur_attempts enable row level security;
 alter table cxr_items enable row level security;
 alter table cxr_labels enable row level security;
 alter table cxr_attempts enable row level security;
+alter table ekg_items enable row level security;
+alter table ekg_options enable row level security;
+alter table ekg_attempts enable row level security;
 
 create or replace function is_admin() returns boolean
 language sql stable as $$
@@ -548,6 +582,30 @@ for insert with check (auth.uid()=user_id);
 create policy "cxr attempts read self" on cxr_attempts
 for select using (auth.uid()=user_id or is_admin());
 
+create policy "ekg items read published" on ekg_items
+for select using ( ((status='published' and auth.role()='authenticated') or is_admin()) );
+create policy "ekg items write admin" on ekg_items
+for all using (is_admin()) with check (is_admin());
+create policy "ekg options read" on ekg_options
+for select using (
+  is_admin()
+  or (
+    auth.role()='authenticated'
+    and exists (
+      select 1
+      from ekg_items ei
+      where ei.id = ekg_options.item_id
+        and ei.status = 'published'
+    )
+  )
+);
+create policy "ekg options write admin" on ekg_options
+for all using (is_admin()) with check (is_admin());
+create policy "ekg attempts insert self" on ekg_attempts
+for insert with check (auth.uid()=user_id);
+create policy "ekg attempts read self" on ekg_attempts
+for select using (auth.uid()=user_id or is_admin());
+
 create or replace function handle_new_user()
 returns trigger language plpgsql security definer as $$
 begin
@@ -584,6 +642,8 @@ drop trigger if exists trg_murmur_updated on murmur_items;
 create trigger trg_murmur_updated before update on murmur_items for each row execute function set_updated_at();
 drop trigger if exists trg_cxr_updated on cxr_items;
 create trigger trg_cxr_updated before update on cxr_items for each row execute function set_updated_at();
+drop trigger if exists trg_ekg_updated on ekg_items;
+create trigger trg_ekg_updated before update on ekg_items for each row execute function set_updated_at();
 
 create or replace function sync_public_alias() returns trigger language plpgsql as $$
 begin
@@ -1135,6 +1195,10 @@ begin
     select exists(
       select 1 from cxr_attempts ca where ca.id = source_id and ca.user_id = v_user and ca.is_correct
     ) into v_is_valid;
+  elsif source = 'ekg_attempt' then
+    select exists(
+      select 1 from ekg_attempts ea where ea.id = source_id and ea.user_id = v_user and ea.is_correct
+    ) into v_is_valid;
   else
     raise exception 'unsupported point source %', source;
   end if;
@@ -1197,12 +1261,14 @@ begin
         where rp.points > 0
       ), 0) +
       (select count(*) from murmur_attempts where user_id = v_user and is_correct and created_at >= v_week_start) +
-      (select count(*) from cxr_attempts where user_id = v_user and is_correct and created_at >= v_week_start)
+      (select count(*) from cxr_attempts where user_id = v_user and is_correct and created_at >= v_week_start) +
+      (select count(*) from ekg_attempts where user_id = v_user and is_correct and created_at >= v_week_start)
     )::bigint,
     (
       (select count(*) from responses where user_id = v_user and is_correct) +
       (select count(*) from murmur_attempts where user_id = v_user and is_correct) +
-      (select count(*) from cxr_attempts where user_id = v_user and is_correct)
+      (select count(*) from cxr_attempts where user_id = v_user and is_correct) +
+      (select count(*) from ekg_attempts where user_id = v_user and is_correct)
     )::bigint;
 end;
 $$;

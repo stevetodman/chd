@@ -1,6 +1,6 @@
 # CHD QBank application
 
-The CHD QBank is a static-first React application that delivers a congenital heart disease question bank, telemetry-backed practice analytics, and teaching games. This package contains the web client, automation scripts, Supabase assets, and seed templates used to stand up development and production environments.
+The CHD QBank is a static-first React application that delivers a congenital heart disease question bank, telemetry-backed practice analytics, and teaching games. This package contains the web client, automation scripts, Supabase assets, and seed templates used to stand up development and production environments. Learning games currently include Guess the Murmur, CXR Match, and the new Read the EKG interpretation drills.
 
 ## Directory tour
 
