@@ -4,7 +4,7 @@ import { AuthApiError } from "@supabase/supabase-js";
 
 import { signIn } from "../lib/auth";
 import { Button } from "../components/ui/Button";
-import { getErrorMessage, normalizeErrorMessage } from "../lib/utils";
+import { getErrorMessage, normalizeEmailAddress, normalizeErrorMessage } from "../lib/utils";
 import { supabase } from "../lib/supabaseClient";
 import { useI18n } from "../i18n";
 
@@ -31,23 +31,30 @@ export default function Login() {
     event.preventDefault();
     setResetError(null);
     setResetMessage(null);
-    if (!resetEmail) return;
+
+    const normalizedEmail = normalizeEmailAddress(resetEmail);
+    if (!normalizedEmail) {
+      setResetError(
+        t("auth.login.emailRequired", { defaultValue: "Enter the email linked to your account." })
+      );
+      return;
+    }
 
     setResetSending(true);
     try {
       const redirectTo =
         typeof window !== "undefined"
-          ? `${window.location.origin}/reset-password?email=${encodeURIComponent(resetEmail)}`
+          ? `${window.location.origin}/reset-password?email=${encodeURIComponent(normalizedEmail)}`
           : undefined;
       const { error: resetErr } = await supabase.auth.resetPasswordForEmail(
-        resetEmail,
+        normalizedEmail,
         redirectTo ? { redirectTo } : undefined
       );
       if (resetErr) throw resetErr;
       setResetMessage(
         t("auth.login.resetSuccess", {
           defaultValue: "Password reset email sent to {email}. Check your inbox to continue.",
-          email: resetEmail
+          email: normalizedEmail
         })
       );
       setResetEmail("");
@@ -94,9 +101,18 @@ export default function Login() {
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
+
+    const normalizedEmail = normalizeEmailAddress(email);
+    if (!normalizedEmail) {
+      setError(
+        t("auth.login.emailRequired", { defaultValue: "Enter the email linked to your account." })
+      );
+      return;
+    }
+
     setSigningIn(true);
     try {
-      await signIn(email, password);
+      await signIn(normalizedEmail, password);
       navigate("/dashboard");
     } catch (err) {
       const fallback = t("auth.login.signInError", { defaultValue: "Unable to sign in" });

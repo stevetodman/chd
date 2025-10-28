@@ -7,7 +7,7 @@ import { Button } from "../../components/ui/Button";
 import PageState from "../../components/PageState";
 import { supabase } from "../../lib/supabaseClient";
 import { useSessionStore } from "../../lib/auth";
-import { getErrorMessage, normalizeErrorMessage } from "../../lib/utils";
+import { getErrorMessage, normalizeEmailAddress, normalizeErrorMessage } from "../../lib/utils";
 import { useFeatureFlagsStore } from "../../store/featureFlags";
 
 type PreferenceToggleProps = {
@@ -120,7 +120,8 @@ export default function AliasSettings() {
   };
 
   const sendPasswordReset = async () => {
-    if (!session?.user?.email) {
+    const normalizedEmail = session?.user?.email ? normalizeEmailAddress(session.user.email) : "";
+    if (!normalizedEmail) {
       setResetError("We couldn't find your account email. Try signing out and back in.");
       return;
     }
@@ -131,10 +132,10 @@ export default function AliasSettings() {
 
     const redirectTo =
       typeof window !== "undefined"
-        ? `${window.location.origin}/reset-password?email=${encodeURIComponent(session.user.email)}`
+        ? `${window.location.origin}/reset-password?email=${encodeURIComponent(normalizedEmail)}`
         : undefined;
     const { error: resetErr } = await supabase.auth.resetPasswordForEmail(
-      session.user.email,
+      normalizedEmail,
       redirectTo ? { redirectTo } : undefined
     );
 
@@ -155,7 +156,7 @@ export default function AliasSettings() {
         setResetError(getErrorMessage(resetErr, fallback));
       }
     } else {
-      setResetMessage(`Password reset email sent to ${session.user.email}. Check your inbox to continue.`);
+      setResetMessage(`Password reset email sent to ${normalizedEmail}. Check your inbox to continue.`);
     }
 
     setResetSending(false);

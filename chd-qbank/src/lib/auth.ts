@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient";
+import { normalizeEmailAddress } from "./utils";
 import { create } from "zustand";
 
 interface SessionState {
@@ -21,7 +22,7 @@ export const useSessionStore = create<SessionState>((set) => ({
 
 export async function signIn(email: string, password: string) {
   // Supabase email/password auth (RLS enforced on data tables).
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email: normalizeEmailAddress(email), password });
   if (error) throw error;
   useSessionStore.getState().setSession(data.session);
   return data.session;

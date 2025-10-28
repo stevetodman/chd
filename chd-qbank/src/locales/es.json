@@ -47,6 +47,7 @@
   "auth.login.resetErrorFallback": "No se pudo enviar el correo de restablecimiento",
   "auth.login.resetRateLimited": "Estás solicitando correos de restablecimiento demasiado rápido. Espera un momento e inténtalo de nuevo.",
   "auth.login.resetServiceUnavailable": "El restablecimiento de contraseña no está disponible temporalmente. Inténtalo en unos minutos.",
+  "auth.login.emailRequired": "Ingresa el correo asociado a tu cuenta.",
   "auth.login.invitePrompt": "¿Necesitas una invitación?",
   "auth.login.inviteLink": "Regístrate",
   "auth.login.inviteNote": "Los administradores emiten los códigos de invitación; contacta a tu coordinador para obtener credenciales antes de completar el formulario de registro.",

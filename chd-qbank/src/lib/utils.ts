@@ -95,3 +95,24 @@ export function normalizeErrorMessage(error: unknown): string | null {
   const message = extractErrorMessage(error);
   return message ? message.toLowerCase() : null;
 }
+
+/**
+ * Canonicalize an email address for authentication and identity comparisons.
+ *
+ * Supabase treats email addresses as unique identifiers, but end users often
+ * paste values that include stray whitespace, zero-width characters, or mixed
+ * casing. Normalizing those inputs prevents accidental duplicate accounts and
+ * avoids confusing “invalid login” errors when attempting password recovery.
+ *
+ * @param email - Raw email address provided by the user.
+ * @returns Sanitized, lowercased email text with extraneous characters removed.
+ */
+export function normalizeEmailAddress(email: string): string {
+  if (!email) return "";
+
+  return email
+    .normalize("NFKC")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/\s+/g, "")
+    .toLowerCase();
+}

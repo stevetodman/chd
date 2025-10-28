@@ -47,6 +47,7 @@
   "auth.login.resetErrorFallback": "Unable to send password reset email",
   "auth.login.resetRateLimited": "You're requesting password emails too quickly. Wait a moment and try again.",
   "auth.login.resetServiceUnavailable": "Password reset is temporarily unavailable. Try again in a few minutes.",
+  "auth.login.emailRequired": "Enter the email linked to your account.",
   "auth.login.invitePrompt": "Need an invite?",
   "auth.login.inviteLink": "Sign up",
   "auth.login.inviteNote": "Invite codes are issued by administrators—reach out to your program lead for the latest credentials before submitting the signup form.",

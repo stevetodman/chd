@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient";
+import { normalizeEmailAddress } from "./utils";
 
 type SignupResponse =
   | { ok: true; user: { id: string; email: string }; message?: string }
@@ -18,7 +19,7 @@ export class SignupServiceUnavailableError extends Error {
 
 export async function signUpWithInvite(email: string, password: string, code: string, alias?: string) {
   const { data, error } = await supabase.functions.invoke<SignupResponse>("signup-with-code", {
-    body: { email, password, invite_code: code, alias },
+    body: { email: normalizeEmailAddress(email), password, invite_code: code, alias },
     headers: { "Idempotency-Key": crypto.randomUUID() }
   });
 
