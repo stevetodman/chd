@@ -54,7 +54,9 @@ export default function Layout() {
     };
   }, [session, checkedAdminFor]);
 
-  const showMaintenance = !!session && maintenanceMode && !isAdmin;
+  const checkingAdmin = !!session && checkedAdminFor !== session?.user.id;
+  const showMaintenance =
+    !!session && maintenanceMode && !isAdmin && !checkingAdmin;
 
   return (
     <div className="min-h-screen bg-neutral-50">
