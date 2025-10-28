@@ -50,14 +50,14 @@ function LeaderboardGuard() {
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { session, loading, initialized } = useSessionStore();
+  if (session) return children;
   if (loading || !initialized)
     return (
       <div className="p-6">
         <PageState title="Signing you in" description="Hold tight while we verify your account." fullHeight />
       </div>
     );
-  if (!session) return <Navigate to="/login" replace />;
-  return children;
+  return <Navigate to="/login" replace />;
 }
 
 function RequireAdmin({ children }: { children: JSX.Element }) {
