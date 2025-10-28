@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent, SyntheticEvent } from "react";
+import type { PostgrestError } from "@supabase/supabase-js";
 import ReactMarkdown from "react-markdown";
 import { useLocation } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
@@ -16,6 +17,24 @@ import {
 } from "../../games/cxr/geom";
 
 const DEFAULT_CXR_ALT_TEXT = "Chest radiograph for the congenital heart disease lesion matching game.";
+
+const isPermissionDeniedError = (error: PostgrestError | null): boolean => {
+  if (!error) return false;
+  if (error.code === "PGRST301") {
+    return true;
+  }
+  return /permission denied/i.test(error.message ?? "");
+};
+
+const describeFetchError = (error: PostgrestError | null): string => {
+  if (!error) {
+    return "We couldn't load radiographs right now. Please try again.";
+  }
+  if (isPermissionDeniedError(error)) {
+    return "We couldn't load radiographs for your account yet. Please reach out to your administrator for access.";
+  }
+  return "We couldn't load radiographs right now. Please try again.";
+};
 
 interface Label {
   id: string;
@@ -83,7 +102,7 @@ export default function CxrMatch() {
       .limit(20)
       .then(({ data, error: fetchError }) => {
         if (fetchError) {
-          setError(fetchError.message);
+          setError(describeFetchError(fetchError));
           setItems([]);
           return;
         }
