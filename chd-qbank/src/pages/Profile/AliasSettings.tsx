@@ -1,10 +1,13 @@
 import { FormEvent, useEffect, useState } from "react";
 import classNames from "classnames";
+import { AuthApiError } from "@supabase/supabase-js";
+
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import PageState from "../../components/PageState";
 import { supabase } from "../../lib/supabaseClient";
 import { useSessionStore } from "../../lib/auth";
+import { getErrorMessage, normalizeErrorMessage } from "../../lib/utils";
 import { useFeatureFlagsStore } from "../../store/featureFlags";
 
 type PreferenceToggleProps = {
@@ -130,10 +133,27 @@ export default function AliasSettings() {
       typeof window !== "undefined"
         ? `${window.location.origin}/reset-password?email=${encodeURIComponent(session.user.email)}`
         : undefined;
-    const { error: resetErr } = await supabase.auth.resetPasswordForEmail(session.user.email, redirectTo ? { redirectTo } : undefined);
+    const { error: resetErr } = await supabase.auth.resetPasswordForEmail(
+      session.user.email,
+      redirectTo ? { redirectTo } : undefined
+    );
 
     if (resetErr) {
-      setResetError(resetErr.message);
+      const fallback = "Unable to send password reset email. Try again later.";
+      const normalized = normalizeErrorMessage(resetErr);
+
+      if (
+        resetErr instanceof AuthApiError &&
+        (resetErr.status === 429 || normalized?.includes("rate limit") || normalized?.includes("too many requests"))
+      ) {
+        setResetError("You're requesting password emails too quickly. Wait a moment and try again.");
+      } else if (resetErr instanceof AuthApiError && resetErr.status >= 500) {
+        setResetError("Password reset is temporarily unavailable. Try again in a few minutes.");
+      } else if (normalized?.includes("failed to fetch") || normalized?.includes("network")) {
+        setResetError("Password reset is temporarily unavailable. Try again in a few minutes.");
+      } else {
+        setResetError(getErrorMessage(resetErr, fallback));
+      }
     } else {
       setResetMessage(`Password reset email sent to ${session.user.email}. Check your inbox to continue.`);
     }

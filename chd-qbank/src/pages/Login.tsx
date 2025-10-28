@@ -1,8 +1,10 @@
 import { FormEvent, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { AuthApiError } from "@supabase/supabase-js";
+
 import { signIn } from "../lib/auth";
 import { Button } from "../components/ui/Button";
-import { getErrorMessage } from "../lib/utils";
+import { getErrorMessage, normalizeErrorMessage } from "../lib/utils";
 import { supabase } from "../lib/supabaseClient";
 import { useI18n } from "../i18n";
 
@@ -37,7 +39,10 @@ export default function Login() {
         typeof window !== "undefined"
           ? `${window.location.origin}/reset-password?email=${encodeURIComponent(resetEmail)}`
           : undefined;
-      const { error: resetErr } = await supabase.auth.resetPasswordForEmail(resetEmail, redirectTo ? { redirectTo } : undefined);
+      const { error: resetErr } = await supabase.auth.resetPasswordForEmail(
+        resetEmail,
+        redirectTo ? { redirectTo } : undefined
+      );
       if (resetErr) throw resetErr;
       setResetMessage(
         t("auth.login.resetSuccess", {
@@ -47,12 +52,40 @@ export default function Login() {
       );
       setResetEmail("");
     } catch (err) {
-      setResetError(
-        getErrorMessage(
-          err,
-          t("auth.login.resetErrorFallback", { defaultValue: "Unable to send password reset email" })
-        )
-      );
+      const fallback = t("auth.login.resetErrorFallback", { defaultValue: "Unable to send password reset email" });
+      const normalized = normalizeErrorMessage(err);
+
+      if (
+        err instanceof AuthApiError &&
+        (err.status === 429 || normalized?.includes("rate limit") || normalized?.includes("too many requests"))
+      ) {
+        setResetError(
+          t("auth.login.resetRateLimited", {
+            defaultValue: "You're requesting password emails too quickly. Wait a moment and try again."
+          })
+        );
+        return;
+      }
+
+      if (err instanceof AuthApiError && err.status >= 500) {
+        setResetError(
+          t("auth.login.resetServiceUnavailable", {
+            defaultValue: "Password reset is temporarily unavailable. Try again in a few minutes."
+          })
+        );
+        return;
+      }
+
+      if (normalized?.includes("failed to fetch") || normalized?.includes("network")) {
+        setResetError(
+          t("auth.login.resetServiceUnavailable", {
+            defaultValue: "Password reset is temporarily unavailable. Try again in a few minutes."
+          })
+        );
+        return;
+      }
+
+      setResetError(getErrorMessage(err, fallback));
     } finally {
       setResetSending(false);
     }
@@ -66,7 +99,58 @@ export default function Login() {
       await signIn(email, password);
       navigate("/dashboard");
     } catch (err) {
-      setError(getErrorMessage(err, t("auth.login.signInError", { defaultValue: "Unable to sign in" })));
+      const fallback = t("auth.login.signInError", { defaultValue: "Unable to sign in" });
+      const normalized = normalizeErrorMessage(err);
+
+      if (
+        err instanceof AuthApiError &&
+        (err.status === 429 || normalized?.includes("rate limit") || normalized?.includes("too many requests"))
+      ) {
+        setError(
+          t("auth.login.rateLimited", {
+            defaultValue: "Too many sign-in attempts. Wait a moment and try again."
+          })
+        );
+        return;
+      }
+
+      if (err instanceof AuthApiError && err.status >= 500) {
+        setError(
+          t("auth.login.serviceUnavailable", {
+            defaultValue: "Sign in is temporarily unavailable. Try again in a few minutes."
+          })
+        );
+        return;
+      }
+
+      if (normalized?.includes("invalid login credentials") || normalized?.includes("invalid email") || normalized?.includes("invalid password")) {
+        setError(
+          t("auth.login.invalidCredentials", {
+            defaultValue: "Incorrect email or password. Try again or reset your password."
+          })
+        );
+        return;
+      }
+
+      if (normalized?.includes("email not confirmed") || normalized?.includes("email has not been confirmed") || normalized?.includes("confirm your email")) {
+        setError(
+          t("auth.login.emailNotConfirmed", {
+            defaultValue: "Confirm your email from the message we sent before signing in."
+          })
+        );
+        return;
+      }
+
+      if (normalized?.includes("failed to fetch") || normalized?.includes("network")) {
+        setError(
+          t("auth.login.serviceUnavailable", {
+            defaultValue: "Sign in is temporarily unavailable. Try again in a few minutes."
+          })
+        );
+        return;
+      }
+
+      setError(getErrorMessage(err, fallback));
     } finally {
       setSigningIn(false);
     }
