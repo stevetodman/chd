@@ -1,4 +1,8 @@
 {
+  "framework": "vite",
+  "installCommand": "npm install",
+  "buildCommand": "npm --prefix chd-qbank run build",
+  "outputDirectory": "chd-qbank/dist",
   "headers": [
     {
       "source": "/(.*)",
