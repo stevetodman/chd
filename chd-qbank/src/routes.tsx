@@ -7,6 +7,7 @@ import { useSettingsStore } from "./lib/settings";
 
 const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -95,6 +96,7 @@ export function AppRoutes() {
       children: [
         { path: "/login", element: <Login /> },
         { path: "/signup", element: <Signup /> },
+        { path: "/reset-password", element: <ResetPassword /> },
         { path: "/privacy", element: <Privacy /> },
         { path: "/terms", element: <Terms /> },
         {

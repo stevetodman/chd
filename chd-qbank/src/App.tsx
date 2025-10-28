@@ -7,7 +7,7 @@ import { getSession, useSessionStore } from "./lib/auth";
 import { useServiceWorkerUpdates } from "./hooks/useServiceWorkerUpdates";
 import { useI18n } from "./i18n";
 
-const PUBLIC_ROUTES = new Set(["/login", "/signup", "/privacy", "/terms"]);
+const PUBLIC_ROUTES = new Set(["/login", "/signup", "/reset-password", "/privacy", "/terms"]);
 
 export default function App() {
   const location = useLocation();
@@ -22,11 +22,34 @@ export default function App() {
 
   useEffect(() => {
     if (loading || !initialized) return;
+
+    if (typeof window !== "undefined") {
+      const rawHash = window.location.hash?.startsWith("#")
+        ? window.location.hash.slice(1)
+        : window.location.hash ?? "";
+      const rawSearch = window.location.search?.startsWith("?")
+        ? window.location.search.slice(1)
+        : window.location.search ?? "";
+
+      const hashParams = new URLSearchParams(rawHash);
+      const searchParams = new URLSearchParams(rawSearch);
+      const hashType = hashParams.get("type");
+      const searchType = searchParams.get("type");
+      const isRecoveryFlow = hashType === "recovery" || searchType === "recovery";
+
+      if (isRecoveryFlow && location.pathname !== "/reset-password") {
+        const nextSearch = rawSearch ? `?${rawSearch}` : "";
+        const nextHash = rawHash ? `#${rawHash}` : "";
+        navigate(`/reset-password${nextSearch}${nextHash}`, { replace: true });
+        return;
+      }
+    }
+
     const isPublicRoute = PUBLIC_ROUTES.has(location.pathname);
     if (!session && !isPublicRoute) {
       navigate("/login", { replace: true });
     }
-  }, [session, loading, initialized, location.pathname, navigate]);
+  }, [session, loading, initialized, location.pathname, location.search, location.hash, navigate]);
 
   return (
     <>

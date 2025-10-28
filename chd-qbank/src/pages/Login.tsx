@@ -18,6 +18,8 @@ export default function Login() {
   const [resetError, setResetError] = useState<string | null>(null);
   const [resetMessage, setResetMessage] = useState<string | null>(null);
   const [resetSending, setResetSending] = useState(false);
+  const resetToggleLabel = t("auth.login.resetToggle", { defaultValue: "Forgot your password?" });
+  const resetPanelId = "login-reset-panel";
 
   const handleTogglePanel = (panel: "reset") => {
     setActivePanel((current) => (current === panel ? null : panel));
@@ -31,7 +33,11 @@ export default function Login() {
 
     setResetSending(true);
     try {
-      const { error: resetErr } = await supabase.auth.resetPasswordForEmail(resetEmail);
+      const redirectTo =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/reset-password?email=${encodeURIComponent(resetEmail)}`
+          : undefined;
+      const { error: resetErr } = await supabase.auth.resetPasswordForEmail(resetEmail, redirectTo ? { redirectTo } : undefined);
       if (resetErr) throw resetErr;
       setResetMessage(
         t("auth.login.resetSuccess", {
@@ -106,12 +112,14 @@ export default function Login() {
             onClick={() => handleTogglePanel("reset")}
             className="flex w-full items-center justify-between text-left text-sm font-semibold text-brand-700"
             aria-expanded={activePanel === "reset"}
+            aria-controls={resetPanelId}
+            aria-label={resetToggleLabel}
           >
-            <span>{t("auth.login.resetToggle", { defaultValue: "Forgot your password?" })}</span>
+            <span>{resetToggleLabel}</span>
             <span aria-hidden="true">{activePanel === "reset" ? "−" : "+"}</span>
           </button>
           {activePanel === "reset" ? (
-            <form className="mt-3 space-y-3" onSubmit={handleSubmitPasswordReset}>
+            <form id={resetPanelId} className="mt-3 space-y-3" onSubmit={handleSubmitPasswordReset}>
               <p className="text-sm text-neutral-600">
                 {t("auth.login.resetDescription", {
                   defaultValue:

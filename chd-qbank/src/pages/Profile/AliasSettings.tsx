@@ -126,7 +126,11 @@ export default function AliasSettings() {
     setResetMessage(null);
     setResetError(null);
 
-    const { error: resetErr } = await supabase.auth.resetPasswordForEmail(session.user.email);
+    const redirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/reset-password?email=${encodeURIComponent(session.user.email)}`
+        : undefined;
+    const { error: resetErr } = await supabase.auth.resetPasswordForEmail(session.user.email, redirectTo ? { redirectTo } : undefined);
 
     if (resetErr) {
       setResetError(resetErr.message);

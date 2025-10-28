@@ -53,7 +53,12 @@ describe("login helpers", () => {
     await user.click(screen.getByRole("button", { name: /send reset link/i }));
 
     await waitFor(() => {
-      expect(supabaseMock.auth.resetPasswordForEmail).toHaveBeenCalledWith("user@example.com");
+      expect(supabaseMock.auth.resetPasswordForEmail).toHaveBeenCalledWith(
+        "user@example.com",
+        expect.objectContaining({
+          redirectTo: "http://localhost/reset-password?email=user%40example.com"
+        })
+      );
     });
 
     await screen.findByText(/password reset email sent/i);
