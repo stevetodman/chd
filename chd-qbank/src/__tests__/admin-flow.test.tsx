@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "../testing/render";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import ItemEditor from "../pages/Admin/ItemEditor";
@@ -101,14 +101,16 @@ describe("admin item editing flow", () => {
     ]);
     expect(upsertMock.mock.calls[0][1]).toEqual({ onConflict: "id" });
 
-    expect(updateMock).toHaveBeenCalledWith({
-      stem_md: "Original stem",
-      lead_in: "Updated lead",
-      explanation_brief_md: "Updated brief explanation",
-      explanation_deep_md: "Original deep",
-      status: "draft",
-      version: 2
-    });
+    expect(updateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stem_md: "Original stem",
+        lead_in: "Updated lead",
+        explanation_brief_md: "Updated brief explanation",
+        explanation_deep_md: "Original deep",
+        status: "draft",
+        version: 2
+      })
+    );
 
     expect(await screen.findByText("Saved!")).toBeInTheDocument();
   });

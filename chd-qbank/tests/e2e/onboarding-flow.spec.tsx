@@ -20,7 +20,7 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "../../src/testing/render";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Signup from "../../src/pages/Signup";
@@ -73,10 +73,12 @@ describe("onboarding signup flow", () => {
         email: "jane@example.com",
         password: "supersafe",
         invite_code: "ABC123",
-        desired_alias: "Swift-Swan-99"
+        alias: "Swift-Swan-99"
       },
       headers: { "Idempotency-Key": "idempotency-key-1" }
     });
+
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() => {
       expect(navigateMock).toHaveBeenCalledWith("/login");

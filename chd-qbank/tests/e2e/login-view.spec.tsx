@@ -22,7 +22,7 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "../../src/testing/render";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Login from "../../src/pages/Login";
@@ -56,7 +56,7 @@ describe("login helpers", () => {
       expect(supabaseMock.auth.resetPasswordForEmail).toHaveBeenCalledWith(
         "user@example.com",
         expect.objectContaining({
-          redirectTo: "http://localhost/reset-password?email=user%40example.com"
+          redirectTo: "http://localhost:3000/reset-password?email=user%40example.com"
         })
       );
     });

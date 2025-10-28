@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "../testing/render";
 import userEvent from "@testing-library/user-event";
 
 const { navigateMock, signInMock } = vi.hoisted(() => ({
@@ -17,12 +17,6 @@ vi.mock("react-router-dom", async () => {
 
 vi.mock("../lib/auth", () => ({
   signIn: signInMock
-}));
-
-vi.mock("../i18n", () => ({
-  useI18n: () => ({
-    t: (_key: string, options?: { defaultValue?: string }) => options?.defaultValue ?? _key
-  })
 }));
 
 import { MemoryRouter } from "react-router-dom";
