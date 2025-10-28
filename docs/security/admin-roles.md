@@ -5,7 +5,7 @@ Elevated privileges in CHD QBank are controlled through the `app_roles` bridge t
 ## Granting admin access
 
 1. Retrieve the user's UUID from Supabase (`Authentication → Users` or `select id, email from auth.users order by email;`).
-2. Connect to the project using the Supabase SQL editor, `psql`, or `supabase db remote psql`.
+2. Connect to the project using one of the options described in the [Supabase verification appendix](../ops/supabase-verification.md).
 3. Insert the mapping:
 
    ```sql
@@ -31,7 +31,7 @@ Elevated privileges in CHD QBank are controlled through the `app_roles` bridge t
 
 ## Auditing
 
-Run this query periodically to review current administrators:
+Run this query periodically to review current administrators (see the [verification appendix](../ops/supabase-verification.md) for connection guidance):
 
 ```sql
 select u.email, r.inserted_at

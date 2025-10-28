@@ -13,14 +13,16 @@ Use this index to find the authoritative guides for common tasks. Each section l
 ## Operations & releases
 - [`ops/release-runbook.md`](./ops/release-runbook.md) – Deployment checklist, seeding workflows, rollback steps, and monitoring.
 - [`ops/event-retention.md`](./ops/event-retention.md) – Supabase retention policies and cleanup automation.
+- [`ops/supabase-verification.md`](./ops/supabase-verification.md) – Connection options, environment variables, and safety switches shared across Supabase runbooks.
+- [`ops/supabase-credential-rotation.md`](./ops/supabase-credential-rotation.md) – Step-by-step process for rotating Supabase keys after exposure.
 
 ## Security & compliance
 - [`../SECURITY.md`](../SECURITY.md) – Vulnerability disclosure process and triage expectations.
 - [`security/admin-roles.md`](./security/admin-roles.md) – Role management procedures for Supabase.
+- [`documentation-review.md`](./documentation-review.md) – Ongoing documentation cleanup backlog and improvement ideas.
 
 ## Analytics & verification
 - [`analytics/heatmap.md`](./analytics/heatmap.md) – Materialized view overview and verification steps for analytics data.
-- [`documentation-review.md`](./documentation-review.md) – Ongoing documentation cleanup backlog and improvement ideas.
 
 ## Historical context
 - [`archive/README.md`](./archive/README.md) – Catalog of archived documents retained for reference.
