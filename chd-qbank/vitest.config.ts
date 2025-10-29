@@ -35,6 +35,7 @@ export default defineConfig({
       "src/**/*.{test,spec}.{js,jsx,ts,tsx}",
       "tests/**/*.{test,spec}.{js,jsx,ts,tsx}",
     ],
+    exclude: ["tests/e2e/**/*"],
     setupFiles: "./src/__tests__/setup.ts",
     coverage: coverageConfig,
   },
