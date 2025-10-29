@@ -67,11 +67,32 @@ function RequireAdmin({ children }: { children: JSX.Element }) {
   const [allowed, setAllowed] = useState<boolean | null>(null);
 
   useEffect(() => {
-    setAllowed(null);
-    if (!session) return;
+    let active = true;
+    const schedule = (value: boolean | null) => {
+      Promise.resolve().then(() => {
+        if (!active) return;
+        setAllowed(value);
+      });
+    };
+
+    schedule(null);
+    if (!session) {
+      return () => {
+        active = false;
+      };
+    }
+
     requireAdmin()
-      .then((isAdmin) => setAllowed(isAdmin))
-      .catch(() => setAllowed(false));
+      .then((isAdmin) => {
+        schedule(isAdmin);
+      })
+      .catch(() => {
+        schedule(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [session]);
 
   if (loading || !initialized)

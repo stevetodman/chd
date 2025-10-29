@@ -175,11 +175,22 @@ function logAnswerEvent(state: SupabaseMockState, response: ResponseRow, op: "in
   state.events.push(event);
 }
 
-function createQuestionsBuilder(state: SupabaseMockState) {
-  const builder = {
-    select: (_columns?: string, _options?: unknown) => builder,
-    eq: (_column: string, _value: unknown) => builder,
-    order: (_column: string, _options?: { ascending?: boolean }) => builder,
+type QuestionsQueryMock = {
+  select: () => QuestionsQueryMock;
+  eq: () => QuestionsQueryMock;
+  order: () => QuestionsQueryMock;
+  range: (from: number, to: number) => Promise<{
+    data: QuestionQueryRow[];
+    error: null;
+    count: number;
+  }>;
+};
+
+function createQuestionsBuilder(state: SupabaseMockState): QuestionsQueryMock {
+  const builder: QuestionsQueryMock = {
+    select: () => builder,
+    eq: () => builder,
+    order: () => builder,
     range: async (from: number, to: number) => ({
       data: state.questions.slice(from, to + 1),
       error: null,
@@ -189,14 +200,46 @@ function createQuestionsBuilder(state: SupabaseMockState) {
   return builder;
 }
 
-function createResponsesBuilder(state: SupabaseMockState) {
+type ResponseSelectResult = ReturnType<typeof mapResponseRecord>;
+
+type ResponseSelectChain = {
+  eq: (column: string, value: unknown) => ResponseSelectChain;
+  order: (column: string, options?: { ascending?: boolean }) => ResponseSelectChain;
+  limit: (count: number) => ResponseSelectChain;
+  then: <TResult1 = unknown, TResult2 = never>(
+    onfulfilled?:
+      | ((value: { data: ResponseSelectResult[]; error: null }) => TResult1 | PromiseLike<TResult1>)
+      | null,
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
+  ) => Promise<TResult1 | TResult2>;
+  maybeSingle: () => Promise<{ data: ResponseSelectResult | null; error: null }>;
+};
+
+type ResponsesQueryMock = {
+  select: () => ResponseSelectChain;
+  insert: (payload: Partial<ResponseRow> | Partial<ResponseRow>[]) => {
+    select: () => { single: () => Promise<{ data: ResponseSelectResult; error: null }> };
+  };
+  update: (payload: Partial<ResponseRow>) => {
+    eq: (
+      column: string,
+      value: string
+    ) => {
+      select: () => {
+        maybeSingle: () => Promise<{ data: ResponseSelectResult | null; error: Error | null }>;
+      };
+    };
+  };
+};
+
+function createResponsesBuilder(state: SupabaseMockState): ResponsesQueryMock {
   return {
-    select: (_columns?: string) => {
+    select: () => {
       const filters: Partial<ResponseRow> = {};
       let orderColumn: keyof ResponseRow | null = null;
       let ascending = true;
       let limitCount: number | null = null;
-      const chain: any = {
+      const chain = {
         eq(column: string, value: unknown) {
           filters[column as keyof ResponseRow] = value as ResponseRow[keyof ResponseRow];
           return chain;
@@ -212,7 +255,7 @@ function createResponsesBuilder(state: SupabaseMockState) {
         },
         then<TResult1 = unknown, TResult2 = never>(
           onfulfilled?:
-            | ((value: { data: ReturnType<typeof mapResponseRecord>[]; error: null }) =>
+            | ((value: { data: ResponseSelectResult[]; error: null }) =>
                 TResult1 | PromiseLike<TResult1>)
             | null,
           onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
@@ -223,8 +266,8 @@ function createResponsesBuilder(state: SupabaseMockState) {
             const limited = typeof limitCount === "number" ? ordered.slice(0, limitCount) : ordered;
             const result = {
               data: limited.map(mapResponseRecord),
-              error: null
-            } as const;
+              error: null as const
+            };
             if (!onfulfilled) {
               return Promise.resolve(result) as Promise<TResult1 | TResult2>;
             }
@@ -242,7 +285,7 @@ function createResponsesBuilder(state: SupabaseMockState) {
           const [record] = typeof limitCount === "number" ? ordered.slice(0, limitCount) : ordered;
           return { data: record ? mapResponseRecord(record) : null, error: null };
         }
-      };
+      } satisfies ResponseSelectChain;
       return chain;
     },
     insert: (payload: Partial<ResponseRow> | Partial<ResponseRow>[]) => {
@@ -293,14 +336,27 @@ function createResponsesBuilder(state: SupabaseMockState) {
   };
 }
 
-function createAnswerEventsBuilder(state: SupabaseMockState) {
+type AnswerEventSelectResult = ReturnType<typeof mapEventRecord>;
+
+type AnswerEventSelectChain = {
+  eq: (column: string, value: unknown) => AnswerEventSelectChain;
+  order: (column: string, options?: { ascending?: boolean }) => AnswerEventSelectChain;
+  limit: (count: number) => AnswerEventSelectChain;
+  maybeSingle: () => Promise<{ data: AnswerEventSelectResult | null; error: null }>;
+};
+
+type AnswerEventsQueryMock = {
+  select: () => AnswerEventSelectChain;
+};
+
+function createAnswerEventsBuilder(state: SupabaseMockState): AnswerEventsQueryMock {
   return {
-    select: (_columns?: string) => {
+    select: () => {
       const filters: Partial<AnswerEventRow> = {};
       let orderColumn: keyof AnswerEventRow | null = null;
       let ascending = true;
       let limitCount: number | null = null;
-      const chain: any = {
+      const chain = {
         eq(column: string, value: unknown) {
           filters[column as keyof AnswerEventRow] = value as AnswerEventRow[keyof AnswerEventRow];
           return chain;
@@ -320,7 +376,7 @@ function createAnswerEventsBuilder(state: SupabaseMockState) {
           const [record] = typeof limitCount === "number" ? ordered.slice(0, limitCount) : ordered;
           return { data: record ? mapEventRecord(record) : null, error: null };
         }
-      };
+      } satisfies AnswerEventSelectChain;
       return chain;
     }
   };

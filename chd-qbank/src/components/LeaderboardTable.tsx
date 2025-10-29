@@ -40,6 +40,11 @@ type TimeframeBounds = {
   endIso: string | null;
 };
 
+type RangeFilter<T> = {
+  gte: (column: string, value: string) => T;
+  lt: (column: string, value: string) => T;
+};
+
 const sortChoices: Array<{ value: SortOption; label: string }> = [
   { value: "points-desc", label: "Points (high to low)" },
   { value: "points-asc", label: "Points (low to high)" },
@@ -134,7 +139,7 @@ const formatRelativeTimeFromNow = (isoDate: string | null) => {
   return relativeTimeFormatter.format(Math.round(years), "year");
 };
 
-const applyTimeframeFilter = (query: any, column: string, bounds: TimeframeBounds) => {
+const applyTimeframeFilter = <T extends RangeFilter<T>>(query: T, column: string, bounds: TimeframeBounds): T => {
   let nextQuery = query;
   if (bounds.startIso) {
     nextQuery = nextQuery.gte(column, bounds.startIso);

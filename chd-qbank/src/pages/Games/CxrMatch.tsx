@@ -93,35 +93,56 @@ export default function CxrMatch() {
   const [displaySize, setDisplaySize] = useState<Size | null>(null);
 
   useEffect(() => {
-    setLoading(true);
-    setError(null);
+    let active = true;
+    const schedule = (callback: () => void) => {
+      Promise.resolve().then(() => {
+        if (!active) return;
+        callback();
+      });
+    };
+
+    schedule(() => {
+      setLoading(true);
+      setError(null);
+    });
+
     supabase
       .from("cxr_items")
       .select("id, image_url, caption_md, lesion, cxr_labels(id,label,is_correct,x,y,w,h)")
       .eq("status", "published")
       .limit(20)
       .then(({ data, error: fetchError }) => {
-        if (fetchError) {
-          setError(describeFetchError(fetchError));
-          setItems([]);
-          return;
-        }
-        const normalized: CxrItem[] = ((data ?? []) as CxrItemRow[]).map((item) => ({
-          id: item.id,
-          image_url: item.image_url,
-          caption_md: item.caption_md,
-          lesion: item.lesion,
-          labels: shuffle((item.cxr_labels ?? []).map((label) => ({
-            id: label.id,
-            label: label.label,
-            is_correct: Boolean(label.is_correct),
-            bbox: mapBoundingBox(label)
-          })))
-        }));
-        setItems(shuffle(normalized));
-        setIndex(0);
+        schedule(() => {
+          if (fetchError) {
+            setError(describeFetchError(fetchError));
+            setItems([]);
+            return;
+          }
+          const normalized: CxrItem[] = ((data ?? []) as CxrItemRow[]).map((item) => ({
+            id: item.id,
+            image_url: item.image_url,
+            caption_md: item.caption_md,
+            lesion: item.lesion,
+            labels: shuffle((item.cxr_labels ?? []).map((label) => ({
+              id: label.id,
+              label: label.label,
+              is_correct: Boolean(label.is_correct),
+              bbox: mapBoundingBox(label)
+            })))
+          }));
+          setItems(shuffle(normalized));
+          setIndex(0);
+        });
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        schedule(() => {
+          setLoading(false);
+        });
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const current = items[index];
@@ -141,7 +162,7 @@ export default function CxrMatch() {
       const plainCaption = current.caption_md
         .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
         .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-        .replace(/[\*_`>#~|-]/g, "")
+        .replace(/[-\\*_`>#~|]/g, "")
         .replace(/\s+/g, " ")
         .trim();
       if (plainCaption) {
@@ -208,7 +229,9 @@ export default function CxrMatch() {
   );
 
   useEffect(() => {
-    setIsDropActive(false);
+    Promise.resolve().then(() => {
+      setIsDropActive(false);
+    });
   }, [current?.id]);
 
   const handleDragStart = (event: DragEvent<HTMLButtonElement>, label: Label) => {
@@ -300,7 +323,9 @@ export default function CxrMatch() {
   }, []);
 
   useEffect(() => {
-    setNaturalSize(null);
+    Promise.resolve().then(() => {
+      setNaturalSize(null);
+    });
   }, [current?.image_url]);
 
   const showBoundingBoxes = useMemo(() => {

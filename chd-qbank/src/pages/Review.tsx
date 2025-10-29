@@ -68,7 +68,14 @@ export default function Review() {
   }, [session]);
 
   useEffect(() => {
-    void loadFlags();
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (cancelled) return;
+      void loadFlags();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [loadFlags]);
 
   const handleUnflag = useCallback(

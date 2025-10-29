@@ -25,8 +25,10 @@ export default function CollapsibleSection({
   const [open, setOpen] = useState(defaultOpen);
 
   useEffect(() => {
-    setOpen(defaultOpen);
-  }, [defaultOpen]);
+    if (open === defaultOpen) return;
+    const timeout = setTimeout(() => setOpen(defaultOpen), 0);
+    return () => clearTimeout(timeout);
+  }, [defaultOpen, open]);
 
   const handleToggle = () => {
     setOpen((prev) => {
@@ -44,6 +46,7 @@ export default function CollapsibleSection({
         onClick={handleToggle}
         aria-expanded={open}
         aria-controls={contentId}
+        aria-label={title}
         id={headingId}
       >
         <div className="flex flex-1 flex-col gap-1">

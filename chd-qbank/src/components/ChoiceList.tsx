@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Choice } from "../lib/constants";
 import { classNames } from "../lib/utils";
@@ -28,9 +28,12 @@ export default function ChoiceList({
     setStruck((prev) => ({ ...prev, [id]: !prev[id] }));
   }, []);
 
-  useEffect(() => {
-    setStruck({});
-  }, [choices]);
+  const struckForVisibleChoices = useMemo(() => {
+    const allowedIds = new Set(choices.map((choice) => choice.id));
+    return Object.fromEntries(
+      Object.entries(struck).filter(([id]) => allowedIds.has(id))
+    );
+  }, [choices, struck]);
 
   useEffect(() => {
     if (!autoFocusFirst || disabled) return;
@@ -81,12 +84,15 @@ export default function ChoiceList({
         const showAsCorrect = reveal && isCorrect;
         const showAsIncorrectSelection = reveal && isSelected && !isCorrect;
         const showAsCorrectSelection = reveal && isSelected && isCorrect;
-        const isStruck = struck[choice.id];
+        const isStruck = struckForVisibleChoices[choice.id];
+        const labelId = `choice-${choice.id}-label`;
+        const contentId = `choice-${choice.id}-content`;
         return (
           <button
             key={choice.id}
             type="button"
             aria-keyshortcuts={`${choice.label.toLowerCase()},${choice.label}`}
+            aria-labelledby={`${labelId} ${contentId}`}
             disabled={disabled}
             data-choice-id={choice.id}
             onClick={() => onSelect(choice)}
@@ -124,8 +130,10 @@ export default function ChoiceList({
             }
           >
             <div className="flex items-start gap-3">
-              <span className="font-semibold">{choice.label}.</span>
-              <div className="flex-1 space-y-1">
+              <span id={labelId} className="font-semibold">
+                {choice.label}.
+              </span>
+              <div id={contentId} className="flex-1 space-y-1">
                 <ReactMarkdown
                   remarkPlugins={markdownRemarkPlugins}
                   rehypePlugins={markdownRehypePlugins}

@@ -12,8 +12,7 @@ export default function Layout() {
   const loadSettings = useSettingsStore((s) => s.loadSettings);
   const maintenanceMode = useSettingsStore((s) => s.maintenanceMode);
   const { session, loading: sessionLoading, initialized } = useSessionStore();
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [checkedAdminFor, setCheckedAdminFor] = useState<string | null>(null);
+  const [adminInfo, setAdminInfo] = useState<{ userId: string; isAdmin: boolean } | null>(null);
 
   useEffect(() => {
     if (sessionLoading || !initialized || !session) {
@@ -23,13 +22,12 @@ export default function Layout() {
   }, [loadSettings, session, sessionLoading, initialized]);
 
   useEffect(() => {
-    if (!session) {
-      setIsAdmin(false);
-      setCheckedAdminFor(null);
+    const sessionId = session?.user.id;
+    if (!sessionId) {
       return;
     }
 
-    if (checkedAdminFor === session.user.id) {
+    if (adminInfo?.userId === sessionId) {
       return;
     }
 
@@ -38,25 +36,21 @@ export default function Layout() {
     requireAdmin()
       .then((ok) => {
         if (cancelled) return;
-        setIsAdmin(ok);
+        setAdminInfo({ userId: sessionId, isAdmin: ok });
       })
       .catch(() => {
         if (cancelled) return;
-        setIsAdmin(false);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setCheckedAdminFor(session.user.id);
+        setAdminInfo({ userId: sessionId, isAdmin: false });
       });
 
     return () => {
       cancelled = true;
     };
-  }, [session, checkedAdminFor]);
+  }, [session, adminInfo?.userId]);
 
-  const checkingAdmin = !!session && checkedAdminFor !== session?.user.id;
-  const showMaintenance =
-    !!session && maintenanceMode && !isAdmin && !checkingAdmin;
+  const checkingAdmin = !!session && adminInfo?.userId !== session.user.id;
+  const isAdmin = session ? (adminInfo?.userId === session.user.id ? adminInfo.isAdmin : false) : false;
+  const showMaintenance = !!session && maintenanceMode && !isAdmin && !checkingAdmin;
 
   return (
     <div className="min-h-screen bg-neutral-50">

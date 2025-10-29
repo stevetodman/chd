@@ -594,15 +594,15 @@ export default function ItemEditor() {
 
   const contextPanelErrors = useMemo(
     () => (item ? getContextPanelErrors(item.context_panels) : []),
-    [item?.context_panels]
+    [item]
   );
   const labPanelErrors = useMemo(
     () => (item ? getLabPanelErrors(item.lab_panels) : []),
-    [item?.lab_panels]
+    [item]
   );
   const formulaPanelErrors = useMemo(
     () => (item ? getFormulaPanelErrors(item.formula_panels) : []),
-    [item?.formula_panels]
+    [item]
   );
   const previewPanels = useMemo(() => {
     if (!item) return [] as JSX.Element[];
@@ -665,7 +665,7 @@ export default function ItemEditor() {
         return null;
       })
       .filter((panel): panel is JSX.Element => panel !== null);
-  }, [item?.panel_sequence, item?.context_panels, item?.lab_panels, item?.formula_panels]);
+  }, [item]);
 
   if (loading) return <div>Loading item…</div>;
 

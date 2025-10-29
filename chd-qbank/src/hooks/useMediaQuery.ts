@@ -14,18 +14,34 @@ export function useMediaQuery(query: string) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const mediaQueryList = window.matchMedia(query);
-    const handleChange = (event: MediaQueryListEvent) => setMatches(event.matches);
+    let active = true;
+    const schedule = (value: boolean) => {
+      Promise.resolve().then(() => {
+        if (!active) return;
+        setMatches(value);
+      });
+    };
 
-    setMatches(mediaQueryList.matches);
+    const handleChange = (event: MediaQueryListEvent) => {
+      schedule(event.matches);
+    };
+
+    schedule(mediaQueryList.matches);
 
     if (typeof mediaQueryList.addEventListener === "function") {
       mediaQueryList.addEventListener("change", handleChange);
-      return () => mediaQueryList.removeEventListener("change", handleChange);
+      return () => {
+        active = false;
+        mediaQueryList.removeEventListener("change", handleChange);
+      };
     }
 
     // Safari < 14
     mediaQueryList.addListener(handleChange);
-    return () => mediaQueryList.removeListener(handleChange);
+    return () => {
+      active = false;
+      mediaQueryList.removeListener(handleChange);
+    };
   }, [query]);
 
   return matches;

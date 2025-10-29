@@ -8,32 +8,45 @@ export function useBadgeStatuses(userId: string | null) {
 
   useEffect(() => {
     let active = true;
+    const schedule = (callback: () => void) => {
+      Promise.resolve().then(() => {
+        if (!active) return;
+        callback();
+      });
+    };
 
     if (!userId) {
-      setBadges([]);
-      setLoading(false);
-      setError(null);
+      schedule(() => {
+        setBadges([]);
+        setLoading(false);
+        setError(null);
+      });
       return () => {
         active = false;
       };
     }
 
-    setLoading(true);
-    setError(null);
+    schedule(() => {
+      setLoading(true);
+      setError(null);
+    });
 
     fetchBadgeStatuses(userId)
       .then((badgeStatuses) => {
-        if (!active) return;
-        setBadges(badgeStatuses.filter((badge) => badge.earned));
+        schedule(() => {
+          setBadges(badgeStatuses.filter((badge) => badge.earned));
+        });
       })
       .catch(() => {
-        if (!active) return;
-        setBadges([]);
-        setError("We couldn't load your badges. Try again soon.");
+        schedule(() => {
+          setBadges([]);
+          setError("We couldn't load your badges. Try again soon.");
+        });
       })
       .finally(() => {
-        if (!active) return;
-        setLoading(false);
+        schedule(() => {
+          setLoading(false);
+        });
       });
 
     return () => {

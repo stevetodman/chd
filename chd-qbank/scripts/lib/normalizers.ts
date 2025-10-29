@@ -21,14 +21,21 @@ const difficultyMap: Record<string, "easy"|"med"|"hard"> = {
 const choiceKeyCandidates = ["choices", "options", "answers"];
 const answerKeyCandidates = ["answer", "key", "correct", "correctIndex", "correctLetter"];
 
-export function normalizeItem(src: any, filePath: string, QuestionSchema: z.ZodTypeAny): NormResult {
-  const orig = JSON.parse(JSON.stringify(src));
+type MutableQuestionLike = Partial<QuestionT> & Record<string, unknown>;
+type MutableChoice = Partial<QuestionT["choices"][number]> & Record<string, unknown>;
+
+export function normalizeItem(
+  src: unknown,
+  filePath: string,
+  QuestionSchema: z.ZodType<QuestionT>
+): NormResult {
+  const orig = JSON.parse(JSON.stringify(src)) as Record<string, unknown>;
   const changedKeys: string[] = [];
   const addedKeys: string[] = [];
   const warnings: string[] = [];
   const errors: string[] = [];
 
-  const out: any = { ...src };
+  const out: MutableQuestionLike = { ...(src as MutableQuestionLike) };
 
   // required top-levels
   if (!out.id) { out.id = path.basename(filePath).replace(/\.json$/i, ""); addedKeys.push("id"); }
@@ -37,32 +44,59 @@ export function normalizeItem(src: any, filePath: string, QuestionSchema: z.ZodT
   if (!out.explanation) { out.explanation = "TBD – add explanation"; addedKeys.push("explanation"); warnings.push("explanation missing -> placeholder"); }
 
   // choices
-  let choices = out.choices;
-  if (!choices) for (const k of choiceKeyCandidates) if (out[k]) { choices = out[k]; break; }
-  if (!Array.isArray(choices)) { choices = []; warnings.push("no choices found -> created empty choices"); }
+  let choicesCandidate: unknown = out.choices;
+  if (!choicesCandidate) {
+    for (const key of choiceKeyCandidates) {
+      if (key in out && out[key] != null) {
+        choicesCandidate = out[key];
+        break;
+      }
+    }
+  }
+
+  const rawChoices = Array.isArray(choicesCandidate) ? choicesCandidate : [];
+  if (!Array.isArray(choicesCandidate)) {
+    warnings.push("no choices found -> created empty choices");
+  }
 
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-  choices = choices.map((c: any, i: number) => {
-    const cc = { ...c };
-    if (!cc.id) cc.id = letters[i] ?? `C${i+1}`;
-    if (!cc.label) cc.label = letters[i] ?? String(i+1);
-    if (cc.text == null && cc.title != null) cc.text = cc.title;
-    if (cc.text == null && typeof c === "string") return { id: cc.id, label: cc.label, text: c as string };
-    return cc;
+  let choices: MutableChoice[] = rawChoices.map((choice, index) => {
+    if (typeof choice === "string") {
+      const id = letters[index] ?? `C${index + 1}`;
+      const label = letters[index] ?? String(index + 1);
+      return { id, label, text: choice } satisfies MutableChoice;
+    }
+
+    const draft: MutableChoice = { ...(choice as MutableChoice) };
+    if (!draft.id) draft.id = letters[index] ?? `C${index + 1}`;
+    if (!draft.label) draft.label = letters[index] ?? String(index + 1);
+    const titleValue = (choice as { title?: unknown }).title;
+    if (draft.text == null && typeof titleValue === "string") {
+      draft.text = titleValue;
+    }
+    return draft;
   });
 
-  if (!choices.some((c: any) => c.isCorrect === true)) {
+  if (!choices.some((choice) => choice.isCorrect === true)) {
     let correctFrom: string | number | undefined;
-    for (const k of answerKeyCandidates) if (out[k] != null) { correctFrom = out[k]; break; }
+    for (const key of answerKeyCandidates) {
+      if (out[key] != null) {
+        correctFrom = out[key] as string | number | undefined;
+        break;
+      }
+    }
     if (typeof correctFrom === "number" && choices[correctFrom]) {
-      choices = choices.map((c: any, i: number) => ({ ...c, isCorrect: i === correctFrom }));
+      choices = choices.map((choice, index) => ({ ...choice, isCorrect: index === correctFrom }));
     } else if (typeof correctFrom === "string") {
       const idxByLetter = letters.indexOf(correctFrom.toUpperCase());
       if (idxByLetter >= 0 && choices[idxByLetter]) {
-        choices = choices.map((c: any, i: number) => ({ ...c, isCorrect: i === idxByLetter }));
+        choices = choices.map((choice, index) => ({ ...choice, isCorrect: index === idxByLetter }));
       } else {
-        const ix = choices.findIndex((c: any) => (c.text ?? "").trim() === correctFrom.trim());
-        if (ix >= 0) choices = choices.map((c: any, i: number) => ({ ...c, isCorrect: i === ix }));
+        const normalizedFrom = correctFrom.trim();
+        const foundIndex = choices.findIndex((choice) => (choice.text ?? "").trim() === normalizedFrom);
+        if (foundIndex >= 0) {
+          choices = choices.map((choice, index) => ({ ...choice, isCorrect: index === foundIndex }));
+        }
       }
     }
   }
@@ -73,8 +107,8 @@ export function normalizeItem(src: any, filePath: string, QuestionSchema: z.ZodT
   if (!out.difficulty) out.difficulty = "med"; else out.difficulty = difficultyMap[String(out.difficulty).toLowerCase()] ?? "med";
   if (!Array.isArray(out.references)) out.references = out.references ? [String(out.references)] : [];
   if (!Array.isArray(out.mediaBundle)) {
-    const legacy = out.media ?? out.assets ?? [];
-    out.mediaBundle = Array.isArray(legacy) ? legacy : (legacy ? [legacy] : []);
+    const legacy = (out.media ?? out.assets) as unknown;
+    out.mediaBundle = Array.isArray(legacy) ? legacy : legacy ? [legacy] : [];
   }
 
   if (typeof out.offlineRequired !== "boolean") out.offlineRequired = false;
@@ -88,8 +122,8 @@ export function normalizeItem(src: any, filePath: string, QuestionSchema: z.ZodT
     for (const k of after) if (!before.has(k)) addedKeys.push(k);
     for (const k of before) if (!after.has(k)) warnings.push(`legacy key kept: ${k}`);
   } else {
-    ["objective","stem","explanation","difficulty"].forEach(k => {
-      if (JSON.stringify(orig[k]) !== JSON.stringify(out[k])) changedKeys.push(k);
+    ["objective","stem","explanation","difficulty"].forEach((key) => {
+      if (JSON.stringify(orig[key]) !== JSON.stringify(out[key])) changedKeys.push(key);
     });
   }
 

@@ -53,7 +53,9 @@ export default function Practice() {
   const [filtersSheetOpen, setFiltersSheetOpen] = useState(false);
 
   useEffect(() => {
-    setPendingFilters({ ...filters });
+    Promise.resolve().then(() => {
+      setPendingFilters({ ...filters });
+    });
   }, [filters]);
 
   useEffect(() => {
