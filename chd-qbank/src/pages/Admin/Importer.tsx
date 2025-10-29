@@ -417,6 +417,9 @@ export default function Importer() {
 }
 
 function validateRows(rows: CsvRow[]): RowValidation[] {
+  // Each CSV row maps directly to an on-screen validation entry. We rely on the
+  // reducer here so that we can accumulate issues while preserving the original
+  // zero-based index (used to map back to the spreadsheet row + header offset).
   return rows.reduce<RowValidation[]>((acc, row, index) => {
     const issues: string[] = [];
 

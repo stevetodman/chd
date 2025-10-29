@@ -8,6 +8,27 @@ Thanks for your interest in contributing! We want to make the process as smooth 
 - For significant changes, please discuss your proposal with the maintainers before starting work. Early feedback helps ensure your efforts align with roadmap priorities.
 - For documentation-only fixes, label your pull request accordingly so reviewers can tailor feedback.
 
+## Local Development Environment
+- Install [Node.js](https://nodejs.org/) version `20.19.0` or newer (the app is also tested against the latest 22.x releases).
+- Clone the repository and install dependencies from the workspace root:
+  ```bash
+  npm install
+  ```
+- Most application code lives in the [`chd-qbank/`](chd-qbank) workspace. Scripts and shared configuration are hoisted to the monorepo root.
+- Review [`ENV.md`](ENV.md) for information on environment variables and external services such as Supabase.
+
+### Useful commands
+All commands should be run from the repository root. Prefix commands with `npm run --workspace chd-qbank` when the script lives inside the workspace.
+
+| Task | Command |
+| ---- | ------- |
+| Start the development server | `npm run dev --workspace chd-qbank` |
+| Type-check the project | `npm run typecheck --workspace chd-qbank` |
+| Lint the codebase | `npm run lint --workspace chd-qbank` |
+| Run unit tests | `npm run test --workspace chd-qbank` |
+| Execute Playwright end-to-end tests | `npm run test:e2e --workspace chd-qbank` |
+| Build production assets | `npm run build --workspace chd-qbank` |
+
 ## Development Workflow
 1. Create a new branch for your contribution (e.g., `feature/analytics-refresh`, `docs/security-policy`).
 2. Make your changes with clear, incremental commits and descriptive messages. Favor small, reviewable diffs over monolithic updates.

@@ -714,6 +714,10 @@ export function usePracticeSession() {
 
   const sessionStats = useMemo<PracticeSessionStats>(() => {
     const values = Object.values(responses);
+
+    // Aggregate answer-level metadata (counts, accuracy, timing) in a single pass so
+    // we only loop over the responses collection once. This keeps the memoized
+    // computation inexpensive even when a session contains hundreds of questions.
     const base = values.reduce(
       (
         acc,
@@ -739,6 +743,10 @@ export function usePracticeSession() {
     let rollingStreak = 0;
     let lastAnsweredIndex = -1;
 
+    // Track the longest correct-answer streak with a single forward pass while also
+    // remembering the index of the most recently answered question. We reuse that
+    // marker in the subsequent loop to calculate the current streak without scanning
+    // questions that were never answered.
     for (let i = 0; i < questions.length; i += 1) {
       const question = questions[i];
       const response = responses[question.id];
@@ -752,6 +760,9 @@ export function usePracticeSession() {
       }
     }
 
+    // Walk backwards from the most recent answered question to compute the current
+    // streak. This avoids resetting `rollingStreak` and keeps the calculation easy to
+    // reason about when mixed correct/incorrect answers occur near the end.
     if (lastAnsweredIndex >= 0) {
       for (let i = lastAnsweredIndex; i >= 0; i -= 1) {
         const response = responses[questions[i].id];
