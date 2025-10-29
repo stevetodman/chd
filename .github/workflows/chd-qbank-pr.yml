@@ -1,19 +1,22 @@
 name: chd-qbank PR checks
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 on:
   pull_request:
+    branches: [ main ]
     paths:
       - 'chd-qbank/**'
+      - '.github/workflows/chd-qbank-pr.yml'
     paths-ignore:
       - '**/*.md'
       - 'docs/**'
 
 permissions:
   contents: read
+
+# cancel older runs on the same PR branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   install-lint-build:
