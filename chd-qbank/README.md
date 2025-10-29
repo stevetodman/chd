@@ -107,6 +107,70 @@ These defaults ensure fresh environments are navigable without additional setup.
 
 Keep documentation and seed templates updated whenever schemas or user flows change—automation scripts assume they stay in sync.
 
+## Deploying to Vercel
+
+### Prerequisites
+
+- Node.js 20.x (matches [`.nvmrc`](../.nvmrc) and Vercel’s runtime selection).
+- A Vercel account with access to the target project.
+- Supabase project credentials (anon + service role) and invite metadata so the build can connect after deployment.
+- Optional but recommended: [Vercel CLI](https://vercel.com/docs/cli) for local smoke tests.
+
+### Required environment variables
+
+Configure these variables in **Project Settings → Environment Variables** for the `Production`, `Preview`, and `Development` environments unless noted otherwise:
+
+| Name | Description | Scope |
+| --- | --- | --- |
+| `VITE_SUPABASE_URL` | Public Supabase project URL used by the client. | All environments |
+| `VITE_SUPABASE_ANON_KEY` | Public anon key for browser calls. | All environments |
+| `VITE_APP_NAME` | Display name surfaced in the UI header and metadata. | All environments |
+| `SUPABASE_URL` | Service-role Supabase URL for automation scripts (never exposed client-side). | Preview/Production builds that run seeding or cron helpers |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service-role key needed by the scripts triggered post-deploy. | Preview/Production builds that run seeding or cron helpers |
+| `INVITE_CODE` | Seed script invite code; set as needed when running manual seeding jobs. | Manual/temporary (do not persist in Vercel) |
+| `INVITE_EXPIRES` | Expiration date paired with the invite code. | Manual/temporary (do not persist in Vercel) |
+
+> ℹ️ Client-side variables must begin with `VITE_`. Do **not** store invite credentials permanently—supply them via the CLI only when running seeding commands.
+
+### Vercel project settings
+
+| Setting | Value | Notes |
+| --- | --- | --- |
+| **Root Directory** | `chd-qbank` | Ensures builds execute inside the workspace. |
+| **Build Command** | `npm run build` | Runs the Vite production build defined in [`package.json`](./package.json). |
+| **Output Directory** | `dist` | Matches Vite’s default output folder. |
+| **Install Command** | `npm install` | Installs workspaces and shared dependencies at the repo root. |
+| **Node.js Version** | `20` | Matches `.nvmrc`; set under **Project Settings → General → Node.js Version**. |
+
+### SPA routing rewrite
+
+Add a single-page application fallback so client-side routes resolve correctly:
+
+1. Open **Project Settings → Routing → Rewrites**.
+2. Add a rule where `Source` is `/*` and `Destination` is `/index.html`.
+3. Save changes and redeploy; Vercel will now serve the Vite bundle for deep links.
+
+Alternatively, commit the rule to `vercel.json` if you prefer infrastructure-as-code.
+
+### Local verification with Vercel CLI
+
+1. Install the CLI if needed: `npm install -g vercel`.
+2. From the repo root, authenticate once with `vercel login`.
+3. Run a production build locally to confirm settings: `vercel build --prod`.
+4. Preview the build output: `vercel deploy --prebuilt --prod`.
+
+This workflow uses your local `.env` values, so confirm they mirror the Vercel dashboard before deploying.
+
+### Common failure modes
+
+| Symptom | Likely cause | Remedy |
+| --- | --- | --- |
+| 404s on nested routes | SPA rewrite missing. | Add the `/* → /index.html` rewrite in Vercel settings or `vercel.json`, then redeploy. |
+| Build fails with `VITE_SUPABASE_URL is not defined` | Environment variables absent in Vercel. | Populate the required vars in **Project Settings → Environment Variables** and re-trigger the deploy. |
+| Runtime API calls return 401s/404s | Supabase anon key or URL mismatched between environments. | Re-issue the anon key in Supabase and update Vercel, or verify project-specific URLs. |
+| Seed scripts crash post-deploy | Service role credentials not available or invite variables persisted. | Provide `SUPABASE_SERVICE_ROLE_KEY` only where automation scripts run; avoid storing `INVITE_*` secrets permanently. |
+| CLI `vercel build` differs from hosted deploy | Using the wrong Node version locally. | Install Node 20 (`nvm install 20 && nvm use 20`) to match Vercel’s runtime. |
+
 ## QBank Tests
 
 Add new question items by placing JSON files under `content/questions/`. Each file should follow the schema defined in `src/schema/question.schema.ts` and include any media assets referenced in `public/media/`.
