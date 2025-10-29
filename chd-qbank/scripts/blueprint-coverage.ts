@@ -10,7 +10,26 @@ interface CliOptions {
 
 type StatusFilter = "published" | "draft" | "archived" | "all";
 
-type QuestionRecord = Record<string, any>;
+type QuestionRecord = Record<string, unknown> & {
+  status?: unknown;
+  metadata?: Record<string, unknown> | null;
+  learningObjectives?: unknown;
+  learning_objectives?: unknown;
+  learningObjective?: unknown;
+  learning_objective?: unknown;
+  objective?: unknown;
+  bloom?: unknown;
+  bloomLevel?: unknown;
+  bloom_level?: unknown;
+  topic?: unknown;
+  topicSlug?: unknown;
+  topic_slug?: unknown;
+  topics?: unknown;
+  tags?: unknown;
+  mediaBundle?: unknown;
+  media?: unknown;
+  assets?: unknown;
+};
 
 type CoverageRow = {
   learningObjective: string;
@@ -65,7 +84,7 @@ async function loadLocalQuestions(status: StatusFilter): Promise<QuestionRecord[
 
   try {
     await fs.access(contentDir);
-  } catch (error) {
+  } catch {
     return [];
   }
 

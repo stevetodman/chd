@@ -78,6 +78,150 @@ function resolveMessages(locale: string, fallbackLocale: string, messages: Messa
   ]);
 }
 
+function createTemplateFormatter(locale: string) {
+  function formatTemplate(template: string, values?: MessageValues): string {
+    const formatValue = (value: unknown): string => {
+      if (value === null || value === undefined) return "";
+      if (typeof value === "number") {
+        return new Intl.NumberFormat(locale).format(value);
+      }
+      if (value instanceof Date) {
+        return value.toLocaleString(locale);
+      }
+      return String(value);
+    };
+
+    const formatPlaceholder = (content: string): string => {
+      if (!content) {
+        return "";
+      }
+
+      const segments: string[] = [];
+      let depth = 0;
+      let segmentStart = 0;
+
+      for (let i = 0; i < content.length; i += 1) {
+        const character = content[i];
+        if (character === "{") {
+          depth += 1;
+        } else if (character === "}") {
+          depth = Math.max(depth - 1, 0);
+        } else if (character === "," && depth === 0) {
+          segments.push(content.slice(segmentStart, i).trim());
+          segmentStart = i + 1;
+        }
+      }
+      segments.push(content.slice(segmentStart).trim());
+
+      const [rawKey, type, ...rest] = segments;
+      const key = rawKey ?? "";
+      const value = values?.[key];
+
+      if (!type) {
+        return formatValue(value);
+      }
+
+      if (type === "number") {
+        const style = rest[0]?.trim();
+        const options: Intl.NumberFormatOptions = {};
+        if (style === "integer") {
+          options.maximumFractionDigits = 0;
+        }
+        const numericValue = typeof value === "number" ? value : Number(value ?? 0);
+        return new Intl.NumberFormat(locale, options).format(numericValue);
+      }
+
+      if (type === "plural") {
+        const pluralOptions = rest.join(",").trim();
+        if (typeof value !== "number") {
+          return "";
+        }
+        const optionsMap: Record<string, string> = {};
+        let optionIndex = 0;
+        while (optionIndex < pluralOptions.length) {
+          while (optionIndex < pluralOptions.length && /\s/.test(pluralOptions[optionIndex] ?? "")) {
+            optionIndex += 1;
+          }
+          let optionKey = "";
+          while (optionIndex < pluralOptions.length) {
+            const char = pluralOptions[optionIndex];
+            if (!char || /[\s{]/.test(char)) {
+              break;
+            }
+            optionKey += char;
+            optionIndex += 1;
+          }
+          while (optionIndex < pluralOptions.length && /\s/.test(pluralOptions[optionIndex] ?? "")) {
+            optionIndex += 1;
+          }
+          if (pluralOptions[optionIndex] !== "{") {
+            break;
+          }
+          optionIndex += 1; // skip "{"
+          let optionDepth = 1;
+          const bodyStart = optionIndex;
+          while (optionIndex < pluralOptions.length && optionDepth > 0) {
+            const char = pluralOptions[optionIndex];
+            if (char === "{") {
+              optionDepth += 1;
+            } else if (char === "}") {
+              optionDepth -= 1;
+            }
+            optionIndex += 1;
+          }
+          const body = pluralOptions.slice(bodyStart, optionIndex - 1);
+          optionsMap[optionKey] = body;
+        }
+
+        const pluralRule = new Intl.PluralRules(locale);
+        const category = pluralRule.select(value);
+        const selected = optionsMap[category] ?? optionsMap.other ?? "";
+        const formattedCount = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(value);
+        return formatTemplate(selected.replace(/#/g, formattedCount), values);
+      }
+
+      return formatValue(value);
+    };
+
+    let result = "";
+    let index = 0;
+
+    while (index < template.length) {
+      const openIndex = template.indexOf("{", index);
+      if (openIndex === -1) {
+        result += template.slice(index);
+        break;
+      }
+
+      result += template.slice(index, openIndex);
+      let depth = 1;
+      let cursor = openIndex + 1;
+
+      while (cursor < template.length && depth > 0) {
+        if (template[cursor] === "{") {
+          depth += 1;
+        } else if (template[cursor] === "}") {
+          depth -= 1;
+        }
+        cursor += 1;
+      }
+
+      if (depth !== 0) {
+        result += template.slice(openIndex);
+        break;
+      }
+
+      const placeholderContent = template.slice(openIndex + 1, cursor - 1);
+      result += formatPlaceholder(placeholderContent.trim());
+      index = cursor;
+    }
+
+    return result;
+  }
+
+  return formatTemplate;
+}
+
 export function I18nProvider({
   children,
   initialLocale = "en",
@@ -117,148 +261,7 @@ export function I18nProvider({
     [locale]
   );
 
-  const formatTemplate = useCallback(
-    (template: string, values?: MessageValues): string => {
-      const formatValue = (value: unknown): string => {
-        if (value === null || value === undefined) return "";
-        if (typeof value === "number") {
-          return formatNumber(value);
-        }
-        if (value instanceof Date) {
-          return value.toLocaleString(locale);
-        }
-        return String(value);
-      };
-
-      const formatPlaceholder = (content: string): string => {
-        if (!content) {
-          return "";
-        }
-
-        const segments: string[] = [];
-        let depth = 0;
-        let segmentStart = 0;
-
-        for (let i = 0; i < content.length; i += 1) {
-          const character = content[i];
-          if (character === "{") {
-            depth += 1;
-          } else if (character === "}") {
-            depth = Math.max(depth - 1, 0);
-          } else if (character === "," && depth === 0) {
-            segments.push(content.slice(segmentStart, i).trim());
-            segmentStart = i + 1;
-          }
-        }
-        segments.push(content.slice(segmentStart).trim());
-
-        const [rawKey, type, ...rest] = segments;
-        const key = rawKey ?? "";
-        const value = values?.[key];
-
-        if (!type) {
-          return formatValue(value);
-        }
-
-        if (type === "number") {
-          const style = rest[0]?.trim();
-          const options: Intl.NumberFormatOptions = {};
-          if (style === "integer") {
-            options.maximumFractionDigits = 0;
-          }
-          const numericValue = typeof value === "number" ? value : Number(value ?? 0);
-          return formatNumber(numericValue, options);
-        }
-
-        if (type === "plural") {
-          const pluralOptions = rest.join(",").trim();
-          if (typeof value !== "number") {
-            return "";
-          }
-          const optionsMap: Record<string, string> = {};
-          let optionIndex = 0;
-          while (optionIndex < pluralOptions.length) {
-            while (optionIndex < pluralOptions.length && /\s/.test(pluralOptions[optionIndex] ?? "")) {
-              optionIndex += 1;
-            }
-            let optionKey = "";
-            while (optionIndex < pluralOptions.length) {
-              const char = pluralOptions[optionIndex];
-              if (!char || /[\s{]/.test(char)) {
-                break;
-              }
-              optionKey += char;
-              optionIndex += 1;
-            }
-            while (optionIndex < pluralOptions.length && /\s/.test(pluralOptions[optionIndex] ?? "")) {
-              optionIndex += 1;
-            }
-            if (pluralOptions[optionIndex] !== "{") {
-              break;
-            }
-            optionIndex += 1; // skip "{"
-            let optionDepth = 1;
-            let bodyStart = optionIndex;
-            while (optionIndex < pluralOptions.length && optionDepth > 0) {
-              const char = pluralOptions[optionIndex];
-              if (char === "{") {
-                optionDepth += 1;
-              } else if (char === "}") {
-                optionDepth -= 1;
-              }
-              optionIndex += 1;
-            }
-            const body = pluralOptions.slice(bodyStart, optionIndex - 1);
-            optionsMap[optionKey] = body;
-          }
-
-          const pluralRule = new Intl.PluralRules(locale);
-          const category = pluralRule.select(value);
-          const selected = optionsMap[category] ?? optionsMap.other ?? "";
-          const formattedCount = formatNumber(value, { maximumFractionDigits: 0 });
-          return formatTemplate(selected.replace(/#/g, formattedCount), values);
-        }
-
-        return formatValue(value);
-      };
-
-      let result = "";
-      let index = 0;
-
-      while (index < template.length) {
-        const openIndex = template.indexOf("{", index);
-        if (openIndex === -1) {
-          result += template.slice(index);
-          break;
-        }
-
-        result += template.slice(index, openIndex);
-        let depth = 1;
-        let cursor = openIndex + 1;
-
-        while (cursor < template.length && depth > 0) {
-          if (template[cursor] === "{") {
-            depth += 1;
-          } else if (template[cursor] === "}") {
-            depth -= 1;
-          }
-          cursor += 1;
-        }
-
-        if (depth !== 0) {
-          result += template.slice(openIndex);
-          break;
-        }
-
-        const placeholderContent = template.slice(openIndex + 1, cursor - 1);
-        result += formatPlaceholder(placeholderContent.trim());
-        index = cursor;
-      }
-
-      return result;
-    },
-    [formatNumber, locale]
-  );
+  const formatTemplate = useMemo(() => createTemplateFormatter(locale), [locale]);
 
   const getMessage = useCallback(
     (id: string, defaultMessage?: string) => {

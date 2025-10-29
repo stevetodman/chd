@@ -228,7 +228,7 @@ async function handleNavigationRequest(request: Request): Promise<Response> {
     }
 
     return response;
-  } catch (error) {
+  } catch {
     const cache = await caches.open(APP_SHELL_CACHE);
     const cachedResponse = await cache.match("/index.html");
 

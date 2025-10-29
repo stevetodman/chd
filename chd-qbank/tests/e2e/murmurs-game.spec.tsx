@@ -2,14 +2,33 @@ let murmurItemsBuilder: ReturnType<typeof createMurmurItemsBuilder>;
 let murmurAttemptsBuilder: ReturnType<typeof createMurmurAttemptsBuilder>;
 let storageBuilder: ReturnType<typeof createStorageBuilder>;
 
+type MurmurItemsQueryResult = { data: unknown; error: unknown };
+
+type MurmurItemsBuilder = {
+  select: vi.Mock<MurmurItemsBuilder, [string?]>;
+  eq: vi.Mock<MurmurItemsBuilder, [string, unknown]>;
+  order: vi.Mock<MurmurItemsBuilder, [string, { ascending?: boolean }?]>;
+  limit: vi.Mock<Promise<MurmurItemsQueryResult>, [number, number?]>;
+};
+
+type MurmurAttemptsBuilder = {
+  insert: vi.Mock<MurmurAttemptsBuilder, [unknown]>;
+  select: vi.Mock<MurmurAttemptsBuilder, [string?]>;
+  single: vi.Mock<Promise<{ data: { id: string } | null; error: unknown }>, []>;
+};
+
+type StorageBuilder = {
+  createSignedUrl: vi.Mock<Promise<{ data: { signedUrl: string } | null; error: unknown }>, [string, number]>;
+};
+
 const supabaseState = vi.hoisted(() => ({
   from: vi.fn(),
   rpc: vi.fn(),
   storageFrom: vi.fn()
 }));
 
-function createMurmurItemsBuilder() {
-  const builder: any = {
+function createMurmurItemsBuilder(): MurmurItemsBuilder {
+  const builder: MurmurItemsBuilder = {
     select: vi.fn(),
     eq: vi.fn(),
     order: vi.fn(),
@@ -21,8 +40,8 @@ function createMurmurItemsBuilder() {
   return builder;
 }
 
-function createMurmurAttemptsBuilder() {
-  const builder: any = {
+function createMurmurAttemptsBuilder(): MurmurAttemptsBuilder {
+  const builder: MurmurAttemptsBuilder = {
     insert: vi.fn(),
     select: vi.fn(),
     single: vi.fn()
@@ -32,7 +51,7 @@ function createMurmurAttemptsBuilder() {
   return builder;
 }
 
-function createStorageBuilder() {
+function createStorageBuilder(): StorageBuilder {
   return {
     createSignedUrl: vi.fn()
   };

@@ -82,6 +82,8 @@ export default function ChoiceList({
         const showAsIncorrectSelection = reveal && isSelected && !isCorrect;
         const showAsCorrectSelection = reveal && isSelected && isCorrect;
         const isStruck = struck[choice.id];
+        const labelId = `choice-${choice.id}-label`;
+        const descriptionId = `choice-${choice.id}-text`;
         return (
           <button
             key={choice.id}
@@ -94,6 +96,7 @@ export default function ChoiceList({
               e.preventDefault();
               toggleStrike(choice.id);
             }}
+            aria-labelledby={`${labelId} ${descriptionId}`}
             ref={(element) => {
               if (index === 0) {
                 firstChoiceRef.current = element;
@@ -124,8 +127,10 @@ export default function ChoiceList({
             }
           >
             <div className="flex items-start gap-3">
-              <span className="font-semibold">{choice.label}.</span>
-              <div className="flex-1 space-y-1">
+              <span className="font-semibold" id={labelId}>
+                {choice.label}.
+              </span>
+              <div className="flex-1 space-y-1" id={descriptionId}>
                 <ReactMarkdown
                   remarkPlugins={markdownRemarkPlugins}
                   rehypePlugins={markdownRehypePlugins}

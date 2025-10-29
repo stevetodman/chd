@@ -45,6 +45,7 @@ export default function CollapsibleSection({
         aria-expanded={open}
         aria-controls={contentId}
         id={headingId}
+        aria-label={title}
       >
         <div className="flex flex-1 flex-col gap-1">
           <span>{title}</span>

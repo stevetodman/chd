@@ -28,7 +28,7 @@ function isEmpty(attr) {
   return false;
 }
 
-module.exports = {
+const rule = {
   meta: {
     type: "suggestion",
     docs: {
@@ -54,3 +54,5 @@ module.exports = {
     };
   }
 };
+
+export default rule;
