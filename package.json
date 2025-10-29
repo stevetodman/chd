@@ -12,5 +12,10 @@
   },
   "devDependencies": {
     "license-checker": "^25.0.1"
-  }
+  },
+  "engines": {
+    "node": ">=20.18.0 <21",
+    "npm": ">=10.8.2"
+  },
+  "packageManager": "npm@10.8.2"
 }

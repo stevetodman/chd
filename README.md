@@ -62,6 +62,21 @@ This monorepo packages everything required to operate the **CHD QBank**: a conge
 
 4. Visit [http://localhost:5173](http://localhost:5173) and sign in with an invited account. Initial content can be loaded by running the seeding scripts after your database is provisioned; provide invite codes via environment variables when invoking `npm run seed:invite`.
 
+## Vercel deployment
+
+The repository is configured for a single Vercel project that builds the `chd-qbank` workspace. Use the settings below so builds reuse the shared tooling and stay on the supported Node.js release.
+
+| Setting | Value |
+| --- | --- |
+| Root directory | `.` |
+| Framework preset | Vite |
+| Install command | `npm install --include-workspace-root` |
+| Build command | `npm run -w chd-qbank build` |
+| Output directory | `chd-qbank/dist` |
+| Node.js version | `20.18.0` |
+
+The `.vercelignore` file keeps documentation, scripts, and development-only artifacts out of the build context. Set the Supabase URL, anon key, and any optional analytics or feature flags as [project environment variables](https://vercel.com/docs/projects/environment-variables); the Vite client reads them at build time.
+
 ## Usage example
 
 ![Practice session and analytics overview](./docs/images/usage-dashboard.svg)

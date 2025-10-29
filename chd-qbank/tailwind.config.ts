@@ -3,7 +3,24 @@ import defaultTheme from "tailwindcss/defaultTheme";
 import typography from "@tailwindcss/typography";
 
 const config: Config = {
-  content: ["./index.html", "./src/**/*.{ts,tsx}"],
+  content: [
+    "./index.html",
+    "./src/**/*.{ts,tsx,mdx}",
+    "./content/**/*.{md,mdx}",
+    "./supabase/**/*.{ts,tsx}"
+  ],
+  darkMode: ["class"],
+  future: {
+    hoverOnlyWhenSupported: true
+  },
+  safelist: [
+    {
+      pattern: /(bg|text|border)-(brand|accent|success|warning|danger)-(50|100|200|300|400|500|600|700|800|900)/
+    },
+    {
+      pattern: /(bg|text|border)-surface-(base|subtle|muted|inverted)/
+    }
+  ],
   theme: {
     extend: {
       colors: {

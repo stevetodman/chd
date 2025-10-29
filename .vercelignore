@@ -1,0 +1,35 @@
+# Exclude repository metadata and local tooling
+.git/
+.github/
+.vscode/
+.idea/
+.husky/
+.DS_Store
+
+# Ignore documentation and scripts not required for the build
+CONTRIBUTING.md
+LICENSE
+NOTICE
+README.md
+RELEASE.md
+RUNBOOK.md
+SECURITY.md
+ENV.md
+docs/
+prompts/
+
+# Ignore development artifacts
+Dockerfile
+.dockerignore
+docker-compose.yml
+Makefile
+*.local
+node_modules/
+chd-qbank/node_modules/
+chd-qbank/playwright-report/
+chd-qbank/test-results/
+chd-qbank/coverage/
+
+# Ignore build outputs created locally
+chd-qbank/dist/
+
