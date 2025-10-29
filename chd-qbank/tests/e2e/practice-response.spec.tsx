@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "../../src/testing/render";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import Practice from "../../src/pages/Practice";
+import Practice from "../../src/pages/practice";
 import { useSessionStore } from "../../src/lib/auth";
 import type { HeatmapAggregateRow, ReliabilitySnapshot } from "../../src/lib/constants";
 import type { QuestionQueryRow } from "../../src/lib/practice";

@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { render, screen, waitFor, within } from "../testing/render";
 import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
-import Practice from "../pages/Practice";
+import Practice from "../pages/practice";
 import { useSessionStore } from "../lib/auth";
 import type { QuestionQueryRow } from "../lib/practice";
 import { createMockSession } from "./test-helpers";

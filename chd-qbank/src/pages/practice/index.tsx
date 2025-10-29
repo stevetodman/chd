@@ -1,22 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import PageState from "../components/PageState";
-import QuestionCard from "../components/QuestionCard";
-import { Button } from "../components/ui/Button";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card";
+import PageState from "../../components/PageState";
+import QuestionCard from "../../components/QuestionCard";
+import { Button } from "../../components/ui/Button";
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/Card";
 import {
   DEFAULT_PRACTICE_FILTERS,
   type PracticeFilters,
   usePracticeSession
-} from "../hooks/usePracticeSession";
-import { useBadgeStatuses } from "../hooks/useBadgeStatuses";
-import { useElapsedTimer } from "../hooks/useElapsedTimer";
-import { useI18n } from "../i18n";
-import { useSessionStore } from "../lib/auth";
-import { PracticeDesktopFiltersCard } from "./practice/PracticeDesktopFiltersCard";
-import { PracticeFiltersSheet } from "./practice/PracticeFiltersSheet";
-import { PracticeSessionRailCard } from "./practice/PracticeSessionRailCard";
-import { buildFilterSummaryParts, formatSessionLengthLabel, formatStatusLabel } from "./practice/filterUtils";
+} from "../../hooks/usePracticeSession";
+import { useBadgeStatuses } from "../../hooks/useBadgeStatuses";
+import { useElapsedTimer } from "../../hooks/useElapsedTimer";
+import { useI18n } from "../../i18n";
+import { useSessionStore } from "../../lib/auth";
+import { PracticeDesktopFiltersCard } from "./PracticeDesktopFiltersCard";
+import { PracticeFiltersSheet } from "./PracticeFiltersSheet";
+import { PracticeSessionRailCard } from "./PracticeSessionRailCard";
+import { buildFilterSummaryParts, formatSessionLengthLabel, formatStatusLabel } from "./filterUtils";
 
 export default function Practice() {
   const {
