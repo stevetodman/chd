@@ -65,6 +65,17 @@ This matches Vercel’s Node 18 runtime and prevents version drift.
 
 4. Visit [http://localhost:5173](http://localhost:5173) and sign in with an invited account. Initial content can be loaded by running the seeding scripts after your database is provisioned; provide invite codes via environment variables when invoking `npm run seed:invite`.
 
+### Containerized quick start
+
+Prefer an isolated environment? A Docker-based workflow is available and runs the Vite dev server inside a Node container. The Make targets automatically load Supabase credentials from `chd-qbank/.env.development` when the file exists:
+
+```bash
+cp chd-qbank/.env.example chd-qbank/.env.development  # optional: populate Supabase variables
+make docker-dev-up
+```
+
+The app is served from [http://localhost:5173](http://localhost:5173) and watches your local file changes through bind mounts. Stop the stack with `make docker-dev-down` or inspect container output with `make docker-dev-logs`. Export Supabase environment variables before starting the stack when you need to override values in `.env.development` or run without the file.
+
 ## Usage example
 
 ![Practice session and analytics overview](./docs/images/usage-dashboard.svg)

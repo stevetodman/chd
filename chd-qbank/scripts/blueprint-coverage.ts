@@ -10,7 +10,7 @@ interface CliOptions {
 
 type StatusFilter = "published" | "draft" | "archived" | "all";
 
-type QuestionRecord = Record<string, any>;
+type QuestionRecord = Record<string, unknown>;
 
 type CoverageRow = {
   learningObjective: string;
@@ -65,7 +65,7 @@ async function loadLocalQuestions(status: StatusFilter): Promise<QuestionRecord[
 
   try {
     await fs.access(contentDir);
-  } catch (error) {
+  } catch {
     return [];
   }
 
@@ -77,7 +77,7 @@ async function loadLocalQuestions(status: StatusFilter): Promise<QuestionRecord[
     const fullPath = path.join(contentDir, entry);
     try {
       const raw = await fs.readFile(fullPath, "utf8");
-      const parsed = JSON.parse(raw);
+      const parsed = JSON.parse(raw) as QuestionRecord;
       if (status !== "all") {
         const itemStatus = typeof parsed.status === "string" ? parsed.status.toLowerCase() : null;
         if (itemStatus && itemStatus !== status) {

@@ -44,6 +44,26 @@ type SupabaseMockState = {
   lastIncrementPayload: { source: string; source_id: string } | null;
 };
 
+type ResponseQueryResult = { data: ReturnType<typeof mapResponseRecord>[]; error: null };
+
+type ResponseQueryChain = {
+  eq: (column: keyof ResponseRow, value: ResponseRow[keyof ResponseRow]) => ResponseQueryChain;
+  order: (column: keyof ResponseRow, options?: { ascending?: boolean }) => ResponseQueryChain;
+  limit: (count: number) => ResponseQueryChain;
+  then: <TResult1 = unknown, TResult2 = never>(
+    onfulfilled?: ((value: ResponseQueryResult) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
+  ) => Promise<TResult1 | TResult2>;
+  maybeSingle: () => Promise<{ data: ReturnType<typeof mapResponseRecord> | null; error: Error | null }>;
+};
+
+type AnswerEventQueryChain = {
+  eq: (column: keyof AnswerEventRow, value: AnswerEventRow[keyof AnswerEventRow]) => AnswerEventQueryChain;
+  order: (column: keyof AnswerEventRow, options?: { ascending?: boolean }) => AnswerEventQueryChain;
+  limit: (count: number) => AnswerEventQueryChain;
+  maybeSingle: () => Promise<{ data: ReturnType<typeof mapEventRecord> | null; error: Error | null }>;
+};
+
 const supabaseState = vi.hoisted(() => ({
   from: vi.fn(),
   rpc: vi.fn(),
@@ -196,13 +216,13 @@ function createResponsesBuilder(state: SupabaseMockState) {
       let orderColumn: keyof ResponseRow | null = null;
       let ascending = true;
       let limitCount: number | null = null;
-      const chain: any = {
-        eq(column: string, value: unknown) {
-          filters[column as keyof ResponseRow] = value as ResponseRow[keyof ResponseRow];
+      const chain: ResponseQueryChain = {
+        eq(column, value) {
+          filters[column] = value;
           return chain;
         },
-        order(column: string, options?: { ascending?: boolean }) {
-          orderColumn = column as keyof ResponseRow;
+        order(column, options) {
+          orderColumn = column;
           ascending = options?.ascending ?? true;
           return chain;
         },
@@ -211,20 +231,17 @@ function createResponsesBuilder(state: SupabaseMockState) {
           return chain;
         },
         then<TResult1 = unknown, TResult2 = never>(
-          onfulfilled?:
-            | ((value: { data: ReturnType<typeof mapResponseRecord>[]; error: null }) =>
-                TResult1 | PromiseLike<TResult1>)
-            | null,
+          onfulfilled?: ((value: ResponseQueryResult) => TResult1 | PromiseLike<TResult1>) | null,
           onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
         ) {
           try {
             const filtered = filterRecords(state.responses, filters);
             const ordered = sortRecords(filtered, orderColumn, ascending);
             const limited = typeof limitCount === "number" ? ordered.slice(0, limitCount) : ordered;
-            const result = {
+            const result: ResponseQueryResult = {
               data: limited.map(mapResponseRecord),
               error: null
-            } as const;
+            };
             if (!onfulfilled) {
               return Promise.resolve(result) as Promise<TResult1 | TResult2>;
             }
@@ -300,13 +317,13 @@ function createAnswerEventsBuilder(state: SupabaseMockState) {
       let orderColumn: keyof AnswerEventRow | null = null;
       let ascending = true;
       let limitCount: number | null = null;
-      const chain: any = {
-        eq(column: string, value: unknown) {
-          filters[column as keyof AnswerEventRow] = value as AnswerEventRow[keyof AnswerEventRow];
+      const chain: AnswerEventQueryChain = {
+        eq(column, value) {
+          filters[column] = value;
           return chain;
         },
-        order(column: string, options?: { ascending?: boolean }) {
-          orderColumn = column as keyof AnswerEventRow;
+        order(column, options) {
+          orderColumn = column;
           ascending = options?.ascending ?? true;
           return chain;
         },

@@ -47,7 +47,8 @@ describe("utils", () => {
 
   describe("classNames", () => {
     it("joins truthy class names and ignores falsy ones", () => {
-      expect(classNames("foo", false && "bar", undefined, "baz", null, "qux")).toBe(
+      const shouldIncludeBar = Boolean(0);
+      expect(classNames("foo", shouldIncludeBar && "bar", undefined, "baz", null, "qux")).toBe(
         "foo baz qux",
       );
     });

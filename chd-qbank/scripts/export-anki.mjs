@@ -282,11 +282,14 @@ function renderMarkdown(markdown) {
     return "";
   }
   return renderToStaticMarkup(
-    React.createElement(ReactMarkdown, {
-      remarkPlugins: MARKDOWN_REMARK_PLUGINS,
-      rehypePlugins: MARKDOWN_REHYPE_PLUGINS,
-      children: trimmed
-    })
+    React.createElement(
+      ReactMarkdown,
+      {
+        remarkPlugins: MARKDOWN_REMARK_PLUGINS,
+        rehypePlugins: MARKDOWN_REHYPE_PLUGINS,
+      },
+      trimmed
+    )
   );
 }
 
@@ -433,7 +436,8 @@ async function handleMediaAsset(url, question, kind, altText, assets, usedFilena
 
 function ensureUniqueFilename(question, kind, url, usedFilenames) {
   const ext = inferExtension(url) || (kind === "murmur" ? ".mp3" : ".png");
-  const baseName = sanitizeFilename(`${question.slug || question.id}-${kind}` || kind);
+  const identifier = (question.slug ?? question.id ?? kind ?? "asset").toString();
+  const baseName = sanitizeFilename(`${identifier}-${kind}`);
   let candidate = `${baseName}${ext}`;
   let counter = 1;
   while (usedFilenames.has(candidate)) {
@@ -543,7 +547,7 @@ function formatTag(value) {
     .trim()
     .toLowerCase()
     .replace(/\s+/g, "_")
-    .replace(/[^a-z0-9_:\-]/g, "");
+    .replace(/[^a-z0-9_:-]/g, "");
 }
 
 async function writeDeckToFile(deck, options) {

@@ -1,5 +1,18 @@
-let murmurItemsBuilder: ReturnType<typeof createMurmurItemsBuilder>;
-let murmurAttemptsBuilder: ReturnType<typeof createMurmurAttemptsBuilder>;
+type SupabaseMock<T> = {
+  select: T;
+  eq: T;
+  order: T;
+  limit: T;
+};
+
+type MurmurAttemptsMock<T> = {
+  insert: T;
+  select: T;
+  single: T;
+};
+
+let murmurItemsBuilder: SupabaseMock<ReturnType<typeof vi.fn>>;
+let murmurAttemptsBuilder: MurmurAttemptsMock<ReturnType<typeof vi.fn>>;
 let storageBuilder: ReturnType<typeof createStorageBuilder>;
 
 const supabaseState = vi.hoisted(() => ({
@@ -8,8 +21,8 @@ const supabaseState = vi.hoisted(() => ({
   storageFrom: vi.fn()
 }));
 
-function createMurmurItemsBuilder() {
-  const builder: any = {
+function createMurmurItemsBuilder(): SupabaseMock<ReturnType<typeof vi.fn>> {
+  const builder: SupabaseMock<ReturnType<typeof vi.fn>> = {
     select: vi.fn(),
     eq: vi.fn(),
     order: vi.fn(),
@@ -21,8 +34,8 @@ function createMurmurItemsBuilder() {
   return builder;
 }
 
-function createMurmurAttemptsBuilder() {
-  const builder: any = {
+function createMurmurAttemptsBuilder(): MurmurAttemptsMock<ReturnType<typeof vi.fn>> {
+  const builder: MurmurAttemptsMock<ReturnType<typeof vi.fn>> = {
     insert: vi.fn(),
     select: vi.fn(),
     single: vi.fn()

@@ -118,7 +118,7 @@ export function I18nProvider({
   );
 
   const formatTemplate = useCallback(
-    (template: string, values?: MessageValues): string => {
+    function formatTemplateRecursive(template: string, values?: MessageValues): string {
       const formatValue = (value: unknown): string => {
         if (value === null || value === undefined) return "";
         if (typeof value === "number") {
@@ -198,7 +198,7 @@ export function I18nProvider({
             }
             optionIndex += 1; // skip "{"
             let optionDepth = 1;
-            let bodyStart = optionIndex;
+            const bodyStart = optionIndex;
             while (optionIndex < pluralOptions.length && optionDepth > 0) {
               const char = pluralOptions[optionIndex];
               if (char === "{") {
@@ -216,7 +216,7 @@ export function I18nProvider({
           const category = pluralRule.select(value);
           const selected = optionsMap[category] ?? optionsMap.other ?? "";
           const formattedCount = formatNumber(value, { maximumFractionDigits: 0 });
-          return formatTemplate(selected.replace(/#/g, formattedCount), values);
+          return formatTemplateRecursive(selected.replace(/#/g, formattedCount), values);
         }
 
         return formatValue(value);

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const anchorHasHref = require("./lib/rules/anchor-has-href");
 const buttonHasAccessibleName = require("./lib/rules/button-has-accessible-name");
 const imgHasAlt = require("./lib/rules/img-has-alt");

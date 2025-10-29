@@ -1,0 +1,21 @@
+# syntax=docker/dockerfile:1
+
+FROM node:18-alpine
+
+WORKDIR /workspace
+
+# Install dependencies using the workspace lockfiles. Copy only the
+# package manifests so Docker can cache the layer unless they change.
+COPY package.json package-lock.json ./
+COPY chd-qbank/package.json chd-qbank/package-lock.json ./chd-qbank/
+
+RUN npm ci --workspaces --include-workspace-root
+
+# Bring in the remainder of the repository after dependencies are cached.
+COPY . .
+
+WORKDIR /workspace/chd-qbank
+
+EXPOSE 5173
+
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]

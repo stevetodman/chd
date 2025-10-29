@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import fg from "fast-glob";
 import fs from "fs";
 import path from "path";
@@ -35,7 +34,9 @@ async function main() {
   if (files.length === 0) console.log(pc.yellow("No JSON items found under content/questions."));
 
   const rows: Row[] = [];
-  let ok = 0, warn = 0, err = 0, skipped = 0;
+  let ok = 0;
+  let warn = 0;
+  let err = 0;
 
   for (const file of files) {
     try {
@@ -44,10 +45,16 @@ async function main() {
       const result = normalizeItem(data, file, QuestionSchema);
 
       if (result.errors.length > 0 || !result.normalized) {
-        rows.push({ file: rel, status: "error", addedKeys: result.addedKeys.join(";"),
-          changedKeys: result.changedKeys.join(";"), warnings: result.warnings.join(" | "), errors: result.errors.join(" | ") });
+        rows.push({
+          file: rel,
+          status: "error",
+          addedKeys: result.addedKeys.join(";"),
+          changedKeys: result.changedKeys.join(";"),
+          warnings: result.warnings.join(" | "),
+          errors: result.errors.join(" | ")
+        });
         console.log(pc.red(`✖ ${rel} — schema validation failed`));
-        err++;
+        err += 1;
         continue;
       }
 
@@ -61,16 +68,26 @@ async function main() {
       if (!DRY_RUN) writeJsonPretty(file, out);
 
       const hasWarn = result.warnings.length > 0;
-      rows.push({ file: rel, status: hasWarn ? "warn" : "ok",
-        addedKeys: result.addedKeys.join(";"), changedKeys: result.changedKeys.join(";"),
-        warnings: result.warnings.join(" | "), errors: "" });
+      rows.push({
+        file: rel,
+        status: hasWarn ? "warn" : "ok",
+        addedKeys: result.addedKeys.join(";"),
+        changedKeys: result.changedKeys.join(";"),
+        warnings: result.warnings.join(" | "),
+        errors: ""
+      });
       console.log((hasWarn ? pc.yellow : pc.green)(`${hasWarn ? "▲" : "✔"} ${rel}`));
-      hasWarn ? warn++ : ok++;
-    } catch (e: any) {
+      if (hasWarn) {
+        warn += 1;
+      } else {
+        ok += 1;
+      }
+    } catch (error: unknown) {
       const rel = path.relative(ROOT, file);
-      rows.push({ file: rel, status: "error", addedKeys: "", changedKeys: "", warnings: "", errors: String(e?.message ?? e) });
-      console.log(pc.red(`✖ ${rel} — ${String(e?.message ?? e)}`));
-      err++;
+      const message = error instanceof Error ? error.message : String(error);
+      rows.push({ file: rel, status: "error", addedKeys: "", changedKeys: "", warnings: "", errors: message });
+      console.log(pc.red(`✖ ${rel} — ${message}`));
+      err += 1;
     }
   }
 
@@ -78,17 +95,21 @@ async function main() {
   const csvPath = path.join(REPORT_DIR, `migration_${timestamp()}.csv`);
   const header = "file,status,addedKeys,changedKeys,warnings,errors\n";
   const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
-  const body = rows.map(r => [r.file, r.status, r.addedKeys, r.changedKeys, r.warnings, r.errors].map(escape).join(",")).join("\n");
+  const body = rows
+    .map((row) => [row.file, row.status, row.addedKeys, row.changedKeys, row.warnings, row.errors].map(escape).join(","))
+    .join("\n");
   if (!DRY_RUN) fs.writeFileSync(csvPath, header + body + "\n", "utf8");
 
   console.log(pc.bold(`\nSummary:`));
   console.log(pc.green(`  OK:      ${ok}`));
   console.log(pc.yellow(`  WARN:    ${warn}`));
   console.log(pc.red(`  ERROR:   ${err}`));
-  console.log(pc.dim(`  SKIPPED: ${skipped}`));
   console.log(pc.cyan(`\nReport: ${DRY_RUN ? "(dry-run; not written)" : csvPath}`));
   console.log(pc.cyan(`Backups: ${DRY_RUN ? "(dry-run; not written)" : BACKUP_DIR}`));
 
   if (err > 0) process.exitCode = 1;
 }
-main().catch(e => { console.error(e); process.exit(1); });
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

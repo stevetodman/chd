@@ -177,14 +177,14 @@ async function networkFirst(request: Request): Promise<Response> {
     }
 
     return response;
-  } catch (error) {
+  } catch (_error) {
     const cachedResponse = await cache.match(request);
 
     if (cachedResponse) {
       return cachedResponse;
     }
 
-    throw error;
+    throw _error;
   }
 }
 
@@ -228,7 +228,7 @@ async function handleNavigationRequest(request: Request): Promise<Response> {
     }
 
     return response;
-  } catch (error) {
+  } catch (_error) {
     const cache = await caches.open(APP_SHELL_CACHE);
     const cachedResponse = await cache.match("/index.html");
 

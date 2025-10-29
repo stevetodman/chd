@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { PostgrestFilterBuilder } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabaseClient";
 import PageState from "./PageState";
 import { Button } from "./ui/Button";
@@ -134,7 +135,13 @@ const formatRelativeTimeFromNow = (isoDate: string | null) => {
   return relativeTimeFormatter.format(Math.round(years), "year");
 };
 
-const applyTimeframeFilter = (query: any, column: string, bounds: TimeframeBounds) => {
+type FilterBuilder<Row extends Record<string, unknown>> = PostgrestFilterBuilder<Row, Row[], unknown>;
+
+const applyTimeframeFilter = <Row extends Record<string, unknown>>(
+  query: FilterBuilder<Row>,
+  column: string,
+  bounds: TimeframeBounds
+): FilterBuilder<Row> => {
   let nextQuery = query;
   if (bounds.startIso) {
     nextQuery = nextQuery.gte(column, bounds.startIso);

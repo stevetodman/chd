@@ -82,6 +82,13 @@ export default function ChoiceList({
         const showAsIncorrectSelection = reveal && isSelected && !isCorrect;
         const showAsCorrectSelection = reveal && isSelected && isCorrect;
         const isStruck = struck[choice.id];
+        const plainChoiceText = choice.text_md
+          .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+          .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+          .replace(/[-*_`>#~|]/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
+        const ariaLabel = plainChoiceText ? `${choice.label}. ${plainChoiceText}` : choice.label;
         return (
           <button
             key={choice.id}
@@ -94,6 +101,7 @@ export default function ChoiceList({
               e.preventDefault();
               toggleStrike(choice.id);
             }}
+            aria-label={ariaLabel}
             ref={(element) => {
               if (index === 0) {
                 firstChoiceRef.current = element;

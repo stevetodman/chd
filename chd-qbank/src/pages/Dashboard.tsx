@@ -477,7 +477,7 @@ export default function Dashboard() {
       }
       await navigator.clipboard.writeText(reportSummary);
       setCopyFeedback("Shareable summary copied to clipboard.");
-    } catch (error) {
+    } catch (_error) {
       setCopyFeedback("Copy not supported in this browser. Try printing instead.");
     }
   };
@@ -584,7 +584,7 @@ export default function Dashboard() {
               <section className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-700">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <h3 className="text-sm font-semibold text-neutral-800">Narrative snapshots</h3>
-                  <p className="text-xs text-neutral-500">Quick headlines for this week's progress.</p>
+                  <p className="text-xs text-neutral-500">{"Quick headlines for this week’s progress."}</p>
                 </div>
                 <div className="grid gap-3 md:grid-cols-3">
                   {narrativeSnapshots.map((snapshot) => (

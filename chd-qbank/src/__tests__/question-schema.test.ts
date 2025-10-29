@@ -5,9 +5,18 @@ import { validateQuestion } from "../utils/validateQuestion";
 
 const ROOT = process.cwd();
 const EXAMPLE_DIR = path.join(ROOT, "chd-qbank", "content", "questions");
-const MEDIA_DIR   = path.join(ROOT, "chd-qbank", "public", "media");
+const MEDIA_DIR = path.join(ROOT, "chd-qbank", "public", "media");
 
-function loadQuestions() {
+type RawQuestion = Record<string, unknown> & {
+  choices: Array<Record<string, unknown>>;
+  mediaBundle?: string[] | null;
+  offlineRequired?: boolean;
+  stem?: string;
+  explanation?: string;
+  references?: string[] | null;
+};
+
+function loadQuestions(): RawQuestion[] {
   if (!fs.existsSync(EXAMPLE_DIR)) return [];
   const walk = (dir: string): string[] =>
     fs.readdirSync(dir).flatMap((f) => {
@@ -16,7 +25,7 @@ function loadQuestions() {
     });
   return walk(EXAMPLE_DIR)
     .filter((f) => f.endsWith(".json"))
-    .map((f) => JSON.parse(fs.readFileSync(f, "utf8")));
+    .map((f) => JSON.parse(fs.readFileSync(f, "utf8")) as RawQuestion);
 }
 
 describe("QBank question shape & assets", () => {
@@ -33,7 +42,7 @@ describe("QBank question shape & assets", () => {
 
   it("choices have expected keys", () => {
     for (const q of questions) {
-      const keys = q.choices.flatMap((c: any) => Object.keys(c)).sort();
+      const keys = q.choices.flatMap((choice) => Object.keys(choice)).sort();
       expect(new Set(keys)).toEqual(new Set(["alt","id","isCorrect","label","mediaRef","text"]));
     }
   });

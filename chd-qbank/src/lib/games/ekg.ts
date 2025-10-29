@@ -37,7 +37,7 @@ function plainTextFromMarkdown(markdown?: string | null): string | null {
   const plain = markdown
     .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-    .replace(/[\*_`>#~|-]/g, "")
+    .replace(/[-*_`>#~|]/g, "")
     .replace(/\s+/g, " ")
     .trim();
   return plain.length > 0 ? plain : null;

@@ -35,6 +35,18 @@ type ResponseRowResult = {
   ms_to_answer: number | null;
 };
 
+type ResponseQueryResult = { data: ResponseRowResult[]; error: Error | null };
+
+type ResponseQueryChain = {
+  eq: (column: "user_id" | "question_id", value: string) => ResponseQueryChain;
+  order: () => {
+    limit: () => {
+      maybeSingle: () => Promise<{ data: ResponseRowResult | null; error: Error | null }>; 
+    };
+  };
+  then: (callback: (result: ResponseQueryResult) => void | Promise<void>) => Promise<void>;
+};
+
 const questions: QuestionQueryRow[] = syntheticPracticeQuestions.slice(0, 2);
 
 const responsesById = new Map<string, ResponseRecord>();
@@ -110,41 +122,40 @@ vi.mock("../lib/supabaseClient", () => ({
         return {
           select: () => {
             const filters: Partial<Record<"user_id" | "question_id", string>> = {};
-            const chain: any = {};
-            chain.eq = (column: string, value: string) => {
-              filters[column as "user_id" | "question_id"] = value;
-              return chain;
-            };
-            chain.order = () => ({
-              limit: () => ({
-                maybeSingle: async () => {
-                  const key = `${filters.user_id ?? ""}:${filters.question_id ?? ""}`;
-                  const record = responsesByUserQuestion.get(key) ?? null;
-                  return { data: record ? mapRecord(record) : null, error: null };
-                }
-              })
-            });
-            chain.then = async (
-              callback: (result: { data: ResponseRowResult[]; error: Error | null }) => void
-            ) => {
-              const matching = Array.from(responsesById.values()).filter((record) => {
-                if (filters.user_id && record.user_id !== filters.user_id) {
-                  return false;
-                }
-                if (filters.question_id && record.question_id !== filters.question_id) {
-                  return false;
-                }
-                return true;
-              });
-              const mapped: ResponseRowResult[] = matching.map((record) => ({
-                id: record.id,
-                question_id: record.question_id,
-                flagged: record.flagged,
-                choice_id: record.choice_id,
-                is_correct: record.is_correct,
-                ms_to_answer: record.ms_to_answer
-              }));
-              await callback({ data: mapped, error: null });
+            const chain: ResponseQueryChain = {
+              eq: (column, value) => {
+                filters[column] = value;
+                return chain;
+              },
+              order: () => ({
+                limit: () => ({
+                  maybeSingle: async () => {
+                    const key = `${filters.user_id ?? ""}:${filters.question_id ?? ""}`;
+                    const record = responsesByUserQuestion.get(key) ?? null;
+                    return { data: record ? mapRecord(record) : null, error: null };
+                  }
+                })
+              }),
+              then: async (callback) => {
+                const matching = Array.from(responsesById.values()).filter((record) => {
+                  if (filters.user_id && record.user_id !== filters.user_id) {
+                    return false;
+                  }
+                  if (filters.question_id && record.question_id !== filters.question_id) {
+                    return false;
+                  }
+                  return true;
+                });
+                const mapped: ResponseRowResult[] = matching.map((record) => ({
+                  id: record.id,
+                  question_id: record.question_id,
+                  flagged: record.flagged,
+                  choice_id: record.choice_id,
+                  is_correct: record.is_correct,
+                  ms_to_answer: record.ms_to_answer
+                }));
+                await callback({ data: mapped, error: null });
+              }
             };
             return chain;
           },
