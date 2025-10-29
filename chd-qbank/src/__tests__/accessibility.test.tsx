@@ -1,9 +1,7 @@
 import React from "react";
 import { describe, expect, it } from "vitest";
 import { render } from "../testing/render";
-import { axe, toHaveNoViolations } from "jest-axe";
-
-expect.extend(toHaveNoViolations);
+import { axe } from "jest-axe";
 
 describe("accessibility smoke test", () => {
   it("reports no violations for accessible markup", async () => {
@@ -18,6 +16,6 @@ describe("accessibility smoke test", () => {
 
     const results = await axe(container);
 
-    expect(results).toHaveNoViolations();
+    expect(results.violations).toHaveLength(0);
   });
 });

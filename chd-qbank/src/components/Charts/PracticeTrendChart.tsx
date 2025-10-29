@@ -248,7 +248,7 @@ export default function PracticeTrendChart({ data, loading, error }: Props) {
                           : null;
                       return value === null ? "Accuracy: –" : `Accuracy: ${value.toFixed(1)}%`;
                     }
-                    return null;
+                    return undefined;
                   },
                   afterLabel: (context) => {
                     const index = context.dataIndex;

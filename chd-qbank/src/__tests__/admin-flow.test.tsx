@@ -83,7 +83,18 @@ describe("admin item editing flow", () => {
     await user.click(screen.getByRole("button", { name: /save/i }));
 
     await waitFor(() => expect(upsertMock).toHaveBeenCalled());
-    expect(upsertMock.mock.calls[0][0]).toEqual([
+    const [upsertPayload, upsertOptions] =
+      upsertMock.mock.calls[0] as unknown as [
+        Array<{
+          id: string;
+          question_id: string;
+          label: string;
+          text_md: string;
+          is_correct: boolean;
+        }>,
+        { onConflict: string }
+      ];
+    expect(upsertPayload).toEqual([
       {
         id: "choice-1",
         question_id: "item-1",
@@ -99,7 +110,7 @@ describe("admin item editing flow", () => {
         is_correct: true
       }
     ]);
-    expect(upsertMock.mock.calls[0][1]).toEqual({ onConflict: "id" });
+    expect(upsertOptions).toEqual({ onConflict: "id" });
 
     expect(updateMock).toHaveBeenCalledWith(
       expect.objectContaining({

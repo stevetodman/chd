@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ReactElement } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { Button } from "../../components/ui/Button";
@@ -594,18 +595,18 @@ export default function ItemEditor() {
 
   const contextPanelErrors = useMemo(
     () => (item ? getContextPanelErrors(item.context_panels) : []),
-    [item?.context_panels]
+    [item]
   );
   const labPanelErrors = useMemo(
     () => (item ? getLabPanelErrors(item.lab_panels) : []),
-    [item?.lab_panels]
+    [item]
   );
   const formulaPanelErrors = useMemo(
     () => (item ? getFormulaPanelErrors(item.formula_panels) : []),
-    [item?.formula_panels]
+    [item]
   );
   const previewPanels = useMemo(() => {
-    if (!item) return [] as JSX.Element[];
+    if (!item) return [] as ReactElement[];
     const contextMap = new Map(item.context_panels.map((panel) => [panel.editorKey, panel]));
     const labMap = new Map(item.lab_panels.map((panel) => [panel.editorKey, panel]));
     const formulaMap = new Map(item.formula_panels.map((panel) => [panel.editorKey, panel]));
@@ -664,8 +665,8 @@ export default function ItemEditor() {
         }
         return null;
       })
-      .filter((panel): panel is JSX.Element => panel !== null);
-  }, [item?.panel_sequence, item?.context_panels, item?.lab_panels, item?.formula_panels]);
+      .filter((panel): panel is ReactElement => panel !== null);
+  }, [item]);
 
   if (loading) return <div>Loading item…</div>;
 

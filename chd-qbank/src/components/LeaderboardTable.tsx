@@ -214,6 +214,9 @@ const fetchAliases = async (userIds: string[]) => {
   return map;
 };
 
+const selectOptions = (options: Record<string, unknown>) =>
+  options as unknown as { head?: boolean; count?: "exact" | "planned" | "estimated" };
+
 const fetchMeta = async (userIds: string[], bounds: TimeframeBounds) => {
   const map = new Map<string, { lastAwardedAt: string | null; correct: number; attempts: number }>();
   if (userIds.length === 0) return map;
@@ -221,7 +224,7 @@ const fetchMeta = async (userIds: string[], bounds: TimeframeBounds) => {
   const activityQuery = applyTimeframeFilter(
     supabase
       .from("leaderboard_events")
-      .select("user_id, last_awarded_at:max(created_at)", { group: "user_id" })
+      .select("user_id, last_awarded_at:max(created_at)", selectOptions({ group: "user_id" }))
       .in("user_id", userIds),
     "created_at",
     bounds
@@ -230,7 +233,10 @@ const fetchMeta = async (userIds: string[], bounds: TimeframeBounds) => {
   const accuracyQuery = applyTimeframeFilter(
     supabase
       .from("answer_events")
-      .select("user_id, correct:sum(points), attempts:count()", { group: "user_id" })
+      .select(
+        "user_id, correct:sum(points), attempts:count()",
+        selectOptions({ group: "user_id" })
+      )
       .in("user_id", userIds),
     "effective_at",
     bounds
@@ -241,7 +247,12 @@ const fetchMeta = async (userIds: string[], bounds: TimeframeBounds) => {
   if (activityResult.error) throw activityResult.error;
   if (accuracyResult.error) throw accuracyResult.error;
 
-  for (const row of activityResult.data ?? []) {
+  const activityRows = (activityResult.data ?? []) as unknown as Array<{
+    user_id: string;
+    last_awarded_at: string | null;
+  }>;
+
+  for (const row of activityRows) {
     map.set(row.user_id, {
       lastAwardedAt: row.last_awarded_at ?? null,
       correct: 0,
@@ -249,7 +260,13 @@ const fetchMeta = async (userIds: string[], bounds: TimeframeBounds) => {
     });
   }
 
-  for (const row of accuracyResult.data ?? []) {
+  const accuracyRows = (accuracyResult.data ?? []) as unknown as Array<{
+    user_id: string;
+    correct: number | null;
+    attempts: number | null;
+  }>;
+
+  for (const row of accuracyRows) {
     const existing = map.get(row.user_id) ?? { lastAwardedAt: null, correct: 0, attempts: 0 };
     map.set(row.user_id, {
       lastAwardedAt: existing.lastAwardedAt,
@@ -330,7 +347,7 @@ export default function LeaderboardTable() {
           const monthlyQuery = applyTimeframeFilter(
             supabase
               .from("leaderboard_events")
-              .select("user_id, points:count()", { group: "user_id" }),
+              .select("user_id, points:count()", selectOptions({ group: "user_id" })),
             "created_at",
             bounds
           )
@@ -341,7 +358,8 @@ export default function LeaderboardTable() {
 
           if (monthlyError) throw monthlyError;
 
-          baseData = (data ?? []).map((row: { user_id: string; points: number }) => ({
+          const monthlyRows = (data ?? []) as unknown as Array<{ user_id: string; points: number | null }>;
+          baseData = monthlyRows.map((row) => ({
             user_id: row.user_id,
             points: Number(row.points ?? 0),
             alias: null

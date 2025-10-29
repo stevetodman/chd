@@ -93,20 +93,28 @@ export default function CxrMatch() {
   const [displaySize, setDisplaySize] = useState<Size | null>(null);
 
   useEffect(() => {
-    setLoading(true);
-    setError(null);
-    supabase
-      .from("cxr_items")
-      .select("id, image_url, caption_md, lesion, cxr_labels(id,label,is_correct,x,y,w,h)")
-      .eq("status", "published")
-      .limit(20)
-      .then(({ data, error: fetchError }) => {
+    let active = true;
+
+    const loadItems = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const { data, error: fetchError } = await supabase
+          .from("cxr_items")
+          .select("id, image_url, caption_md, lesion, cxr_labels(id,label,is_correct,x,y,w,h)")
+          .eq("status", "published")
+          .limit(20);
+
+        if (!active) return;
+
         if (fetchError) {
           setError(describeFetchError(fetchError));
           setItems([]);
           return;
         }
-        const normalized: CxrItem[] = ((data ?? []) as CxrItemRow[]).map((item) => ({
+
+        const normalized: CxrItem[] = ((data ?? []) as unknown as CxrItemRow[]).map((item) => ({
           id: item.id,
           image_url: item.image_url,
           caption_md: item.caption_md,
@@ -120,8 +128,18 @@ export default function CxrMatch() {
         }));
         setItems(shuffle(normalized));
         setIndex(0);
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadItems();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const current = items[index];

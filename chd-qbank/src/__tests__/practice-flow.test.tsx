@@ -64,6 +64,7 @@ const { rpcMock } = vi.hoisted(() => ({
 
 const mapRecord = (record: ResponseRecord): ResponseRowResult => ({
   id: record.id,
+  question_id: record.question_id,
   flagged: record.flagged,
   choice_id: record.choice_id,
   is_correct: record.is_correct,
