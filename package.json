@@ -8,7 +8,12 @@
     "sbom": "cyclonedx-npm --output sbom.xml",
     "license:audit": "node scripts/generate-notice.mjs",
     "license:inventory": "node scripts/build-license-inventory.mjs",
-    "license:check": "node scripts/check-licenses.mjs"
+    "license:check": "node scripts/check-licenses.mjs",
+    "lint": "npm run lint --workspace=chd-qbank",
+    "typecheck": "npm run typecheck --workspace=chd-qbank",
+    "format": "npm run format --workspace=chd-qbank",
+    "format:check": "npm run format:check --workspace=chd-qbank",
+    "test": "npm run test --workspace=chd-qbank"
   },
   "devDependencies": {
     "license-checker": "^25.0.1"

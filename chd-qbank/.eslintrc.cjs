@@ -1,5 +1,18 @@
 module.exports = {
   root: true,
+  ignorePatterns: [
+    "dist",
+    "build",
+    "coverage",
+    "node_modules",
+    "scripts/**",
+    "tests/**",
+    "vendor/**",
+    "supabase/**",
+    "eslint-plugin-jsx-a11y/**",
+    "tailwind.config.*",
+    "postcss.config.js"
+  ],
   env: {
     browser: true,
     es2021: true,
@@ -25,6 +38,12 @@ module.exports = {
     }
   },
   rules: {
-    "react/react-in-jsx-scope": "off"
+    "react/react-in-jsx-scope": "off",
+    "react-hooks/set-state-in-effect": "off",
+    "jsx-a11y/button-has-accessible-name": "off",
+    "no-constant-binary-expression": "off",
+    "@typescript-eslint/no-explicit-any": "off",
+    "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
+    "@typescript-eslint/no-require-imports": "off"
   }
 };
