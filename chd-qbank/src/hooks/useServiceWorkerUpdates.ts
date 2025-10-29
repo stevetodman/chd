@@ -41,8 +41,9 @@ export function useServiceWorkerUpdates() {
       }
 
       if (data.type === "UPDATE_READY") {
+        const updateData = data as UpdateReadyMessage;
         if (!isMounted) return;
-        setUpdateVersion(data.version ?? "latest");
+        setUpdateVersion(updateData.version ?? "latest");
         void navigator.serviceWorker.getRegistration().then((registration) => {
           if (registration?.waiting) {
             waitingWorkerRef.current = registration.waiting;

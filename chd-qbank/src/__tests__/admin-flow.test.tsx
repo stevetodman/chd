@@ -83,23 +83,25 @@ describe("admin item editing flow", () => {
     await user.click(screen.getByRole("button", { name: /save/i }));
 
     await waitFor(() => expect(upsertMock).toHaveBeenCalled());
-    expect(upsertMock.mock.calls[0][0]).toEqual([
-      {
-        id: "choice-1",
-        question_id: "item-1",
-        label: "A",
-        text_md: "First choice",
-        is_correct: false
-      },
-      {
-        id: "choice-2",
-        question_id: "item-1",
-        label: "B",
-        text_md: "Second choice",
-        is_correct: true
-      }
-    ]);
-    expect(upsertMock.mock.calls[0][1]).toEqual({ onConflict: "id" });
+    expect(upsertMock).toHaveBeenCalledWith(
+      [
+        {
+          id: "choice-1",
+          question_id: "item-1",
+          label: "A",
+          text_md: "First choice",
+          is_correct: false
+        },
+        {
+          id: "choice-2",
+          question_id: "item-1",
+          label: "B",
+          text_md: "Second choice",
+          is_correct: true
+        }
+      ],
+      { onConflict: "id" }
+    );
 
     expect(updateMock).toHaveBeenCalledWith(
       expect.objectContaining({

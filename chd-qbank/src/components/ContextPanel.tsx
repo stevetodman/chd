@@ -18,13 +18,12 @@ export default function ContextPanel({
   showTitle = true,
   asSection = true
 }: Props) {
+  const headingId = useId();
   const trimmedBody = typeof bodyMd === "string" ? bodyMd.trim() : "";
 
   if (!trimmedBody) {
     return null;
   }
-
-  const headingId = useId();
 
   const content = (
     <Card className={showTitle ? undefined : "border-0 bg-transparent shadow-none"}>

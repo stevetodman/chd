@@ -95,12 +95,14 @@ export default function CxrMatch() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    supabase
-      .from("cxr_items")
-      .select("id, image_url, caption_md, lesion, cxr_labels(id,label,is_correct,x,y,w,h)")
-      .eq("status", "published")
-      .limit(20)
-      .then(({ data, error: fetchError }) => {
+    void (async () => {
+      try {
+        const { data, error: fetchError } = await supabase
+          .from("cxr_items")
+          .select("id, image_url, caption_md, lesion, cxr_labels(id,label,is_correct,x,y,w,h)")
+          .eq("status", "published")
+          .limit(20);
+
         if (fetchError) {
           setError(describeFetchError(fetchError));
           setItems([]);
@@ -120,8 +122,10 @@ export default function CxrMatch() {
         }));
         setItems(shuffle(normalized));
         setIndex(0);
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
   const current = items[index];
@@ -141,7 +145,15 @@ export default function CxrMatch() {
       const plainCaption = current.caption_md
         .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
         .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-        .replace(/[\*_`>#~|-]/g, "")
+        .replace(/\\/g, "")
+        .replace(/\*/g, "")
+        .replace(/_/g, "")
+        .replace(/`/g, "")
+        .replace(/>/g, "")
+        .replace(/#/g, "")
+        .replace(/~/g, "")
+        .replace(/\|/g, "")
+        .replace(/-/g, "")
         .replace(/\s+/g, " ")
         .trim();
       if (plainCaption) {

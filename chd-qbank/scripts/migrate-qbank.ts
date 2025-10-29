@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import fg from "fast-glob";
 import fs from "fs";
 import path from "path";
@@ -35,7 +34,10 @@ async function main() {
   if (files.length === 0) console.log(pc.yellow("No JSON items found under content/questions."));
 
   const rows: Row[] = [];
-  let ok = 0, warn = 0, err = 0, skipped = 0;
+  let ok = 0;
+  let warn = 0;
+  let err = 0;
+  const skipped = 0;
 
   for (const file of files) {
     try {
@@ -55,17 +57,29 @@ async function main() {
 
       // backup original
       const backupPath = path.join(BACKUP_DIR, path.relative(ITEMS_DIR, file));
-      if (!DRY_RUN) { ensureDir(path.dirname(backupPath)); fs.copyFileSync(file, backupPath); }
+      if (!DRY_RUN) {
+        ensureDir(path.dirname(backupPath));
+        fs.copyFileSync(file, backupPath);
+      }
 
       // write normalized
       if (!DRY_RUN) writeJsonPretty(file, out);
 
       const hasWarn = result.warnings.length > 0;
-      rows.push({ file: rel, status: hasWarn ? "warn" : "ok",
-        addedKeys: result.addedKeys.join(";"), changedKeys: result.changedKeys.join(";"),
-        warnings: result.warnings.join(" | "), errors: "" });
+      rows.push({
+        file: rel,
+        status: hasWarn ? "warn" : "ok",
+        addedKeys: result.addedKeys.join(";"),
+        changedKeys: result.changedKeys.join(";"),
+        warnings: result.warnings.join(" | "),
+        errors: ""
+      });
       console.log((hasWarn ? pc.yellow : pc.green)(`${hasWarn ? "▲" : "✔"} ${rel}`));
-      hasWarn ? warn++ : ok++;
+      if (hasWarn) {
+        warn += 1;
+      } else {
+        ok += 1;
+      }
     } catch (e: any) {
       const rel = path.relative(ROOT, file);
       rows.push({ file: rel, status: "error", addedKeys: "", changedKeys: "", warnings: "", errors: String(e?.message ?? e) });

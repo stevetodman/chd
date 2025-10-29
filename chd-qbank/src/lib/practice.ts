@@ -25,23 +25,27 @@ export const PRACTICE_PAGE_SIZE = 10;
  * @param rows - Records retrieved from the practice view including nullable arrays.
  * @returns Questions with sorted choices and null-safe fields.
  */
-export function normalizeQuestionRows(rows: QuestionQueryRow[]): QuestionRow[] {
-  return rows.map((item) => ({
-    id: item.id,
-    slug: item.slug,
-    stem_md: item.stem_md,
-    lead_in: item.lead_in,
-    explanation_brief_md: item.explanation_brief_md,
-    explanation_deep_md: item.explanation_deep_md,
-    topic: item.topic,
-    subtopic: item.subtopic,
-    lesion: item.lesion,
-    media_bundle: item.media_bundle ?? null,
-    context_panels: item.context_panels ?? null,
-    choices: (item.choices ?? [])
-      .slice()
-      .sort((a, b) => a.label.localeCompare(b.label))
-  }));
+export function normalizeQuestionRows(rows: Array<QuestionQueryRow | Record<string, unknown>>): QuestionRow[] {
+  return rows.map((raw) => {
+    const item = raw as QuestionQueryRow;
+
+    return {
+      id: item.id,
+      slug: item.slug,
+      stem_md: item.stem_md,
+      lead_in: item.lead_in,
+      explanation_brief_md: item.explanation_brief_md,
+      explanation_deep_md: item.explanation_deep_md,
+      topic: item.topic,
+      subtopic: item.subtopic,
+      lesion: item.lesion,
+      media_bundle: item.media_bundle ?? null,
+      context_panels: item.context_panels ?? null,
+      choices: (item.choices ?? [])
+        .slice()
+        .sort((a, b) => a.label.localeCompare(b.label))
+    } satisfies QuestionRow;
+  });
 }
 
 /**

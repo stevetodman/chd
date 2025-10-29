@@ -198,7 +198,7 @@ export default function Practice() {
       if (goForward && !canAdvance) return;
       if (goBackward && !canGoBack) return;
 
-      const activeElement = document.activeElement;
+      const activeElement = document.activeElement as HTMLElement | null;
       if (
         activeElement &&
         (activeElement instanceof HTMLInputElement ||

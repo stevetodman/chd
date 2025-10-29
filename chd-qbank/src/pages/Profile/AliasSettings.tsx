@@ -65,12 +65,14 @@ export default function AliasSettings() {
   useEffect(() => {
     if (!session) return;
     setLoading(true);
-    supabase
-      .from("app_users")
-      .select("alias, alias_locked")
-      .eq("id", session.user.id)
-      .maybeSingle()
-      .then(({ data, error }) => {
+    void (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("app_users")
+          .select("alias, alias_locked")
+          .eq("id", session.user.id)
+          .maybeSingle();
+
         if (error) {
           setError(error.message);
           setAlias("");
@@ -79,8 +81,10 @@ export default function AliasSettings() {
           setAlias(data.alias ?? "");
           setLocked(Boolean(data.alias_locked));
         }
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [session]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {

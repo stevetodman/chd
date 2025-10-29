@@ -1,4 +1,4 @@
-import { lazy, useEffect, useState } from "react";
+import { lazy, useEffect, useState, type ReactElement } from "react";
 import { useRoutes, Navigate } from "react-router-dom";
 import { requireAdmin, useSessionStore } from "./lib/auth";
 import Layout from "./components/Layout";
@@ -50,7 +50,7 @@ function LeaderboardGuard() {
   return <Leaderboard />;
 }
 
-function RequireAuth({ children }: { children: JSX.Element }) {
+function RequireAuth({ children }: { children: ReactElement }) {
   const { session, loading, initialized } = useSessionStore();
   if (session) return children;
   if (loading || !initialized)
@@ -62,7 +62,7 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   return <Navigate to="/login" replace />;
 }
 
-function RequireAdmin({ children }: { children: JSX.Element }) {
+function RequireAdmin({ children }: { children: ReactElement }) {
   const { session, loading, initialized } = useSessionStore();
   const [allowed, setAllowed] = useState<boolean | null>(null);
 

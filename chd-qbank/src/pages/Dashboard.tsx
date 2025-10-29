@@ -83,23 +83,23 @@ export default function Dashboard() {
     setMetricsLoading(true);
     setMetricsError(null);
 
-    fetchDashboardMetrics()
-      .then((data) => {
+    void (async () => {
+      try {
+        const data = await fetchDashboardMetrics();
         if (!active) return;
         setMetrics(data);
         setMetricsLoaded(true);
-      })
-      .catch((error) => {
+      } catch (error) {
         if (!active) return;
         const message = error instanceof Error ? error.message : "Unable to load progress.";
         setMetrics({ ...EMPTY_DASHBOARD_METRICS });
         setMetricsLoaded(true);
         setMetricsError(message);
-      })
-      .finally(() => {
+      } finally {
         if (!active) return;
         setMetricsLoading(false);
-      });
+      }
+    })();
 
     return () => {
       active = false;
@@ -109,12 +109,14 @@ export default function Dashboard() {
   useEffect(() => {
     setLoadingFeatured(true);
     setFeaturedError(null);
-    supabase
-      .from("questions")
-      .select("id, lead_in")
-      .eq("status", "published")
-      .limit(5)
-      .then(({ data, error }) => {
+    void (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("questions")
+          .select("id, lead_in")
+          .eq("status", "published")
+          .limit(5);
+
         if (error) {
           setFeaturedError(error.message);
           setFeatured([]);
@@ -122,10 +124,10 @@ export default function Dashboard() {
         }
         const randomized = shuffle(data ?? []);
         setFeatured(randomized.map((row) => ({ id: row.id, lead_in: row.lead_in })));
-      })
-      .finally(() => {
+      } finally {
         setLoadingFeatured(false);
-      });
+      }
+    })();
   }, []);
 
   const refreshMetrics = () => {
@@ -150,28 +152,30 @@ export default function Dashboard() {
     setTopicLoading(true);
     setTopicError(null);
 
-    fetchPracticeTrendData(session.user.id)
-      .then((points) => {
+    void (async () => {
+      try {
+        const points = await fetchPracticeTrendData(session.user.id);
         if (!active) return;
         setTrendData(points);
-      })
-      .catch(() => {
+      } catch {
         if (!active) return;
         setTrendError("We couldn't load your recent practice. Try again shortly.");
         setTrendData([]);
-      })
-      .finally(() => {
+      } finally {
         if (!active) return;
         setTrendLoading(false);
-      });
+      }
+    })();
 
-    supabase
-      .from("responses")
-      .select("is_correct, created_at, question:questions(topic)")
-      .eq("user_id", session.user.id)
-      .order("created_at", { ascending: false })
-      .limit(200)
-      .then(({ data, error }) => {
+    void (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("responses")
+          .select("is_correct, created_at, question:questions(topic)")
+          .eq("user_id", session.user.id)
+          .order("created_at", { ascending: false })
+          .limit(200);
+
         if (!active) return;
         if (error) {
           setTopicError("Topic insights are unavailable right now.");
@@ -215,16 +219,15 @@ export default function Dashboard() {
         });
 
         setTopicInsights(insights);
-      })
-      .catch(() => {
+      } catch {
         if (!active) return;
         setTopicError("Topic insights are unavailable right now.");
         setTopicInsights([]);
-      })
-      .finally(() => {
+      } finally {
         if (!active) return;
         setTopicLoading(false);
-      });
+      }
+    })();
 
     return () => {
       active = false;
@@ -415,7 +418,8 @@ export default function Dashboard() {
       nextMilestone,
       readinessMessage,
       weeklyAttempts,
-      weeklyGoalAttempts
+      weeklyGoalAttempts,
+      metrics.total_attempts
     ]
   );
 
@@ -477,7 +481,7 @@ export default function Dashboard() {
       }
       await navigator.clipboard.writeText(reportSummary);
       setCopyFeedback("Shareable summary copied to clipboard.");
-    } catch (error) {
+    } catch (_error) {
       setCopyFeedback("Copy not supported in this browser. Try printing instead.");
     }
   };
@@ -491,8 +495,8 @@ export default function Dashboard() {
     try {
       await navigator.share({ title: "CHD progress update", text: reportSummary });
       setCopyFeedback("Progress report ready to send.");
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
+    } catch (_error) {
+      if (_error instanceof DOMException && _error.name === "AbortError") {
         return;
       }
       setCopyFeedback("Unable to share. Try copying instead.");
@@ -584,7 +588,7 @@ export default function Dashboard() {
               <section className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-700">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <h3 className="text-sm font-semibold text-neutral-800">Narrative snapshots</h3>
-                  <p className="text-xs text-neutral-500">Quick headlines for this week's progress.</p>
+                  <p className="text-xs text-neutral-500">Quick headlines for this week&rsquo;s progress.</p>
                 </div>
                 <div className="grid gap-3 md:grid-cols-3">
                   {narrativeSnapshots.map((snapshot) => (

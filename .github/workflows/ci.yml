@@ -10,7 +10,35 @@ permissions:
   contents: read
 
 jobs:
+  detect-changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      code_changed: ${{ steps.detect.outputs.code }}
+      migrations_changed: ${{ steps.filter.outputs.migrations }}
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a25f0e4a72 # v4.1.6
+        with:
+          fetch-depth: 0
+      - name: Detect code changes
+        id: detect
+        run: |
+          CODE_CHANGED=$(python3 scripts/detect_code_changes.py)
+          echo "code=${CODE_CHANGED}" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          GITHUB_BEFORE_SHA: ${{ github.event.before || '' }}
+          GITHUB_SHA: ${{ github.sha }}
+      - uses: dorny/paths-filter@8d6a028232b48cf9449877dc87aef5d30daeb4c3 # v3.0.2
+        id: filter
+        with:
+          filters: |
+            migrations:
+              - 'chd-qbank/supabase/migrations/**'
+
   build-test:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.code_changed == 'true' || needs.detect-changes.outputs.migrations_changed == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -22,12 +50,6 @@ jobs:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: 'chd-qbank/package-lock.json'
-      - uses: dorny/paths-filter@8d6a028232b48cf9449877dc87aef5d30daeb4c3 # v3.0.2
-        id: changes
-        with:
-          filters: |
-            migrations:
-              - 'chd-qbank/supabase/migrations/**'
       - name: Install dependencies
         run: npm ci
       - name: Lint
@@ -90,13 +112,15 @@ jobs:
           name: compliance-artifacts
           path: chd-qbank/compliance-artifacts
       - name: Check Supabase migration safety
-        if: steps.changes.outputs.migrations == 'true'
+        if: needs.detect-changes.outputs.migrations_changed == 'true'
         run: npm run check:migration-safety
       - name: Ensure NOTICE and license inventory are current
         working-directory: ..
         run: git diff --exit-code
 
   edge-function-lint:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.code_changed == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:

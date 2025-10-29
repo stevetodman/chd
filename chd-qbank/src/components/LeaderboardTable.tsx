@@ -210,8 +210,7 @@ const fetchMeta = async (userIds: string[], bounds: TimeframeBounds) => {
   if (userIds.length === 0) return map;
 
   const activityQuery = applyTimeframeFilter(
-    supabase
-      .from("leaderboard_events")
+    (supabase.from("leaderboard_events") as any)
       .select("user_id, last_awarded_at:max(created_at)", { group: "user_id" })
       .in("user_id", userIds),
     "created_at",
@@ -219,8 +218,7 @@ const fetchMeta = async (userIds: string[], bounds: TimeframeBounds) => {
   );
 
   const accuracyQuery = applyTimeframeFilter(
-    supabase
-      .from("answer_events")
+    (supabase.from("answer_events") as any)
       .select("user_id, correct:sum(points), attempts:count()", { group: "user_id" })
       .in("user_id", userIds),
     "effective_at",
@@ -319,9 +317,9 @@ export default function LeaderboardTable() {
           }));
         } else {
           const monthlyQuery = applyTimeframeFilter(
-            supabase
-              .from("leaderboard_events")
-              .select("user_id, points:count()", { group: "user_id" }),
+            (supabase.from("leaderboard_events") as any).select("user_id, points:count()", {
+              group: "user_id"
+            }),
             "created_at",
             bounds
           )

@@ -175,7 +175,7 @@ function checkSetNotNull(
 async function main() {
   try {
     await fs.access(migrationsDir);
-  } catch (error) {
+  } catch (_error) {
     console.warn(`Migrations directory not found at ${migrationsDir}. Skipping safety checks.`);
     process.exit(0);
   }

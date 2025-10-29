@@ -7,7 +7,6 @@ import {
   mergeQuestionPages,
   normalizeQuestionRows,
   PRACTICE_PAGE_SIZE,
-  type QuestionQueryRow,
   type QuestionRow,
   shuffleQuestions,
   shouldLoadNextPage
@@ -32,13 +31,19 @@ type ResponseRow = {
 
 type ResponseMap = Record<string, PracticeResponse | null>;
 
-const mapResponse = (data: ResponseRow): PracticeResponse => ({
-  id: data.id,
-  flagged: data.flagged,
-  choice_id: data.choice_id,
-  is_correct: data.is_correct,
-  ms_to_answer: data.ms_to_answer
-});
+const mapResponse = (data: ResponseRow | null): PracticeResponse | null => {
+  if (!data) {
+    return null;
+  }
+
+  return {
+    id: data.id,
+    flagged: data.flagged,
+    choice_id: data.choice_id,
+    is_correct: data.is_correct,
+    ms_to_answer: data.ms_to_answer
+  };
+};
 
 export type PracticeSessionStats = {
   totalAnswered: number;
@@ -169,14 +174,8 @@ export function usePracticeSession() {
     const loadFilterOptions = async () => {
       try {
         const [topicsResult, lesionsResult] = await Promise.all([
-          supabase
-            .from("questions")
-            .select("topic", { distinct: true })
-            .eq("status", "published"),
-          supabase
-            .from("questions")
-            .select("lesion", { distinct: true })
-            .eq("status", "published")
+          supabase.from("questions").select("topic").eq("status", "published"),
+          supabase.from("questions").select("lesion").eq("status", "published")
         ]);
 
         if (!active) return;
@@ -369,7 +368,7 @@ export function usePracticeSession() {
           return 0;
         }
 
-        const normalized = normalizeQuestionRows((data ?? []) as QuestionQueryRow[]);
+        const normalized = normalizeQuestionRows(data ?? []);
         const randomized = shuffleQuestions(normalized);
 
         const base = replace ? [] : questionsRef.current;

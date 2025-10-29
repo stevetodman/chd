@@ -6,12 +6,9 @@ export interface LocaleState {
   setLocale: (locale: string) => void;
 }
 
-const storage = createJSONStorage<LocaleState>(() => {
-  if (typeof window === "undefined") {
-    return undefined;
-  }
-  return window.localStorage;
-});
+const storage = typeof window === "undefined"
+  ? undefined
+  : createJSONStorage<{ locale: string }>(() => window.localStorage);
 
 export const useLocaleStore = create<LocaleState>()(
   persist(

@@ -10,7 +10,7 @@ import ReviewQuestionCard, { type ReviewFlag } from "../components/ReviewQuestio
 type FlaggedResponseRow = {
   id: string;
   created_at: string;
-  questions: QuestionQueryRow | null;
+  questions: QuestionQueryRow | QuestionQueryRow[] | null;
 };
 
 export default function Review() {
@@ -52,11 +52,12 @@ export default function Review() {
       setFetchError(error.message);
       setFlags([]);
     } else {
-      const typed = (data ?? []) as FlaggedResponseRow[];
+      const typed = (data ?? []) as unknown as FlaggedResponseRow[];
       const mapped: ReviewFlag[] = typed
         .map((row) => {
-          if (!row.questions) return null;
-          const [question] = normalizeQuestionRows([row.questions]);
+          const payload = Array.isArray(row.questions) ? row.questions[0] ?? null : row.questions;
+          if (!payload) return null;
+          const [question] = normalizeQuestionRows([payload]);
           if (!question) return null;
           return { id: row.id, created_at: row.created_at, question } satisfies ReviewFlag;
         })

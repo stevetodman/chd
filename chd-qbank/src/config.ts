@@ -27,7 +27,7 @@ const envSchema = z.object({
 
 const resolveRuntimeEnv = (): RuntimeEnv => {
   if (typeof import.meta !== "undefined" && typeof import.meta.env !== "undefined") {
-    return import.meta.env as RuntimeEnv;
+    return import.meta.env as unknown as RuntimeEnv;
   }
 
   if (typeof process !== "undefined" && typeof process.env !== "undefined") {

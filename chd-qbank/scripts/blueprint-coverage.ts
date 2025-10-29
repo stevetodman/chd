@@ -65,7 +65,7 @@ async function loadLocalQuestions(status: StatusFilter): Promise<QuestionRecord[
 
   try {
     await fs.access(contentDir);
-  } catch (error) {
+  } catch (_error) {
     return [];
   }
 
@@ -85,8 +85,8 @@ async function loadLocalQuestions(status: StatusFilter): Promise<QuestionRecord[
         }
       }
       records.push(parsed);
-    } catch (error) {
-      console.error(`Failed to parse ${fullPath}:`, error);
+    } catch (_error) {
+      console.error(`Failed to parse ${fullPath}:`, _error);
     }
   }
 
