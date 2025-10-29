@@ -11,7 +11,7 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Practice = lazy(() => import("./pages/Practice"));
+const Practice = lazy(() => import("./pages/practice"));
 const Review = lazy(() => import("./pages/Review"));
 const GamesIndex = lazy(() => import("./pages/Games"));
 const Murmurs = lazy(() => import("./pages/Games/Murmurs"));
