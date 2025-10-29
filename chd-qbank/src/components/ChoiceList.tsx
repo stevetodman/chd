@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback, useMemo, useReducer, useId, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Choice } from "../lib/constants";
 import { classNames } from "../lib/utils";
@@ -21,16 +21,35 @@ export default function ChoiceList({
   showFeedback = false,
   autoFocusFirst = false
 }: Props) {
-  const [struck, setStruck] = useState<Record<string, boolean>>({});
+  const choiceIdPrefix = useId();
+  const choiceSignature = useMemo(() => choices.map((choice) => choice.id).join("|"), [choices]);
+  const [strikeState, dispatch] = useReducer(
+    (
+      state: { signature: string; strikes: Record<string, boolean> },
+      action:
+        | { type: "toggle"; id: string }
+        | { type: "reset"; signature: string }
+    ) => {
+      if (action.type === "toggle") {
+        const next = { ...state.strikes, [action.id]: !state.strikes[action.id] };
+        return { signature: state.signature, strikes: next };
+      }
+      if (action.type === "reset") {
+        return { signature: action.signature, strikes: {} };
+      }
+      return state;
+    },
+    { signature: choiceSignature, strikes: {} }
+  );
   const firstChoiceRef = useRef<HTMLButtonElement | null>(null);
 
-  const toggleStrike = useCallback((id: string) => {
-    setStruck((prev) => ({ ...prev, [id]: !prev[id] }));
-  }, []);
-
   useEffect(() => {
-    setStruck({});
-  }, [choices]);
+    dispatch({ type: "reset", signature: choiceSignature });
+  }, [choiceSignature]);
+
+  const toggleStrike = useCallback((id: string) => {
+    dispatch({ type: "toggle", id });
+  }, []);
 
   useEffect(() => {
     if (!autoFocusFirst || disabled) return;
@@ -81,7 +100,9 @@ export default function ChoiceList({
         const showAsCorrect = reveal && isCorrect;
         const showAsIncorrectSelection = reveal && isSelected && !isCorrect;
         const showAsCorrectSelection = reveal && isSelected && isCorrect;
-        const isStruck = struck[choice.id];
+        const isStruck = strikeState.strikes[choice.id] ?? false;
+        const labelElementId = `${choiceIdPrefix}-${choice.id}-label`;
+        const textElementId = `${choiceIdPrefix}-${choice.id}-text`;
         return (
           <button
             key={choice.id}
@@ -89,6 +110,7 @@ export default function ChoiceList({
             aria-keyshortcuts={`${choice.label.toLowerCase()},${choice.label}`}
             disabled={disabled}
             data-choice-id={choice.id}
+            aria-labelledby={`${labelElementId} ${textElementId}`}
             onClick={() => onSelect(choice)}
             onContextMenu={(e) => {
               e.preventDefault();
@@ -122,10 +144,10 @@ export default function ChoiceList({
                       ? "correct-answer"
                       : "revealed"
             }
-          >
+            >
             <div className="flex items-start gap-3">
-              <span className="font-semibold">{choice.label}.</span>
-              <div className="flex-1 space-y-1">
+              <span id={labelElementId} className="font-semibold">{choice.label}.</span>
+              <div id={textElementId} className="flex-1 space-y-1">
                 <ReactMarkdown
                   remarkPlugins={markdownRemarkPlugins}
                   rehypePlugins={markdownRehypePlugins}

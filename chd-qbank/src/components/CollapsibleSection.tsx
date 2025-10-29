@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import type { ReactNode } from "react";
 import { classNames } from "../lib/utils";
 
@@ -22,15 +22,13 @@ export default function CollapsibleSection({
   const generatedId = useId();
   const headingId = id ?? generatedId;
   const contentId = `${headingId}-content`;
-  const [open, setOpen] = useState(defaultOpen);
-
-  useEffect(() => {
-    setOpen(defaultOpen);
-  }, [defaultOpen]);
+  const [overrideOpen, setOverrideOpen] = useState<boolean | null>(null);
+  const open = overrideOpen ?? defaultOpen;
 
   const handleToggle = () => {
-    setOpen((prev) => {
-      const next = !prev;
+    setOverrideOpen((prev) => {
+      const previous = prev ?? defaultOpen;
+      const next = !previous;
       onToggle?.(next);
       return next;
     });
@@ -45,6 +43,7 @@ export default function CollapsibleSection({
         aria-expanded={open}
         aria-controls={contentId}
         id={headingId}
+        aria-label={summary ? `${title} – ${summary}` : title}
       >
         <div className="flex flex-1 flex-col gap-1">
           <span>{title}</span>

@@ -12,8 +12,7 @@ export default function Layout() {
   const loadSettings = useSettingsStore((s) => s.loadSettings);
   const maintenanceMode = useSettingsStore((s) => s.maintenanceMode);
   const { session, loading: sessionLoading, initialized } = useSessionStore();
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [checkedAdminFor, setCheckedAdminFor] = useState<string | null>(null);
+  const [adminByUserId, setAdminByUserId] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (sessionLoading || !initialized || !session) {
@@ -24,12 +23,11 @@ export default function Layout() {
 
   useEffect(() => {
     if (!session) {
-      setIsAdmin(false);
-      setCheckedAdminFor(null);
       return;
     }
 
-    if (checkedAdminFor === session.user.id) {
+    const userId = session.user.id;
+    if (userId in adminByUserId) {
       return;
     }
 
@@ -38,25 +36,21 @@ export default function Layout() {
     requireAdmin()
       .then((ok) => {
         if (cancelled) return;
-        setIsAdmin(ok);
+        setAdminByUserId((prev) => ({ ...prev, [userId]: ok }));
       })
       .catch(() => {
         if (cancelled) return;
-        setIsAdmin(false);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setCheckedAdminFor(session.user.id);
+        setAdminByUserId((prev) => ({ ...prev, [userId]: false }));
       });
 
     return () => {
       cancelled = true;
     };
-  }, [session, checkedAdminFor]);
+  }, [session, adminByUserId]);
 
-  const checkingAdmin = !!session && checkedAdminFor !== session?.user.id;
-  const showMaintenance =
-    !!session && maintenanceMode && !isAdmin && !checkingAdmin;
+  const isAdmin = session ? adminByUserId[session.user.id] ?? false : false;
+  const checkingAdmin = !!session && !(session.user.id in adminByUserId);
+  const showMaintenance = !!session && maintenanceMode && !isAdmin && !checkingAdmin;
 
   return (
     <div className="min-h-screen bg-neutral-50">
