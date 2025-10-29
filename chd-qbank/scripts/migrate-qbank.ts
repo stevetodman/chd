@@ -4,8 +4,10 @@ import fs from "fs";
 import path from "path";
 import pc from "picocolors";
 import { timestamp, ensureDir, readJson, writeJsonPretty } from "./lib/fs-utils";
-import { Question as QuestionSchema } from "../src/schema/question.schema";
+import { Question as QuestionSchema, type QuestionT } from "../src/schema/question.schema";
 import { normalizeItem } from "./lib/normalizers";
+
+type LooseQuestion = Partial<QuestionT> & Record<string, unknown>;
 
 const ROOT = process.cwd();
 const ITEMS_DIR = path.join(ROOT, "chd-qbank", "content", "questions");
@@ -35,12 +37,15 @@ async function main() {
   if (files.length === 0) console.log(pc.yellow("No JSON items found under content/questions."));
 
   const rows: Row[] = [];
-  let ok = 0, warn = 0, err = 0, skipped = 0;
+  let ok = 0;
+  let warn = 0;
+  let err = 0;
+  const skipped = 0;
 
   for (const file of files) {
     try {
       const rel = path.relative(ROOT, file);
-      const data = readJson(file);
+      const data = readJson<QuestionT | LooseQuestion>(file);
       const result = normalizeItem(data, file, QuestionSchema);
 
       if (result.errors.length > 0 || !result.normalized) {
@@ -61,16 +66,26 @@ async function main() {
       if (!DRY_RUN) writeJsonPretty(file, out);
 
       const hasWarn = result.warnings.length > 0;
-      rows.push({ file: rel, status: hasWarn ? "warn" : "ok",
-        addedKeys: result.addedKeys.join(";"), changedKeys: result.changedKeys.join(";"),
-        warnings: result.warnings.join(" | "), errors: "" });
+      rows.push({
+        file: rel,
+        status: hasWarn ? "warn" : "ok",
+        addedKeys: result.addedKeys.join(";"),
+        changedKeys: result.changedKeys.join(";"),
+        warnings: result.warnings.join(" | "),
+        errors: ""
+      });
       console.log((hasWarn ? pc.yellow : pc.green)(`${hasWarn ? "▲" : "✔"} ${rel}`));
-      hasWarn ? warn++ : ok++;
-    } catch (e: any) {
+      if (hasWarn) {
+        warn += 1;
+      } else {
+        ok += 1;
+      }
+    } catch (error: unknown) {
       const rel = path.relative(ROOT, file);
-      rows.push({ file: rel, status: "error", addedKeys: "", changedKeys: "", warnings: "", errors: String(e?.message ?? e) });
-      console.log(pc.red(`✖ ${rel} — ${String(e?.message ?? e)}`));
-      err++;
+      const message = error instanceof Error ? error.message : String(error);
+      rows.push({ file: rel, status: "error", addedKeys: "", changedKeys: "", warnings: "", errors: message });
+      console.log(pc.red(`✖ ${rel} — ${message}`));
+      err += 1;
     }
   }
 

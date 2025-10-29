@@ -172,7 +172,6 @@ async function withRetry(operation, description, options = {}) {
 async function runWithConcurrencyLimit(tasks, limit) {
   if (limit <= 1) {
     for (const task of tasks) {
-      // eslint-disable-next-line no-await-in-loop
       await task();
     }
     return;
@@ -186,7 +185,6 @@ async function runWithConcurrencyLimit(tasks, limit) {
       executing.delete(promise);
     });
     if (executing.size >= limit) {
-      // eslint-disable-next-line no-await-in-loop
       await Promise.race(executing);
     }
   }

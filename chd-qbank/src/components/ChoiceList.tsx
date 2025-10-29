@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useReducer, useEffect, useCallback, useRef, useId } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Choice } from "../lib/constants";
 import { classNames } from "../lib/utils";
@@ -13,6 +13,33 @@ type Props = {
   autoFocusFirst?: boolean;
 };
 
+type StrikeState = Record<string, boolean>;
+type StrikeAction =
+  | { type: "toggle"; id: string }
+  | { type: "reset"; ids: string[] };
+
+const strikeReducer = (state: StrikeState, action: StrikeAction): StrikeState => {
+  switch (action.type) {
+    case "toggle": {
+      const next: StrikeState = { ...state };
+      next[action.id] = !next[action.id];
+      return next;
+    }
+    case "reset": {
+      const allowed = new Set(action.ids);
+      const next: StrikeState = {};
+      for (const id of Object.keys(state)) {
+        if (allowed.has(id) && state[id]) {
+          next[id] = true;
+        }
+      }
+      return next;
+    }
+    default:
+      return state;
+  }
+};
+
 export default function ChoiceList({
   choices,
   disabled,
@@ -21,15 +48,16 @@ export default function ChoiceList({
   showFeedback = false,
   autoFocusFirst = false
 }: Props) {
-  const [struck, setStruck] = useState<Record<string, boolean>>({});
+  const [struck, dispatch] = useReducer(strikeReducer, {});
+  const idPrefix = useId();
   const firstChoiceRef = useRef<HTMLButtonElement | null>(null);
 
   const toggleStrike = useCallback((id: string) => {
-    setStruck((prev) => ({ ...prev, [id]: !prev[id] }));
+    dispatch({ type: "toggle", id });
   }, []);
 
   useEffect(() => {
-    setStruck({});
+    dispatch({ type: "reset", ids: choices.map((choice) => choice.id) });
   }, [choices]);
 
   useEffect(() => {
@@ -82,11 +110,14 @@ export default function ChoiceList({
         const showAsIncorrectSelection = reveal && isSelected && !isCorrect;
         const showAsCorrectSelection = reveal && isSelected && isCorrect;
         const isStruck = struck[choice.id];
+        const buttonLabelId = `${idPrefix}-label-${choice.id}`;
+        const textContainerId = `${idPrefix}-text-${choice.id}`;
         return (
           <button
             key={choice.id}
             type="button"
             aria-keyshortcuts={`${choice.label.toLowerCase()},${choice.label}`}
+            aria-labelledby={`${buttonLabelId} ${textContainerId}`}
             disabled={disabled}
             data-choice-id={choice.id}
             onClick={() => onSelect(choice)}
@@ -124,8 +155,8 @@ export default function ChoiceList({
             }
           >
             <div className="flex items-start gap-3">
-              <span className="font-semibold">{choice.label}.</span>
-              <div className="flex-1 space-y-1">
+              <span id={buttonLabelId} className="font-semibold">{choice.label}.</span>
+              <div id={textContainerId} className="flex-1 space-y-1">
                 <ReactMarkdown
                   remarkPlugins={markdownRemarkPlugins}
                   rehypePlugins={markdownRehypePlugins}

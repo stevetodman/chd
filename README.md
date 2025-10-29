@@ -55,15 +55,44 @@ This matches Vercel’s Node 18 runtime and prevents version drift.
    npm install
    ```
 
-2. Copy `.env.example` to `.env.development` (or `.env`) and populate Supabase credentials (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`). Leave the invite placeholders in place—service-role keys and invite codes are supplied at runtime (see [Environment variables](#environment-variables)).
+2. From the repository root, copy `.env.example` to `.env` and set the Supabase values you plan to use when running Docker Compose, Makefile shortcuts, or automation scripts:
 
-3. Start the development server:
+   ```bash
+   cp .env.example .env
+   ```
+
+   The template includes sane defaults for the local Postgres container (`POSTGRES_*`), placeholders for Supabase service-role credentials, and optional overrides for seeding helpers (`INVITE_CODE_SALT`, `SEED_ADMIN_*`) and analytics verification knobs (`HEATMAP_VERIFY_*`). Keep invite codes empty until you run the seeding utilities.
+
+3. Inside `chd-qbank/`, copy `.env.example` to `.env.development` (or `.env`) and populate Supabase credentials (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`). Leave the invite placeholders in place—service-role keys and invite codes are supplied at runtime (see [Environment variables](#environment-variables)).
+
+4. Start the development server:
 
    ```bash
    npm run dev
    ```
 
-4. Visit [http://localhost:5173](http://localhost:5173) and sign in with an invited account. Initial content can be loaded by running the seeding scripts after your database is provisioned; provide invite codes via environment variables when invoking `npm run seed:invite`.
+5. Visit [http://localhost:5173](http://localhost:5173) and sign in with an invited account. Initial content can be loaded by running the seeding scripts after your database is provisioned; provide invite codes via environment variables when invoking `npm run seed:invite`.
+
+### Local Postgres & static build with Docker Compose
+
+Use Docker Compose to exercise the production build locally and connect to a Postgres instance that mirrors the Supabase schema:
+
+1. Populate `.env` using the provided template (`cp .env.example .env`) and update the Supabase values so the app can reach your project.
+2. Build and launch the stack:
+
+   ```bash
+   docker compose up --build
+   ```
+
+   The `app` service serves the static Vite build on [http://localhost:3000](http://localhost:3000). The `db` service provisions Postgres using the same schema files shipped to Supabase (`schema.sql`, `storage-policies.sql`, and `cron.sql`).
+3. Run seeding or verification scripts against the Postgres container as needed:
+
+   ```bash
+   npm --prefix chd-qbank run seed:full
+   npm --prefix chd-qbank run verify:analytics:heatmap
+   ```
+
+   Export `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` only when targeting a managed Supabase instance; the Dockerized Postgres service is isolated and does not expose Supabase authentication or storage APIs.
 
 ## Usage example
 

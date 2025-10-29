@@ -2,5 +2,12 @@ node_modules/
 chd-qbank/node_modules/
 chd-qbank/scripts/dist/
 *.log
+
+# Environment files (populated from .env.example)
+.env
 .env.local
+.env.*
+!.env.example
+!*/.env.example
+
 chd-qbank/.vite/

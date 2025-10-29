@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
@@ -7,13 +7,35 @@ import { useSessionStore } from "../lib/auth";
 import { requireAdmin, signOut } from "../lib/auth";
 import { Button } from "./ui/Button";
 
+type AdminState = {
+  isAdmin: boolean;
+  checkedAdminFor: string | null;
+};
+
+type AdminAction =
+  | { type: "reset" }
+  | { type: "checked"; userId: string; isAdmin: boolean };
+
+const adminReducer = (state: AdminState, action: AdminAction): AdminState => {
+  switch (action.type) {
+    case "reset":
+      return { isAdmin: false, checkedAdminFor: null };
+    case "checked":
+      return { isAdmin: action.isAdmin, checkedAdminFor: action.userId };
+    default:
+      return state;
+  }
+};
+
 export default function Layout() {
   const location = useLocation();
   const loadSettings = useSettingsStore((s) => s.loadSettings);
   const maintenanceMode = useSettingsStore((s) => s.maintenanceMode);
   const { session, loading: sessionLoading, initialized } = useSessionStore();
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [checkedAdminFor, setCheckedAdminFor] = useState<string | null>(null);
+  const [{ isAdmin, checkedAdminFor }, dispatch] = useReducer(adminReducer, {
+    isAdmin: false,
+    checkedAdminFor: null
+  });
 
   useEffect(() => {
     if (sessionLoading || !initialized || !session) {
@@ -24,8 +46,7 @@ export default function Layout() {
 
   useEffect(() => {
     if (!session) {
-      setIsAdmin(false);
-      setCheckedAdminFor(null);
+      dispatch({ type: "reset" });
       return;
     }
 
@@ -38,15 +59,11 @@ export default function Layout() {
     requireAdmin()
       .then((ok) => {
         if (cancelled) return;
-        setIsAdmin(ok);
+        dispatch({ type: "checked", userId: session.user.id, isAdmin: ok });
       })
       .catch(() => {
         if (cancelled) return;
-        setIsAdmin(false);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setCheckedAdminFor(session.user.id);
+        dispatch({ type: "checked", userId: session.user.id, isAdmin: false });
       });
 
     return () => {

@@ -134,7 +134,16 @@ const formatRelativeTimeFromNow = (isoDate: string | null) => {
   return relativeTimeFormatter.format(Math.round(years), "year");
 };
 
-const applyTimeframeFilter = (query: any, column: string, bounds: TimeframeBounds) => {
+type TimeframeQueryable<T> = {
+  gte: (column: string, value: string) => T;
+  lt: (column: string, value: string) => T;
+};
+
+const applyTimeframeFilter = <T extends TimeframeQueryable<T>>(
+  query: T,
+  column: string,
+  bounds: TimeframeBounds
+) : T => {
   let nextQuery = query;
   if (bounds.startIso) {
     nextQuery = nextQuery.gte(column, bounds.startIso);

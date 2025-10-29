@@ -33,14 +33,16 @@ describe("QBank question shape & assets", () => {
 
   it("choices have expected keys", () => {
     for (const q of questions) {
-      const keys = q.choices.flatMap((c: any) => Object.keys(c)).sort();
+      const parsed = validateQuestion(q);
+      const keys = parsed.choices.flatMap((choice) => Object.keys(choice)).sort();
       expect(new Set(keys)).toEqual(new Set(["alt","id","isCorrect","label","mediaRef","text"]));
     }
   });
 
   it("media files exist when referenced", () => {
     for (const q of questions) {
-      for (const file of q.mediaBundle ?? []) {
+      const parsed = validateQuestion(q);
+      for (const file of parsed.mediaBundle ?? []) {
         const p = path.join(MEDIA_DIR, file);
         expect(fs.existsSync(p)).toBe(true);
       }
@@ -49,8 +51,9 @@ describe("QBank question shape & assets", () => {
 
   it("offlineRequired items avoid remote-only refs", () => {
     for (const q of questions) {
-      if (q.offlineRequired) {
-        const all = [q.stem, q.explanation, ...(q.references ?? [])].join(" ");
+      const parsed = validateQuestion(q);
+      if (parsed.offlineRequired) {
+        const all = [parsed.stem, parsed.explanation, ...(parsed.references ?? [])].join(" ");
         expect(all).not.toMatch(/https?:\/\//i);
       }
     }
