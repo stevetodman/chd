@@ -1,8 +1,8 @@
-import type { Config } from "tailwindcss";
-import defaultTheme from "tailwindcss/defaultTheme";
-import typography from "@tailwindcss/typography";
+const defaultTheme = require("tailwindcss/defaultTheme");
+const typography = require("@tailwindcss/typography");
 
-const config: Config = {
+/** @type {import('tailwindcss').Config} */
+module.exports = {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
@@ -111,5 +111,3 @@ const config: Config = {
   },
   plugins: [typography]
 };
-
-export default config;
