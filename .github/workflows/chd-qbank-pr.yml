@@ -1,0 +1,39 @@
+name: chd-qbank PR checks
+
+on:
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+
+permissions:
+  contents: read
+
+jobs:
+  install-lint-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: chd-qbank
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a25f0e4a72 # v4.1.6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@5e21ff4d9f0f45a73d87940c49aa5addf5328d0f # v4.0.2
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: chd-qbank/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint --if-present -- --max-warnings=0
+
+      - name: Type check
+        run: npm run typecheck --if-present
+
+      - name: Build
+        run: npm run build
