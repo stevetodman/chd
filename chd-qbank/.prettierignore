@@ -1,0 +1,14 @@
+# Build outputs
+.dist
+.next
+build
+coverage
+dist
+
+# Dependencies and generated assets
+node_modules
+vendor
+supabase
+
+# Misc
+*.log

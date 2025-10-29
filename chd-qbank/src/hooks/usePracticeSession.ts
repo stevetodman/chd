@@ -203,8 +203,9 @@ export function usePracticeSession() {
         setFilterOptions({ topics: [], lesions: [] });
         setFilterOptionsError("We couldn't load filter options. Try again later.");
       } finally {
-        if (!active) return;
-        setFilterOptionsLoading(false);
+        if (active) {
+          setFilterOptionsLoading(false);
+        }
       }
     };
 
