@@ -201,6 +201,7 @@ export default function Practice() {
       const activeElement = document.activeElement;
       if (
         activeElement &&
+        activeElement instanceof HTMLElement &&
         (activeElement instanceof HTMLInputElement ||
           activeElement instanceof HTMLTextAreaElement ||
           activeElement instanceof HTMLSelectElement ||

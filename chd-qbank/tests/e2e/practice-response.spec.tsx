@@ -109,7 +109,18 @@ const practiceQuestion: QuestionQueryRow = {
   ]
 };
 
-function mapResponseRecord(record: ResponseRow) {
+type ResponseRecordResult = {
+  id: string;
+  user_id: string;
+  question_id: string;
+  choice_id: string | null;
+  is_correct: boolean;
+  ms_to_answer: number | null;
+  flagged: boolean;
+  created_at: string;
+};
+
+function mapResponseRecord(record: ResponseRow): ResponseRecordResult {
   return {
     id: record.id,
     user_id: record.user_id,
@@ -122,7 +133,18 @@ function mapResponseRecord(record: ResponseRow) {
   };
 }
 
-function mapEventRecord(record: AnswerEventRow) {
+type AnswerEventRecordResult = {
+  id: string;
+  response_id: string;
+  user_id: string;
+  question_id: string;
+  is_correct: boolean;
+  points: number;
+  effective_at: string;
+  created_at: string;
+};
+
+function mapEventRecord(record: AnswerEventRow): AnswerEventRecordResult {
   return { ...record };
 }
 
@@ -192,13 +214,13 @@ function createQuestionsBuilder(state: SupabaseMockState) {
 function createResponsesBuilder(state: SupabaseMockState) {
   return {
     select: (_columns?: string) => {
-      const filters: Partial<ResponseRow> = {};
+      const filters: Partial<Record<keyof ResponseRow, unknown>> = {};
       let orderColumn: keyof ResponseRow | null = null;
       let ascending = true;
       let limitCount: number | null = null;
       const chain: any = {
         eq(column: string, value: unknown) {
-          filters[column as keyof ResponseRow] = value as ResponseRow[keyof ResponseRow];
+          filters[column as keyof ResponseRow] = value;
           return chain;
         },
         order(column: string, options?: { ascending?: boolean }) {
@@ -296,13 +318,13 @@ function createResponsesBuilder(state: SupabaseMockState) {
 function createAnswerEventsBuilder(state: SupabaseMockState) {
   return {
     select: (_columns?: string) => {
-      const filters: Partial<AnswerEventRow> = {};
+      const filters: Partial<Record<keyof AnswerEventRow, unknown>> = {};
       let orderColumn: keyof AnswerEventRow | null = null;
       let ascending = true;
       let limitCount: number | null = null;
       const chain: any = {
         eq(column: string, value: unknown) {
-          filters[column as keyof AnswerEventRow] = value as AnswerEventRow[keyof AnswerEventRow];
+          filters[column as keyof AnswerEventRow] = value;
           return chain;
         },
         order(column: string, options?: { ascending?: boolean }) {
@@ -532,18 +554,18 @@ describe("practice response analytics capture", () => {
       expect(supabaseState.lastIncrementPayload).not.toBeNull();
     });
 
-    let savedResponse: ReturnType<typeof mapResponseRecord> | null = null;
+    let savedResponse: ResponseRecordResult | null = null;
     await waitFor(async () => {
       const { data } = await supabase
         .from("responses")
-        .select("id, user_id, question_id, choice_id, is_correct, ms_to_answer, created_at")
+        .select("id, user_id, question_id, choice_id, is_correct, ms_to_answer, flagged, created_at")
         .eq("user_id", TEST_USER_ID)
         .eq("question_id", practiceQuestion.id)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
       expect(data).not.toBeNull();
-      savedResponse = data;
+      savedResponse = data as ResponseRecordResult | null;
     });
 
     expect(savedResponse).toMatchObject({
@@ -553,21 +575,27 @@ describe("practice response analytics capture", () => {
       ms_to_answer: 1500
     });
 
-    let savedEvent: ReturnType<typeof mapEventRecord> | null = null;
+    let savedEvent: AnswerEventRecordResult | null = null;
     await waitFor(async () => {
       const { data } = await supabase
         .from("answer_events")
-        .select("id, response_id, user_id, question_id, is_correct, points, effective_at")
+        .select("id, response_id, user_id, question_id, is_correct, points, effective_at, created_at")
         .eq("response_id", savedResponse?.id ?? "")
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
       expect(data).not.toBeNull();
-      savedEvent = data;
+      savedEvent = data as AnswerEventRecordResult | null;
     });
 
+    if (!savedResponse) {
+      throw new Error("Expected saved response to exist");
+    }
+    const responseData = savedResponse as ResponseRecordResult;
+    const responseId = responseData.id;
+
     expect(savedEvent).toMatchObject({
-      response_id: savedResponse?.id,
+      response_id: responseId,
       user_id: TEST_USER_ID,
       question_id: practiceQuestion.id,
       is_correct: true,

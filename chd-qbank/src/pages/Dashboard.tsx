@@ -107,25 +107,42 @@ export default function Dashboard() {
   }, [session, metricsReloadKey]);
 
   useEffect(() => {
-    setLoadingFeatured(true);
-    setFeaturedError(null);
-    supabase
-      .from("questions")
-      .select("id, lead_in")
-      .eq("status", "published")
-      .limit(5)
-      .then(({ data, error }) => {
+    let active = true;
+
+    const loadFeatured = async () => {
+      setLoadingFeatured(true);
+      setFeaturedError(null);
+
+      try {
+        const { data, error } = await supabase
+          .from("questions")
+          .select("id, lead_in")
+          .eq("status", "published")
+          .limit(5);
+
+        if (!active) return;
+
         if (error) {
           setFeaturedError(error.message);
           setFeatured([]);
           return;
         }
-        const randomized = shuffle(data ?? []);
+
+        const rows = (data ?? []) as Array<{ id: string; lead_in: string | null }>;
+        const randomized = shuffle(rows);
         setFeatured(randomized.map((row) => ({ id: row.id, lead_in: row.lead_in })));
-      })
-      .finally(() => {
-        setLoadingFeatured(false);
-      });
+      } finally {
+        if (active) {
+          setLoadingFeatured(false);
+        }
+      }
+    };
+
+    void loadFeatured();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const refreshMetrics = () => {
@@ -165,31 +182,39 @@ export default function Dashboard() {
         setTrendLoading(false);
       });
 
-    supabase
-      .from("responses")
-      .select("is_correct, created_at, question:questions(topic)")
-      .eq("user_id", session.user.id)
-      .order("created_at", { ascending: false })
-      .limit(200)
-      .then(({ data, error }) => {
+    const loadTopicInsights = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("responses")
+          .select("is_correct, created_at, question:questions(topic)")
+          .eq("user_id", session.user.id)
+          .order("created_at", { ascending: false })
+          .limit(200);
+
         if (!active) return;
+
         if (error) {
           setTopicError("Topic insights are unavailable right now.");
           setTopicInsights([]);
           return;
         }
 
+        type TopicRow = {
+          is_correct: boolean | null;
+          created_at: string | null;
+          question: { topic: string | null } | null;
+        };
+
         const aggregates = new Map<string, { attempts: number; correct: number; lastActivity: Date | null }>();
-        for (const row of data ?? []) {
-          const rawTopic =
-            (row as { question?: { topic?: string | null } | null })?.question?.topic?.trim() ?? "General practice";
+        for (const row of (data ?? []) as unknown as TopicRow[]) {
+          const rawTopic = row.question?.topic?.trim() ?? "General practice";
           const topic = rawTopic.length > 0 ? rawTopic : "General practice";
           const existing = aggregates.get(topic) ?? { attempts: 0, correct: 0, lastActivity: null };
           existing.attempts += 1;
-          if ((row as { is_correct?: boolean | null })?.is_correct) {
+          if (row.is_correct) {
             existing.correct += 1;
           }
-          const createdAt = (row as { created_at?: string | null })?.created_at;
+          const createdAt = row.created_at;
           if (createdAt) {
             const createdDate = new Date(createdAt);
             if (!existing.lastActivity || existing.lastActivity < createdDate) {
@@ -215,16 +240,19 @@ export default function Dashboard() {
         });
 
         setTopicInsights(insights);
-      })
-      .catch(() => {
-        if (!active) return;
-        setTopicError("Topic insights are unavailable right now.");
-        setTopicInsights([]);
-      })
-      .finally(() => {
-        if (!active) return;
-        setTopicLoading(false);
-      });
+      } catch {
+        if (active) {
+          setTopicError("Topic insights are unavailable right now.");
+          setTopicInsights([]);
+        }
+      } finally {
+        if (active) {
+          setTopicLoading(false);
+        }
+      }
+    };
+
+    void loadTopicInsights();
 
     return () => {
       active = false;
@@ -412,6 +440,7 @@ export default function Dashboard() {
       latestAccuracyPoint,
       milestoneMessage,
       milestoneNextMessage,
+      metrics.total_attempts,
       nextMilestone,
       readinessMessage,
       weeklyAttempts,
@@ -477,7 +506,7 @@ export default function Dashboard() {
       }
       await navigator.clipboard.writeText(reportSummary);
       setCopyFeedback("Shareable summary copied to clipboard.");
-    } catch (error) {
+    } catch {
       setCopyFeedback("Copy not supported in this browser. Try printing instead.");
     }
   };

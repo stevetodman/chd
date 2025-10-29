@@ -52,7 +52,7 @@ export default function Review() {
       setFetchError(error.message);
       setFlags([]);
     } else {
-      const typed = (data ?? []) as FlaggedResponseRow[];
+      const typed = (data ?? []) as unknown as FlaggedResponseRow[];
       const mapped: ReviewFlag[] = typed
         .map((row) => {
           if (!row.questions) return null;

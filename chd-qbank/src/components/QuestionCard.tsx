@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import type { ReactElement } from "react";
 import type { Choice, Question } from "../lib/constants";
 import ChoiceList from "./ChoiceList";
 import Explanation from "./Explanation";
@@ -266,7 +267,7 @@ export default function QuestionCard({
               }
             }
 
-            let panelContent: JSX.Element | null = null;
+            let panelContent: ReactElement | null = null;
             if (panel.kind === "labs") {
               panelContent = <LabPanel labs={panel.labs} showTitle={false} asSection={false} />;
             }

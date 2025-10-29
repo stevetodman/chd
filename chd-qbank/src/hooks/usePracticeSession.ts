@@ -169,14 +169,8 @@ export function usePracticeSession() {
     const loadFilterOptions = async () => {
       try {
         const [topicsResult, lesionsResult] = await Promise.all([
-          supabase
-            .from("questions")
-            .select("topic", { distinct: true })
-            .eq("status", "published"),
-          supabase
-            .from("questions")
-            .select("lesion", { distinct: true })
-            .eq("status", "published")
+          supabase.from("questions").select("topic").eq("status", "published"),
+          supabase.from("questions").select("lesion").eq("status", "published")
         ]);
 
         if (!active) return;
@@ -252,7 +246,7 @@ export function usePracticeSession() {
         flaggedIdsRef.current = flagged;
         seenIdsRef.current = seen;
         updateResponses(() => map);
-        syncSetsFromResponses((data ?? []) as ResponseRow[]);
+        syncSetsFromResponses((data ?? []) as unknown as ResponseRow[]);
         setFlaggedVersion((version) => version + 1);
         setSeenVersion((version) => version + 1);
       });
@@ -370,7 +364,7 @@ export function usePracticeSession() {
           return 0;
         }
 
-        const normalized = normalizeQuestionRows((data ?? []) as QuestionQueryRow[]);
+        const normalized = normalizeQuestionRows((data ?? []) as unknown as QuestionQueryRow[]);
         const randomized = shuffleQuestions(normalized);
 
         const base = replace ? [] : questionsRef.current;
@@ -498,11 +492,14 @@ export function usePracticeSession() {
           .select("id, flagged, choice_id, is_correct, ms_to_answer")
           .maybeSingle();
 
-        if (error || !data) {
+        if (error) {
+          fail("We couldn't update your response. Please try again.");
+        }
+        if (!data) {
           fail("We couldn't update your response. Please try again.");
         }
 
-        saved = mapResponse(data);
+        saved = mapResponse(data as ResponseRow);
       } else {
         const { data, error } = await supabase
           .from("responses")
@@ -517,11 +514,14 @@ export function usePracticeSession() {
           .select("id, flagged, choice_id, is_correct, ms_to_answer")
           .single();
 
-        if (error || !data) {
+        if (error) {
+          fail("We couldn't submit your response. Please check your connection and try again.");
+        }
+        if (!data) {
           fail("We couldn't submit your response. Please check your connection and try again.");
         }
 
-        saved = mapResponse(data);
+        saved = mapResponse(data as ResponseRow);
       }
 
       updateResponses((prev) => ({
@@ -566,13 +566,16 @@ export function usePracticeSession() {
           .select("id, flagged, choice_id, is_correct, ms_to_answer")
           .maybeSingle();
 
-        if (error || !data) {
+        if (error) {
+          fail("We couldn't update the flag. Please try again.");
+        }
+        if (!data) {
           fail("We couldn't update the flag. Please try again.");
         }
 
         updateResponses((prev) => ({
           ...prev,
-          [current.id]: mapResponse(data)
+          [current.id]: mapResponse(data as ResponseRow)
         }));
 
       updateFlaggedSet(current.id, flagged);
@@ -590,14 +593,17 @@ export function usePracticeSession() {
           .select("id, flagged, choice_id, is_correct, ms_to_answer")
           .single();
 
-        if (error || !data) {
+        if (error) {
+          fail("We couldn't save the flag. Please check your connection and try again.");
+        }
+        if (!data) {
           fail("We couldn't save the flag. Please check your connection and try again.");
         }
 
-      updateResponses((prev) => ({
-        ...prev,
-        [current.id]: mapResponse(data)
-      }));
+        updateResponses((prev) => ({
+          ...prev,
+          [current.id]: mapResponse(data as ResponseRow)
+        }));
 
       updateFlaggedSet(current.id, flagged);
     }

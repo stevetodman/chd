@@ -35,7 +35,7 @@ describe("onboarding signup flow", () => {
     randomUUIDMock.mockReturnValue("idempotency-key-2");
     if (!globalThis.crypto) {
       Object.defineProperty(globalThis, "crypto", {
-        value: { randomUUID: randomUUIDMock } as Crypto,
+        value: { randomUUID: randomUUIDMock } as unknown as Crypto,
         configurable: true
       });
     } else {

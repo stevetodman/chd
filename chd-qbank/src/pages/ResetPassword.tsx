@@ -101,10 +101,16 @@ export default function ResetPassword() {
         }
 
         if (tokenHash) {
-          const paramsWithEmail = email ? { type: "recovery" as const, token_hash: tokenHash, email } : null;
-          const paramsWithoutEmail = { type: "recovery" as const, token_hash: tokenHash };
+          if (!email) {
+            markInvalid();
+            return false;
+          }
 
-          const { data, error } = await supabase.auth.verifyOtp(paramsWithEmail ?? paramsWithoutEmail);
+          const { data, error } = await supabase.auth.verifyOtp({
+            type: "recovery",
+            token_hash: tokenHash,
+            email
+          });
           if (cancelled) return false;
           if (!error && data.session) {
             resolveReady();
@@ -120,8 +126,16 @@ export default function ResetPassword() {
             return true;
           }
 
-          const paramsWithEmail = email ? { type: "recovery" as const, token, email } : null;
-          const { data, error } = await supabase.auth.verifyOtp(paramsWithEmail ?? { type: "recovery" as const, token });
+          if (!email) {
+            markInvalid();
+            return false;
+          }
+
+          const { data, error } = await supabase.auth.verifyOtp({
+            type: "recovery",
+            token,
+            email
+          });
           if (cancelled) return false;
           if (!error && data.session) {
             resolveReady();

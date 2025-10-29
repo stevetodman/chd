@@ -1,14 +1,21 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import type { StateStorage } from "zustand/middleware";
 
 export interface LocaleState {
   locale: string;
   setLocale: (locale: string) => void;
 }
 
-const storage = createJSONStorage<LocaleState>(() => {
+const noopStorage: StateStorage = {
+  getItem: () => null,
+  setItem: () => undefined,
+  removeItem: () => undefined
+};
+
+const storage = createJSONStorage<{ locale: string }>(() => {
   if (typeof window === "undefined") {
-    return undefined;
+    return noopStorage;
   }
   return window.localStorage;
 });
