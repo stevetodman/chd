@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import fg from "fast-glob";
 import fs from "fs";
 import path from "path";
@@ -35,7 +34,9 @@ async function main() {
   if (files.length === 0) console.log(pc.yellow("No JSON items found under content/questions."));
 
   const rows: Row[] = [];
-  let ok = 0, warn = 0, err = 0, skipped = 0;
+  let ok = 0;
+  let warn = 0;
+  let err = 0;
 
   for (const file of files) {
     try {
@@ -65,11 +66,16 @@ async function main() {
         addedKeys: result.addedKeys.join(";"), changedKeys: result.changedKeys.join(";"),
         warnings: result.warnings.join(" | "), errors: "" });
       console.log((hasWarn ? pc.yellow : pc.green)(`${hasWarn ? "▲" : "✔"} ${rel}`));
-      hasWarn ? warn++ : ok++;
-    } catch (e: any) {
+      if (hasWarn) {
+        warn += 1;
+      } else {
+        ok += 1;
+      }
+    } catch (e: unknown) {
       const rel = path.relative(ROOT, file);
-      rows.push({ file: rel, status: "error", addedKeys: "", changedKeys: "", warnings: "", errors: String(e?.message ?? e) });
-      console.log(pc.red(`✖ ${rel} — ${String(e?.message ?? e)}`));
+      const message = e instanceof Error ? e.message : String(e);
+      rows.push({ file: rel, status: "error", addedKeys: "", changedKeys: "", warnings: "", errors: message });
+      console.log(pc.red(`✖ ${rel} — ${message}`));
       err++;
     }
   }
@@ -85,6 +91,7 @@ async function main() {
   console.log(pc.green(`  OK:      ${ok}`));
   console.log(pc.yellow(`  WARN:    ${warn}`));
   console.log(pc.red(`  ERROR:   ${err}`));
+  const skipped = rows.filter((row) => row.status === "skipped").length;
   console.log(pc.dim(`  SKIPPED: ${skipped}`));
   console.log(pc.cyan(`\nReport: ${DRY_RUN ? "(dry-run; not written)" : csvPath}`));
   console.log(pc.cyan(`Backups: ${DRY_RUN ? "(dry-run; not written)" : BACKUP_DIR}`));

@@ -25,6 +25,17 @@ module.exports = {
     }
   },
   rules: {
-    "react/react-in-jsx-scope": "off"
+    "react/react-in-jsx-scope": "off",
+    "@typescript-eslint/no-explicit-any": "off",
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        argsIgnorePattern: "^_",
+        varsIgnorePattern: "^_",
+        ignoreRestSiblings: true
+      }
+    ],
+    "@typescript-eslint/no-require-imports": "off",
+    "react-hooks/set-state-in-effect": "off"
   }
 };

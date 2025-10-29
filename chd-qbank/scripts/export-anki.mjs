@@ -282,11 +282,14 @@ function renderMarkdown(markdown) {
     return "";
   }
   return renderToStaticMarkup(
-    React.createElement(ReactMarkdown, {
-      remarkPlugins: MARKDOWN_REMARK_PLUGINS,
-      rehypePlugins: MARKDOWN_REHYPE_PLUGINS,
-      children: trimmed
-    })
+    React.createElement(
+      ReactMarkdown,
+      {
+        remarkPlugins: MARKDOWN_REMARK_PLUGINS,
+        rehypePlugins: MARKDOWN_REHYPE_PLUGINS
+      },
+      trimmed
+    )
   );
 }
 
@@ -433,7 +436,8 @@ async function handleMediaAsset(url, question, kind, altText, assets, usedFilena
 
 function ensureUniqueFilename(question, kind, url, usedFilenames) {
   const ext = inferExtension(url) || (kind === "murmur" ? ".mp3" : ".png");
-  const baseName = sanitizeFilename(`${question.slug || question.id}-${kind}` || kind);
+  const slugOrId = question.slug || question.id;
+  const baseName = sanitizeFilename(slugOrId ? `${slugOrId}-${kind}` : kind);
   let candidate = `${baseName}${ext}`;
   let counter = 1;
   while (usedFilenames.has(candidate)) {
@@ -460,7 +464,7 @@ function inferExtension(url) {
 function sanitizeFilename(value) {
   return (value || "media")
     .normalize("NFKD")
-    .replace(/[^a-zA-Z0-9-_]+/g, "-")
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "")
     .toLowerCase() || "media";
@@ -543,7 +547,7 @@ function formatTag(value) {
     .trim()
     .toLowerCase()
     .replace(/\s+/g, "_")
-    .replace(/[^a-z0-9_:\-]/g, "");
+    .replace(/[^a-z0-9_:-]/g, "");
 }
 
 async function writeDeckToFile(deck, options) {

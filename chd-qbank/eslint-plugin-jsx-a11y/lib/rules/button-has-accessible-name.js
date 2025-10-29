@@ -34,15 +34,28 @@ function hasTextChildren(node) {
     return false;
   }
 
-  return node.parent.children.some((child) => {
-    if (child.type === "JSXText") {
-      return child.value.trim().length > 0;
+  const stack = [...node.parent.children];
+  while (stack.length > 0) {
+    const child = stack.pop();
+    if (!child) continue;
+
+    if (child.type === "JSXText" && child.value.trim().length > 0) {
+      return true;
     }
+
     if (child.type === "JSXExpressionContainer") {
-      return child.expression != null && child.expression.type !== "JSXEmptyExpression";
+      const expression = child.expression;
+      if (expression && expression.type !== "JSXEmptyExpression") {
+        return true;
+      }
     }
-    return false;
-  });
+
+    if (child.type === "JSXElement" && Array.isArray(child.children)) {
+      stack.push(...child.children);
+    }
+  }
+
+  return false;
 }
 
 module.exports = {

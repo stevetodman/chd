@@ -130,132 +130,136 @@ export function I18nProvider({
         return String(value);
       };
 
-      const formatPlaceholder = (content: string): string => {
-        if (!content) {
-          return "";
-        }
-
-        const segments: string[] = [];
-        let depth = 0;
-        let segmentStart = 0;
-
-        for (let i = 0; i < content.length; i += 1) {
-          const character = content[i];
-          if (character === "{") {
-            depth += 1;
-          } else if (character === "}") {
-            depth = Math.max(depth - 1, 0);
-          } else if (character === "," && depth === 0) {
-            segments.push(content.slice(segmentStart, i).trim());
-            segmentStart = i + 1;
-          }
-        }
-        segments.push(content.slice(segmentStart).trim());
-
-        const [rawKey, type, ...rest] = segments;
-        const key = rawKey ?? "";
-        const value = values?.[key];
-
-        if (!type) {
-          return formatValue(value);
-        }
-
-        if (type === "number") {
-          const style = rest[0]?.trim();
-          const options: Intl.NumberFormatOptions = {};
-          if (style === "integer") {
-            options.maximumFractionDigits = 0;
-          }
-          const numericValue = typeof value === "number" ? value : Number(value ?? 0);
-          return formatNumber(numericValue, options);
-        }
-
-        if (type === "plural") {
-          const pluralOptions = rest.join(",").trim();
-          if (typeof value !== "number") {
+      const renderTemplate = (currentTemplate: string): string => {
+        const formatPlaceholder = (content: string): string => {
+          if (!content) {
             return "";
           }
-          const optionsMap: Record<string, string> = {};
-          let optionIndex = 0;
-          while (optionIndex < pluralOptions.length) {
-            while (optionIndex < pluralOptions.length && /\s/.test(pluralOptions[optionIndex] ?? "")) {
-              optionIndex += 1;
+
+          const segments: string[] = [];
+          let depth = 0;
+          let segmentStart = 0;
+
+          for (let i = 0; i < content.length; i += 1) {
+            const character = content[i];
+            if (character === "{") {
+              depth += 1;
+            } else if (character === "}") {
+              depth = Math.max(depth - 1, 0);
+            } else if (character === "," && depth === 0) {
+              segments.push(content.slice(segmentStart, i).trim());
+              segmentStart = i + 1;
             }
-            let optionKey = "";
+          }
+          segments.push(content.slice(segmentStart).trim());
+
+          const [rawKey, type, ...rest] = segments;
+          const key = rawKey ?? "";
+          const value = values?.[key];
+
+          if (!type) {
+            return formatValue(value);
+          }
+
+          if (type === "number") {
+            const style = rest[0]?.trim();
+            const options: Intl.NumberFormatOptions = {};
+            if (style === "integer") {
+              options.maximumFractionDigits = 0;
+            }
+            const numericValue = typeof value === "number" ? value : Number(value ?? 0);
+            return formatNumber(numericValue, options);
+          }
+
+          if (type === "plural") {
+            const pluralOptions = rest.join(",").trim();
+            if (typeof value !== "number") {
+              return "";
+            }
+            const optionsMap: Record<string, string> = {};
+            let optionIndex = 0;
             while (optionIndex < pluralOptions.length) {
-              const char = pluralOptions[optionIndex];
-              if (!char || /[\s{]/.test(char)) {
+              while (optionIndex < pluralOptions.length && /\s/.test(pluralOptions[optionIndex] ?? "")) {
+                optionIndex += 1;
+              }
+              let optionKey = "";
+              while (optionIndex < pluralOptions.length) {
+                const char = pluralOptions[optionIndex];
+                if (!char || /[\s{]/.test(char)) {
+                  break;
+                }
+                optionKey += char;
+                optionIndex += 1;
+              }
+              while (optionIndex < pluralOptions.length && /\s/.test(pluralOptions[optionIndex] ?? "")) {
+                optionIndex += 1;
+              }
+              if (pluralOptions[optionIndex] !== "{") {
                 break;
               }
-              optionKey += char;
-              optionIndex += 1;
-            }
-            while (optionIndex < pluralOptions.length && /\s/.test(pluralOptions[optionIndex] ?? "")) {
-              optionIndex += 1;
-            }
-            if (pluralOptions[optionIndex] !== "{") {
-              break;
-            }
-            optionIndex += 1; // skip "{"
-            let optionDepth = 1;
-            let bodyStart = optionIndex;
-            while (optionIndex < pluralOptions.length && optionDepth > 0) {
-              const char = pluralOptions[optionIndex];
-              if (char === "{") {
-                optionDepth += 1;
-              } else if (char === "}") {
-                optionDepth -= 1;
+              optionIndex += 1; // skip "{"
+              let optionDepth = 1;
+              const bodyStart = optionIndex;
+              while (optionIndex < pluralOptions.length && optionDepth > 0) {
+                const char = pluralOptions[optionIndex];
+                if (char === "{") {
+                  optionDepth += 1;
+                } else if (char === "}") {
+                  optionDepth -= 1;
+                }
+                optionIndex += 1;
               }
-              optionIndex += 1;
+              const body = pluralOptions.slice(bodyStart, optionIndex - 1);
+              optionsMap[optionKey] = body;
             }
-            const body = pluralOptions.slice(bodyStart, optionIndex - 1);
-            optionsMap[optionKey] = body;
+
+            const pluralRule = new Intl.PluralRules(locale);
+            const category = pluralRule.select(value);
+            const selected = optionsMap[category] ?? optionsMap.other ?? "";
+            const formattedCount = formatNumber(value, { maximumFractionDigits: 0 });
+            return renderTemplate(selected.replace(/#/g, formattedCount));
           }
 
-          const pluralRule = new Intl.PluralRules(locale);
-          const category = pluralRule.select(value);
-          const selected = optionsMap[category] ?? optionsMap.other ?? "";
-          const formattedCount = formatNumber(value, { maximumFractionDigits: 0 });
-          return formatTemplate(selected.replace(/#/g, formattedCount), values);
+          return formatValue(value);
+        };
+
+        let result = "";
+        let index = 0;
+
+        while (index < currentTemplate.length) {
+          const openIndex = currentTemplate.indexOf("{", index);
+          if (openIndex === -1) {
+            result += currentTemplate.slice(index);
+            break;
+          }
+
+          result += currentTemplate.slice(index, openIndex);
+          let depth = 1;
+          let cursor = openIndex + 1;
+
+          while (cursor < currentTemplate.length && depth > 0) {
+            if (currentTemplate[cursor] === "{") {
+              depth += 1;
+            } else if (currentTemplate[cursor] === "}") {
+              depth -= 1;
+            }
+            cursor += 1;
+          }
+
+          if (depth !== 0) {
+            result += currentTemplate.slice(openIndex);
+            break;
+          }
+
+          const placeholderContent = currentTemplate.slice(openIndex + 1, cursor - 1);
+          result += formatPlaceholder(placeholderContent.trim());
+          index = cursor;
         }
 
-        return formatValue(value);
+        return result;
       };
 
-      let result = "";
-      let index = 0;
-
-      while (index < template.length) {
-        const openIndex = template.indexOf("{", index);
-        if (openIndex === -1) {
-          result += template.slice(index);
-          break;
-        }
-
-        result += template.slice(index, openIndex);
-        let depth = 1;
-        let cursor = openIndex + 1;
-
-        while (cursor < template.length && depth > 0) {
-          if (template[cursor] === "{") {
-            depth += 1;
-          } else if (template[cursor] === "}") {
-            depth -= 1;
-          }
-          cursor += 1;
-        }
-
-        if (depth !== 0) {
-          result += template.slice(openIndex);
-          break;
-        }
-
-        const placeholderContent = template.slice(openIndex + 1, cursor - 1);
-        result += formatPlaceholder(placeholderContent.trim());
-        index = cursor;
-      }
-
-      return result;
+      return renderTemplate(template);
     },
     [formatNumber, locale]
   );

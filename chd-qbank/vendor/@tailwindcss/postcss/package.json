@@ -1,0 +1,11 @@
+{
+  "name": "@tailwindcss/postcss",
+  "version": "4.1.16",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": {
+      "import": "./index.js"
+    }
+  }
+}
