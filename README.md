@@ -65,13 +65,91 @@ This matches Vercel’s Node 18 runtime and prevents version drift.
 
 4. Visit [http://localhost:5173](http://localhost:5173) and sign in with an invited account. Initial content can be loaded by running the seeding scripts after your database is provisioned; provide invite codes via environment variables when invoking `npm run seed:invite`.
 
-## Usage example
+## Provision Supabase services
+
+The application depends on a Supabase project for authentication, data storage, and scheduled jobs. Provision the backing services before inviting learners:
+
+1. **Create or identify a Supabase project.** Separate projects for development, staging, and production prevent accidental data sharing.
+2. **Link the repository to the project.** Authenticate with the Supabase CLI and connect it to the appropriate project reference:
+
+   ```bash
+   supabase login
+   supabase link --project-ref <your-project-ref>
+   ```
+
+3. **Apply database schema and policies.** From the repository root run the migration helper, which applies `schema.sql`, storage policies, and cron tasks in sequence. Service-role credentials must be exported prior to running the script.
+
+   ```bash
+   export SUPABASE_URL="https://<your-project-ref>.supabase.co"
+   export SUPABASE_SERVICE_ROLE_KEY="<service-role-key>"
+   npm --prefix chd-qbank run migrate:qbank
+   ```
+
+4. **Seed content and invites.** Populate the question bank, media metadata, and default roles with the bundled automation.
+
+   ```bash
+   npm --prefix chd-qbank run seed:full
+   INVITE_CODE="<secure-value>" INVITE_EXPIRES="2025-12-31" npm --prefix chd-qbank run seed:invite
+   ```
+
+   Rotate invite codes after each staging rehearsal and whenever a code is exposed. Use `npm --prefix chd-qbank run verify:seed` to confirm the seeded data matches expectations.
+
+5. **Deploy Edge Functions.** The signup flow relies on the `signup-with-code` function. Deploy it through the Supabase CLI so that the client can exchange invite codes for accounts:
+
+   ```bash
+   cd chd-qbank
+   supabase functions deploy signup-with-code --project-ref <your-project-ref>
+   ```
+
+6. **Review storage buckets and access policies.** `npm --prefix chd-qbank run verify:storage` checks that required buckets exist and validates their security posture. Create missing buckets through the Supabase dashboard or CLI and re-run the verification until it succeeds.
+
+Refer to [`docs/runtime/environment-configuration.md`](./docs/runtime/environment-configuration.md) for the complete list of environment variables and secret-handling practices shared across these tasks.
+
+## Environment profiles
+
+The Vite workspace ships with predefined modes so you can mirror production behavior locally and in preview deployments.
+
+| Workflow | Command | Notes |
+| --- | --- | --- |
+| Local development | `npm run dev` | Serves the UI with hot module reloading and development Supabase credentials. |
+| Staging parity | `npm run dev:staging` | Loads `.env.staging*` files to mimic the staging database and feature flags. |
+| Production simulation | `npm run dev:production` | Mirrors the production build-time flags while keeping fast refresh enabled. |
+| Production build | `npm run build` | Generates an optimized bundle for Vercel or static hosting. |
+| Staging build | `npm run build:staging` | Produces artifacts using staging environment variables for smoke testing. |
+| Static preview | `npm run preview` | Serves the last build locally with production caching headers. |
+
+When running scripts from the repository root, prefix commands with `npm --prefix chd-qbank` to ensure npm resolves the package-relative scripts. Automation helpers respect the `APP_ENV` variable and load `.env.<environment>`/`.env.<environment>.local` overrides so you can target staging or production credentials without juggling shell exports.
+
+Production deploys are handled by Vercel. Promote successful preview builds after verifying Supabase CORS settings, environment variables, and cron jobs as described in [`docs/ops/release-runbook.md`](./docs/ops/release-runbook.md).
+
+## Optional automation and scheduled jobs
+
+Several background processes keep analytics fresh and enforce data hygiene. Enable them after the core Supabase provisioning succeeds:
+
+- **Analytics refresh:** `cron.sql` schedules `analytics_heatmap_refresh()` via `pg_cron`. If your Supabase plan does not expose `pg_cron`, deploy a Supabase scheduled function that calls the same RPC on a cadence and track its runs in the Supabase dashboard.
+- **Event retention:** Follow [`docs/ops/event-retention.md`](./docs/ops/event-retention.md) to configure the pruning procedure that purges stale telemetry. The runbook explains how to enable/disable it per environment and how to validate execution using Supabase logs.
+- **Policy verification:** Automate smoke tests in CI or staging with `npm --prefix chd-qbank run verify:policies` and `npm --prefix chd-qbank run verify:analytics:heatmap`. Both scripts require service-role credentials and will fail fast if row-level security or materialized views drift from the expected configuration.
+
+## Usage playbooks
 
 ![Practice session and analytics overview](./docs/images/usage-dashboard.svg)
 
-1. **Receive an invite and sign up.** Administrators share single-use codes managed via `app_settings`. Learners redeem a code through the Supabase Edge Function to activate their account and profile preferences.
+### Learner journey
+
+1. **Receive an invite and sign up.** Administrators share single-use codes managed via `app_settings`. Learners redeem a code through the Supabase Edge Function to activate their account and profile preferences. Invites expire automatically based on the `INVITE_EXPIRES` timestamp provided during seeding.
 2. **Launch a practice session.** The dashboard presents multiple-choice questions drawn from the congenital heart disease bank and highlights supporting media (imaging, audio). Learners submit answers, review explanations, and move through a curated session or topic drill.
-3. **Review analytics.** After each session the analytics heatmap aggregates performance, streaks, and suggested focus areas so learners can target weak domains and instructors can monitor cohort progress.
+3. **Review analytics.** After each session the analytics heatmap aggregates performance, streaks, and suggested focus areas so learners can target weak domains and instructors can monitor cohort progress. Refreshing the analytics view triggers a Supabase RPC that rebuilds the materialized view in real time.
+
+### Instructor tooling
+
+- **Seed cohort data:** Use `npm --prefix chd-qbank run seed:full` against staging to populate exemplar cohorts before onboarding instructors. Combine with `npm --prefix chd-qbank run blueprint:coverage` to confirm every topic has at least one question and explanation.
+- **Moderate content:** Admins authenticate with elevated roles assigned via the Supabase dashboard (see [`docs/security/admin-roles.md`](./docs/security/admin-roles.md)). The UI unlocks moderation routes for approving new questions, uploading media to Supabase Storage, and managing invite codes.
+- **Export study decks:** `npm --prefix chd-qbank run export:anki` produces an Anki import that mirrors the in-app question bank for offline review sessions.
+
+### Simulation games
+
+- **CXR lesion localization:** Navigate to the imaging drills to practice bounding-box identification. Supabase stores anonymized attempts, enabling instructors to track progress across cohorts.
+- **Murmur classification:** Launch audio drills that surface phonocardiogram loops. Learners classify each clip; Supabase captures responses and updates leaderboards after each session.
 
 ## Supabase & data model
 
