@@ -1,5 +1,5 @@
-const defaultTheme = require("tailwindcss/defaultTheme");
-const typography = require("@tailwindcss/typography");
+import defaultTheme from "tailwindcss/defaultTheme";
+import typography from "@tailwindcss/typography";
 
 /** @type {import('tailwindcss').Config} */
 const config = {
@@ -112,4 +112,4 @@ const config = {
   plugins: [typography]
 };
 
-module.exports = config;
+export default config;

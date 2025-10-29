@@ -12,8 +12,10 @@ export default function Layout() {
   const loadSettings = useSettingsStore((s) => s.loadSettings);
   const maintenanceMode = useSettingsStore((s) => s.maintenanceMode);
   const { session, loading: sessionLoading, initialized } = useSessionStore();
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [checkedAdminFor, setCheckedAdminFor] = useState<string | null>(null);
+  const [adminState, setAdminState] = useState<{ isAdmin: boolean; checkedFor: string | null }>(() => ({
+    isAdmin: false,
+    checkedFor: null
+  }));
 
   useEffect(() => {
     if (sessionLoading || !initialized || !session) {
@@ -24,12 +26,10 @@ export default function Layout() {
 
   useEffect(() => {
     if (!session) {
-      setIsAdmin(false);
-      setCheckedAdminFor(null);
       return;
     }
 
-    if (checkedAdminFor === session.user.id) {
+    if (adminState.checkedFor === session.user.id) {
       return;
     }
 
@@ -38,21 +38,20 @@ export default function Layout() {
     requireAdmin()
       .then((ok) => {
         if (cancelled) return;
-        setIsAdmin(ok);
+        setAdminState({ isAdmin: ok, checkedFor: session.user.id });
       })
       .catch(() => {
         if (cancelled) return;
-        setIsAdmin(false);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setCheckedAdminFor(session.user.id);
+        setAdminState({ isAdmin: false, checkedFor: session.user.id });
       });
 
     return () => {
       cancelled = true;
     };
-  }, [session, checkedAdminFor]);
+  }, [session, adminState.checkedFor]);
+
+  const isAdmin = session ? adminState.isAdmin : false;
+  const checkedAdminFor = session ? adminState.checkedFor : null;
 
   const checkingAdmin = !!session && checkedAdminFor !== session?.user.id;
   const showMaintenance =

@@ -8,8 +8,27 @@ const supabaseState = vi.hoisted(() => ({
   storageFrom: vi.fn()
 }));
 
-function createMurmurItemsBuilder() {
-  const builder: any = {
+type ViMock = ReturnType<typeof vi.fn>;
+
+type MurmurItemsQueryBuilder = {
+  select: ViMock;
+  eq: ViMock;
+  order: ViMock;
+  limit: ViMock;
+};
+
+type MurmurAttemptsQueryBuilder = {
+  insert: ViMock;
+  select: ViMock;
+  single: ViMock;
+};
+
+type StorageBuilder = {
+  createSignedUrl: ViMock;
+};
+
+function createMurmurItemsBuilder(): MurmurItemsQueryBuilder {
+  const builder: MurmurItemsQueryBuilder = {
     select: vi.fn(),
     eq: vi.fn(),
     order: vi.fn(),
@@ -21,8 +40,8 @@ function createMurmurItemsBuilder() {
   return builder;
 }
 
-function createMurmurAttemptsBuilder() {
-  const builder: any = {
+function createMurmurAttemptsBuilder(): MurmurAttemptsQueryBuilder {
+  const builder: MurmurAttemptsQueryBuilder = {
     insert: vi.fn(),
     select: vi.fn(),
     single: vi.fn()
@@ -32,7 +51,7 @@ function createMurmurAttemptsBuilder() {
   return builder;
 }
 
-function createStorageBuilder() {
+function createStorageBuilder(): StorageBuilder {
   return {
     createSignedUrl: vi.fn()
   };

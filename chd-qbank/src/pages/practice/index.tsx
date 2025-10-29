@@ -53,7 +53,10 @@ export default function Practice() {
   const [filtersSheetOpen, setFiltersSheetOpen] = useState(false);
 
   useEffect(() => {
-    setPendingFilters({ ...filters });
+    const timeout = setTimeout(() => {
+      setPendingFilters({ ...filters });
+    }, 0);
+    return () => clearTimeout(timeout);
   }, [filters]);
 
   useEffect(() => {

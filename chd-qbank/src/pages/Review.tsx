@@ -68,7 +68,10 @@ export default function Review() {
   }, [session]);
 
   useEffect(() => {
-    void loadFlags();
+    const timeout = setTimeout(() => {
+      void loadFlags();
+    }, 0);
+    return () => clearTimeout(timeout);
   }, [loadFlags]);
 
   const handleUnflag = useCallback(

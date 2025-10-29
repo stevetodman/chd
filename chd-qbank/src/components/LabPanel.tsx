@@ -17,11 +17,11 @@ export default function LabPanel({
   showTitle = true,
   asSection = true
 }: Props) {
+  const headingId = useId();
+
   if (!labs || labs.length === 0) {
     return null;
   }
-
-  const headingId = useId();
 
   const content = (
     <Card className={showTitle ? "bg-white" : "border-0 bg-transparent shadow-none p-0"}>

@@ -5,6 +5,7 @@ import { Button } from "./ui/Button";
 import { useSessionStore } from "../lib/auth";
 import { classNames } from "../lib/utils";
 import { Select } from "./ui/Select";
+import { useI18n } from "../i18n";
 
 type Filter = "weekly" | "monthly" | "all";
 type SortKey = "points" | "accuracy" | "recent";
@@ -49,7 +50,31 @@ const sortChoices: Array<{ value: SortOption; label: string }> = [
   { value: "recent-asc", label: "Last point (oldest)" }
 ];
 
-const relativeTimeFormatter = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+const RELATIVE_TIME_FALLBACK_LOCALE = "en";
+
+const relativeTimeFormatterCache = new Map<string, Intl.RelativeTimeFormat>();
+
+const getRelativeTimeFormatter = (locale: string) => {
+  const normalized = locale || RELATIVE_TIME_FALLBACK_LOCALE;
+  const cached = relativeTimeFormatterCache.get(normalized);
+  if (cached) {
+    return cached;
+  }
+
+  try {
+    const formatter = new Intl.RelativeTimeFormat(normalized, { numeric: "auto" });
+    relativeTimeFormatterCache.set(normalized, formatter);
+    return formatter;
+  } catch {
+    if (normalized !== RELATIVE_TIME_FALLBACK_LOCALE) {
+      return getRelativeTimeFormatter(RELATIVE_TIME_FALLBACK_LOCALE);
+    }
+
+    const fallbackFormatter = new Intl.RelativeTimeFormat(RELATIVE_TIME_FALLBACK_LOCALE, { numeric: "auto" });
+    relativeTimeFormatterCache.set(RELATIVE_TIME_FALLBACK_LOCALE, fallbackFormatter);
+    return fallbackFormatter;
+  }
+};
 
 const resolveAlias = (relation: LeaderboardRowWithAlias["public_aliases"]) => {
   if (!relation) return null;
@@ -96,7 +121,7 @@ const getTimeframeBounds = (filter: Filter): TimeframeBounds => {
   return { startIso: null, endIso: null };
 };
 
-const formatRelativeTimeFromNow = (isoDate: string | null) => {
+export const formatRelativeTimeFromNow = (isoDate: string | null, locale: string) => {
   if (!isoDate) return "—";
   const parsed = new Date(isoDate);
   if (Number.isNaN(parsed.getTime())) return "—";
@@ -126,15 +151,20 @@ const formatRelativeTimeFromNow = (isoDate: string | null) => {
                 : unit === "week"
                   ? 1000 * 60 * 60 * 24 * 7
                   : 1000 * 60 * 60 * 24 * 30;
-      return relativeTimeFormatter.format(Math.round(diffMs / divisor), unit);
+      return getRelativeTimeFormatter(locale).format(Math.round(diffMs / divisor), unit);
     }
   }
 
   const years = diffMs / (1000 * 60 * 60 * 24 * 365);
-  return relativeTimeFormatter.format(Math.round(years), "year");
+  return getRelativeTimeFormatter(locale).format(Math.round(years), "year");
 };
 
-const applyTimeframeFilter = (query: any, column: string, bounds: TimeframeBounds) => {
+type TimeframeQuery<T> = {
+  gte(column: string, value: string): T;
+  lt(column: string, value: string): T;
+};
+
+const applyTimeframeFilter = <T extends TimeframeQuery<T>>(query: T, column: string, bounds: TimeframeBounds): T => {
   let nextQuery = query;
   if (bounds.startIso) {
     nextQuery = nextQuery.gte(column, bounds.startIso);
@@ -273,6 +303,7 @@ export default function LeaderboardTable() {
   const [standing, setStanding] = useState<Standing | null>(null);
   const [standingLoading, setStandingLoading] = useState(false);
   const { session } = useSessionStore();
+  const { locale } = useI18n();
 
   const displayRows = useMemo(() => sortRows(baseRows, sortOption), [baseRows, sortOption]);
 
@@ -552,9 +583,11 @@ export default function LeaderboardTable() {
                   </td>
                   <td
                     className="px-4 py-3 text-right text-neutral-500"
-                    title={row.lastAwardedAt ? new Date(row.lastAwardedAt).toLocaleString() : undefined}
+                    title={
+                      row.lastAwardedAt ? new Date(row.lastAwardedAt).toLocaleString(locale) : undefined
+                    }
                   >
-                    {formatRelativeTimeFromNow(row.lastAwardedAt)}
+                    {formatRelativeTimeFromNow(row.lastAwardedAt, locale)}
                   </td>
                 </tr>
               );

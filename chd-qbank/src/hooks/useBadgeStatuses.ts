@@ -1,45 +1,46 @@
 import { useEffect, useState } from "react";
 import { fetchBadgeStatuses, type BadgeStatus } from "../lib/badges";
 
+type BadgeState = {
+  badges: BadgeStatus[];
+  loading: boolean;
+  error: string | null;
+};
+
 export function useBadgeStatuses(userId: string | null) {
-  const [badges, setBadges] = useState<BadgeStatus[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<BadgeState>({ badges: [], loading: false, error: null });
 
   useEffect(() => {
-    let active = true;
-
     if (!userId) {
-      setBadges([]);
-      setLoading(false);
-      setError(null);
-      return () => {
-        active = false;
-      };
+      return () => {};
     }
 
-    setLoading(true);
-    setError(null);
+    let active = true;
+
+    const loadingTimer = setTimeout(() => {
+      if (!active) return;
+      setState((prev) => ({ ...prev, loading: true, error: null }));
+    }, 0);
 
     fetchBadgeStatuses(userId)
       .then((badgeStatuses) => {
         if (!active) return;
-        setBadges(badgeStatuses.filter((badge) => badge.earned));
+        setState({ badges: badgeStatuses.filter((badge) => badge.earned), loading: false, error: null });
       })
       .catch(() => {
         if (!active) return;
-        setBadges([]);
-        setError("We couldn't load your badges. Try again soon.");
-      })
-      .finally(() => {
-        if (!active) return;
-        setLoading(false);
+        setState({ badges: [], loading: false, error: "We couldn't load your badges. Try again soon." });
       });
 
     return () => {
       active = false;
+      clearTimeout(loadingTimer);
     };
   }, [userId]);
 
-  return { badges, loading, error };
+  if (!userId) {
+    return { badges: [], loading: false, error: null };
+  }
+
+  return state;
 }

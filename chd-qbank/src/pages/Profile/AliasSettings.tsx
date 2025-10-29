@@ -64,13 +64,20 @@ export default function AliasSettings() {
 
   useEffect(() => {
     if (!session) return;
-    setLoading(true);
+    let active = true;
+    const startTimer: ReturnType<typeof setTimeout> = setTimeout(() => {
+      if (!active) return;
+      setLoading(true);
+    }, 0);
+    let finalizeTimer: ReturnType<typeof setTimeout> | null = null;
+
     supabase
       .from("app_users")
       .select("alias, alias_locked")
       .eq("id", session.user.id)
       .maybeSingle()
       .then(({ data, error }) => {
+        if (!active) return;
         if (error) {
           setError(error.message);
           setAlias("");
@@ -80,7 +87,20 @@ export default function AliasSettings() {
           setLocked(Boolean(data.alias_locked));
         }
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        finalizeTimer = setTimeout(() => {
+          if (!active) return;
+          setLoading(false);
+        }, 0);
+      });
+
+    return () => {
+      active = false;
+      clearTimeout(startTimer);
+      if (finalizeTimer) {
+        clearTimeout(finalizeTimer);
+      }
+    };
   }, [session]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {

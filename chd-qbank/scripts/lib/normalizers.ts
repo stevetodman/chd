@@ -21,14 +21,39 @@ const difficultyMap: Record<string, "easy"|"med"|"hard"> = {
 const choiceKeyCandidates = ["choices", "options", "answers"];
 const answerKeyCandidates = ["answer", "key", "correct", "correctIndex", "correctLetter"];
 
-export function normalizeItem(src: any, filePath: string, QuestionSchema: z.ZodTypeAny): NormResult {
-  const orig = JSON.parse(JSON.stringify(src));
+type MutableQuestion = Record<string, unknown> & {
+  id?: unknown;
+  objective?: unknown;
+  stem?: unknown;
+  explanation?: unknown;
+  choices?: unknown;
+  tags?: unknown;
+  difficulty?: unknown;
+  references?: unknown;
+  mediaBundle?: unknown;
+  media?: unknown;
+  assets?: unknown;
+  offlineRequired?: unknown;
+};
+
+type ChoiceCandidate = Record<string, unknown> & {
+  id?: string;
+  label?: string;
+  text?: string;
+  title?: string;
+  isCorrect?: boolean;
+};
+
+type RawChoice = ChoiceCandidate & { id: string; label: string; text?: string };
+
+export function normalizeItem(src: Record<string, unknown>, filePath: string, QuestionSchema: z.ZodTypeAny): NormResult {
+  const orig = JSON.parse(JSON.stringify(src)) as MutableQuestion;
   const changedKeys: string[] = [];
   const addedKeys: string[] = [];
   const warnings: string[] = [];
   const errors: string[] = [];
 
-  const out: any = { ...src };
+  const out: MutableQuestion = { ...src } as MutableQuestion;
 
   // required top-levels
   if (!out.id) { out.id = path.basename(filePath).replace(/\.json$/i, ""); addedKeys.push("id"); }
@@ -37,32 +62,45 @@ export function normalizeItem(src: any, filePath: string, QuestionSchema: z.ZodT
   if (!out.explanation) { out.explanation = "TBD – add explanation"; addedKeys.push("explanation"); warnings.push("explanation missing -> placeholder"); }
 
   // choices
-  let choices = out.choices;
-  if (!choices) for (const k of choiceKeyCandidates) if (out[k]) { choices = out[k]; break; }
-  if (!Array.isArray(choices)) { choices = []; warnings.push("no choices found -> created empty choices"); }
+  let choicesSource = out.choices;
+  if (!choicesSource) {
+    for (const k of choiceKeyCandidates) if (out[k]) { choicesSource = out[k]; break; }
+  }
 
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-  choices = choices.map((c: any, i: number) => {
-    const cc = { ...c };
-    if (!cc.id) cc.id = letters[i] ?? `C${i+1}`;
-    if (!cc.label) cc.label = letters[i] ?? String(i+1);
-    if (cc.text == null && cc.title != null) cc.text = cc.title;
-    if (cc.text == null && typeof c === "string") return { id: cc.id, label: cc.label, text: c as string };
-    return cc;
-  });
 
-  if (!choices.some((c: any) => c.isCorrect === true)) {
+  let choices: RawChoice[];
+  if (!Array.isArray(choicesSource)) {
+    choices = [];
+    warnings.push("no choices found -> created empty choices");
+  } else {
+    choices = choicesSource.map((choice, index) => {
+      if (typeof choice === "string") {
+        const id = letters[index] ?? `C${index + 1}`;
+        const label = letters[index] ?? String(index + 1);
+        return { id, label, text: choice };
+      }
+
+      const candidate: ChoiceCandidate = { ...choice } as ChoiceCandidate;
+      if (!candidate.id) candidate.id = letters[index] ?? `C${index + 1}`;
+      if (!candidate.label) candidate.label = letters[index] ?? String(index + 1);
+      if (candidate.text == null && candidate.title != null) candidate.text = candidate.title;
+      return candidate as RawChoice;
+    });
+  }
+
+  if (!choices.some((choice) => choice.isCorrect === true)) {
     let correctFrom: string | number | undefined;
-    for (const k of answerKeyCandidates) if (out[k] != null) { correctFrom = out[k]; break; }
+    for (const k of answerKeyCandidates) if (out[k] != null) { correctFrom = out[k] as string | number; break; }
     if (typeof correctFrom === "number" && choices[correctFrom]) {
-      choices = choices.map((c: any, i: number) => ({ ...c, isCorrect: i === correctFrom }));
+      choices = choices.map((choice, index) => ({ ...choice, isCorrect: index === correctFrom }));
     } else if (typeof correctFrom === "string") {
       const idxByLetter = letters.indexOf(correctFrom.toUpperCase());
       if (idxByLetter >= 0 && choices[idxByLetter]) {
-        choices = choices.map((c: any, i: number) => ({ ...c, isCorrect: i === idxByLetter }));
+        choices = choices.map((choice, index) => ({ ...choice, isCorrect: index === idxByLetter }));
       } else {
-        const ix = choices.findIndex((c: any) => (c.text ?? "").trim() === correctFrom.trim());
-        if (ix >= 0) choices = choices.map((c: any, i: number) => ({ ...c, isCorrect: i === ix }));
+        const ix = choices.findIndex((choice) => (choice.text ?? "").trim() === correctFrom.trim());
+        if (ix >= 0) choices = choices.map((choice, index) => ({ ...choice, isCorrect: index === ix }));
       }
     }
   }

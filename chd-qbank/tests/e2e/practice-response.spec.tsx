@@ -175,68 +175,110 @@ function logAnswerEvent(state: SupabaseMockState, response: ResponseRow, op: "in
   state.events.push(event);
 }
 
-function createQuestionsBuilder(state: SupabaseMockState) {
-  const builder = {
-    select: (_columns?: string, _options?: unknown) => builder,
-    eq: (_column: string, _value: unknown) => builder,
-    order: (_column: string, _options?: { ascending?: boolean }) => builder,
-    range: async (from: number, to: number) => ({
-      data: state.questions.slice(from, to + 1),
-      error: null,
-      count: state.questions.length
-    })
+type QuestionsQueryBuilder = {
+  select(...args: unknown[]): QuestionsQueryBuilder;
+  eq(column: string, value: unknown): QuestionsQueryBuilder;
+  order(column: string, options?: { ascending?: boolean }): QuestionsQueryBuilder;
+  range(from: number, to: number): Promise<{ data: QuestionQueryRow[]; error: null; count: number }>;
+};
+
+type ResponseRecordResult = ReturnType<typeof mapResponseRecord>;
+
+type ResponseSelectResult = { data: ResponseRecordResult[]; error: null };
+
+type ResponseSelectChain = {
+  eq(column: keyof ResponseRow, value: ResponseRow[keyof ResponseRow]): ResponseSelectChain;
+  order(column: keyof ResponseRow, options?: { ascending?: boolean }): ResponseSelectChain;
+  limit(count: number): ResponseSelectChain;
+  then<TResult1 = ResponseSelectResult, TResult2 = never>(
+    onfulfilled?: ((value: ResponseSelectResult) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
+  ): Promise<TResult1 | TResult2>;
+  maybeSingle(): Promise<{ data: ResponseRecordResult | null; error: null }>;
+};
+
+type AnswerEventRecordResult = ReturnType<typeof mapEventRecord>;
+
+type AnswerEventsSelectChain = {
+  eq(column: keyof AnswerEventRow, value: AnswerEventRow[keyof AnswerEventRow]): AnswerEventsSelectChain;
+  order(column: keyof AnswerEventRow, options?: { ascending?: boolean }): AnswerEventsSelectChain;
+  limit(count: number): AnswerEventsSelectChain;
+  maybeSingle(): Promise<{ data: AnswerEventRecordResult | null; error: null }>;
+};
+
+function createQuestionsBuilder(state: SupabaseMockState): QuestionsQueryBuilder {
+  const builder: QuestionsQueryBuilder = {
+    select(...args: unknown[]) {
+      void args;
+      return builder;
+    },
+    eq(column: string, value: unknown) {
+      void column;
+      void value;
+      return builder;
+    },
+    order(column: string, options?: { ascending?: boolean }) {
+      void column;
+      void options;
+      return builder;
+    },
+    async range(from: number, to: number) {
+      return {
+        data: state.questions.slice(from, to + 1),
+        error: null,
+        count: state.questions.length
+      };
+    }
   };
   return builder;
 }
 
 function createResponsesBuilder(state: SupabaseMockState) {
   return {
-    select: (_columns?: string) => {
+    select: (...args: unknown[]) => {
+      void args;
       const filters: Partial<ResponseRow> = {};
       let orderColumn: keyof ResponseRow | null = null;
       let ascending = true;
       let limitCount: number | null = null;
-      const chain: any = {
-        eq(column: string, value: unknown) {
-          filters[column as keyof ResponseRow] = value as ResponseRow[keyof ResponseRow];
+      const chain: ResponseSelectChain = {
+        eq(column, value) {
+          filters[column] = value;
           return chain;
         },
-        order(column: string, options?: { ascending?: boolean }) {
-          orderColumn = column as keyof ResponseRow;
+        order(column, options) {
+          orderColumn = column;
           ascending = options?.ascending ?? true;
           return chain;
         },
-        limit(count: number) {
+        limit(count) {
           limitCount = count;
           return chain;
         },
-        then<TResult1 = unknown, TResult2 = never>(
-          onfulfilled?:
-            | ((value: { data: ReturnType<typeof mapResponseRecord>[]; error: null }) =>
-                TResult1 | PromiseLike<TResult1>)
-            | null,
+        async then<TResult1 = ResponseSelectResult, TResult2 = never>(
+          onfulfilled?: ((value: ResponseSelectResult) => TResult1 | PromiseLike<TResult1>) | null,
           onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
-        ) {
+        ): Promise<TResult1 | TResult2> {
           try {
             const filtered = filterRecords(state.responses, filters);
             const ordered = sortRecords(filtered, orderColumn, ascending);
             const limited = typeof limitCount === "number" ? ordered.slice(0, limitCount) : ordered;
-            const result = {
+            const result: ResponseSelectResult = {
               data: limited.map(mapResponseRecord),
               error: null
-            } as const;
+            };
             if (!onfulfilled) {
-              return Promise.resolve(result) as Promise<TResult1 | TResult2>;
+              return Promise.resolve(result as unknown as TResult1);
             }
             return Promise.resolve(onfulfilled(result)) as Promise<TResult1 | TResult2>;
           } catch (error) {
             if (!onrejected) {
-              return Promise.reject(error);
+              return Promise.reject(error) as Promise<TResult1 | TResult2>;
             }
             return Promise.resolve(onrejected(error)) as Promise<TResult1 | TResult2>;
           }
         },
-        maybeSingle: async () => {
+        async maybeSingle() {
           const filtered = filterRecords(state.responses, filters);
           const ordered = sortRecords(filtered, orderColumn, ascending);
           const [record] = typeof limitCount === "number" ? ordered.slice(0, limitCount) : ordered;
@@ -270,51 +312,57 @@ function createResponsesBuilder(state: SupabaseMockState) {
       };
     },
     update: (payload: Partial<ResponseRow>) => ({
-      eq: (_column: string, value: string) => ({
-        select: () => ({
-          maybeSingle: async () => {
-            const record = state.responses.find((row) => row.id === value);
-            if (!record) {
-              return { data: null, error: new Error("Missing response") };
+      eq: (column: keyof ResponseRow, value: string) => {
+        if (column !== "id") {
+          throw new Error(`Unsupported filter column: ${String(column)}`);
+        }
+        return {
+          select: () => ({
+            maybeSingle: async () => {
+              const record = state.responses.find((row) => row.id === value);
+              if (!record) {
+                return { data: null, error: new Error("Missing response") };
+              }
+              const previousCorrect = record.is_correct;
+              if (payload.choice_id !== undefined) record.choice_id = payload.choice_id;
+              if (payload.is_correct !== undefined) record.is_correct = Boolean(payload.is_correct);
+              if (payload.ms_to_answer !== undefined) record.ms_to_answer = payload.ms_to_answer ?? null;
+              if (payload.flagged !== undefined) record.flagged = Boolean(payload.flagged);
+              if (payload.is_correct !== undefined && payload.is_correct !== previousCorrect) {
+                logAnswerEvent(state, record, "update");
+              }
+              return { data: mapResponseRecord(record), error: null };
             }
-            const previousCorrect = record.is_correct;
-            if (payload.choice_id !== undefined) record.choice_id = payload.choice_id;
-            if (payload.is_correct !== undefined) record.is_correct = Boolean(payload.is_correct);
-            if (payload.ms_to_answer !== undefined) record.ms_to_answer = payload.ms_to_answer ?? null;
-            if (payload.flagged !== undefined) record.flagged = Boolean(payload.flagged);
-            if (payload.is_correct !== undefined && payload.is_correct !== previousCorrect) {
-              logAnswerEvent(state, record, "update");
-            }
-            return { data: mapResponseRecord(record), error: null };
-          }
-        })
-      })
+          })
+        };
+      }
     })
   };
 }
 
 function createAnswerEventsBuilder(state: SupabaseMockState) {
   return {
-    select: (_columns?: string) => {
+    select: (...args: unknown[]) => {
+      void args;
       const filters: Partial<AnswerEventRow> = {};
       let orderColumn: keyof AnswerEventRow | null = null;
       let ascending = true;
       let limitCount: number | null = null;
-      const chain: any = {
-        eq(column: string, value: unknown) {
-          filters[column as keyof AnswerEventRow] = value as AnswerEventRow[keyof AnswerEventRow];
+      const chain: AnswerEventsSelectChain = {
+        eq(column, value) {
+          filters[column] = value;
           return chain;
         },
-        order(column: string, options?: { ascending?: boolean }) {
-          orderColumn = column as keyof AnswerEventRow;
+        order(column, options) {
+          orderColumn = column;
           ascending = options?.ascending ?? true;
           return chain;
         },
-        limit(count: number) {
+        limit(count) {
           limitCount = count;
           return chain;
         },
-        maybeSingle: async () => {
+        async maybeSingle() {
           const filtered = filterRecords(state.events, filters);
           const ordered = sortRecords(filtered, orderColumn, ascending);
           const [record] = typeof limitCount === "number" ? ordered.slice(0, limitCount) : ordered;

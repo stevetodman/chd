@@ -80,8 +80,11 @@ export default function Dashboard() {
   useEffect(() => {
     if (!session) return;
     let active = true;
-    setMetricsLoading(true);
-    setMetricsError(null);
+    const startTimer: ReturnType<typeof setTimeout> = setTimeout(() => {
+      if (!active) return;
+      setMetricsLoading(true);
+      setMetricsError(null);
+    }, 0);
 
     fetchDashboardMetrics()
       .then((data) => {
@@ -103,18 +106,24 @@ export default function Dashboard() {
 
     return () => {
       active = false;
+      clearTimeout(startTimer);
     };
   }, [session, metricsReloadKey]);
 
   useEffect(() => {
-    setLoadingFeatured(true);
-    setFeaturedError(null);
+    let active = true;
+    const startTimer: ReturnType<typeof setTimeout> = setTimeout(() => {
+      if (!active) return;
+      setLoadingFeatured(true);
+      setFeaturedError(null);
+    }, 0);
     supabase
       .from("questions")
       .select("id, lead_in")
       .eq("status", "published")
       .limit(5)
       .then(({ data, error }) => {
+        if (!active) return;
         if (error) {
           setFeaturedError(error.message);
           setFeatured([]);
@@ -124,8 +133,13 @@ export default function Dashboard() {
         setFeatured(randomized.map((row) => ({ id: row.id, lead_in: row.lead_in })));
       })
       .finally(() => {
+        if (!active) return;
         setLoadingFeatured(false);
       });
+    return () => {
+      active = false;
+      clearTimeout(startTimer);
+    };
   }, []);
 
   const refreshMetrics = () => {
@@ -134,21 +148,27 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!session) {
-      setTrendData([]);
-      setTrendError(null);
-      setTrendLoading(false);
-      setTopicInsights([]);
-      setTopicError(null);
-      setTopicLoading(false);
-      return;
+      const resetTimer: ReturnType<typeof setTimeout> = setTimeout(() => {
+        setTrendData([]);
+        setTrendError(null);
+        setTrendLoading(false);
+        setTopicInsights([]);
+        setTopicError(null);
+        setTopicLoading(false);
+      }, 0);
+      return () => {
+        clearTimeout(resetTimer);
+      };
     }
 
     let active = true;
-    setTrendLoading(true);
-    setTrendError(null);
-
-    setTopicLoading(true);
-    setTopicError(null);
+    const startTimer: ReturnType<typeof setTimeout> = setTimeout(() => {
+      if (!active) return;
+      setTrendLoading(true);
+      setTrendError(null);
+      setTopicLoading(true);
+      setTopicError(null);
+    }, 0);
 
     fetchPracticeTrendData(session.user.id)
       .then((points) => {
@@ -228,6 +248,7 @@ export default function Dashboard() {
 
     return () => {
       active = false;
+      clearTimeout(startTimer);
     };
   }, [session, metricsReloadKey]);
 
@@ -477,7 +498,7 @@ export default function Dashboard() {
       }
       await navigator.clipboard.writeText(reportSummary);
       setCopyFeedback("Shareable summary copied to clipboard.");
-    } catch (error) {
+    } catch {
       setCopyFeedback("Copy not supported in this browser. Try printing instead.");
     }
   };
@@ -584,7 +605,7 @@ export default function Dashboard() {
               <section className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-700">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <h3 className="text-sm font-semibold text-neutral-800">Narrative snapshots</h3>
-                  <p className="text-xs text-neutral-500">Quick headlines for this week's progress.</p>
+                  <p className="text-xs text-neutral-500">Quick headlines for this week’s progress.</p>
                 </div>
                 <div className="grid gap-3 md:grid-cols-3">
                   {narrativeSnapshots.map((snapshot) => (

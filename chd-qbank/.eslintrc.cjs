@@ -26,5 +26,13 @@ module.exports = {
   },
   rules: {
     "react/react-in-jsx-scope": "off"
-  }
+  },
+  overrides: [
+    {
+      files: ["eslint-plugin-jsx-a11y/**/*.js"],
+      rules: {
+        "@typescript-eslint/no-require-imports": "off"
+      }
+    }
+  ]
 };

@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import fg from "fast-glob";
 import fs from "fs";
 import path from "path";
@@ -35,12 +34,15 @@ async function main() {
   if (files.length === 0) console.log(pc.yellow("No JSON items found under content/questions."));
 
   const rows: Row[] = [];
-  let ok = 0, warn = 0, err = 0, skipped = 0;
+  let ok = 0;
+  let warn = 0;
+  let err = 0;
+  const skipped = 0;
 
   for (const file of files) {
     try {
       const rel = path.relative(ROOT, file);
-      const data = readJson(file);
+      const data = readJson<Record<string, unknown>>(file);
       const result = normalizeItem(data, file, QuestionSchema);
 
       if (result.errors.length > 0 || !result.normalized) {
@@ -61,15 +63,25 @@ async function main() {
       if (!DRY_RUN) writeJsonPretty(file, out);
 
       const hasWarn = result.warnings.length > 0;
-      rows.push({ file: rel, status: hasWarn ? "warn" : "ok",
-        addedKeys: result.addedKeys.join(";"), changedKeys: result.changedKeys.join(";"),
-        warnings: result.warnings.join(" | "), errors: "" });
+      rows.push({
+        file: rel,
+        status: hasWarn ? "warn" : "ok",
+        addedKeys: result.addedKeys.join(";"),
+        changedKeys: result.changedKeys.join(";"),
+        warnings: result.warnings.join(" | "),
+        errors: ""
+      });
       console.log((hasWarn ? pc.yellow : pc.green)(`${hasWarn ? "▲" : "✔"} ${rel}`));
-      hasWarn ? warn++ : ok++;
-    } catch (e: any) {
+      if (hasWarn) {
+        warn++;
+      } else {
+        ok++;
+      }
+    } catch (error: unknown) {
       const rel = path.relative(ROOT, file);
-      rows.push({ file: rel, status: "error", addedKeys: "", changedKeys: "", warnings: "", errors: String(e?.message ?? e) });
-      console.log(pc.red(`✖ ${rel} — ${String(e?.message ?? e)}`));
+      const message = error instanceof Error ? error.message : String(error);
+      rows.push({ file: rel, status: "error", addedKeys: "", changedKeys: "", warnings: "", errors: message });
+      console.log(pc.red(`✖ ${rel} — ${message}`));
       err++;
     }
   }

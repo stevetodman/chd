@@ -64,15 +64,38 @@ function RequireAuth({ children }: { children: JSX.Element }) {
 
 function RequireAdmin({ children }: { children: JSX.Element }) {
   const { session, loading, initialized } = useSessionStore();
-  const [allowed, setAllowed] = useState<boolean | null>(null);
+  const [state, setState] = useState<{ status: "unknown" | "allowed" | "denied"; checkedFor: string | null }>(
+    () => ({ status: "unknown", checkedFor: null })
+  );
 
   useEffect(() => {
-    setAllowed(null);
-    if (!session) return;
+    if (!session) {
+      return;
+    }
+
+    if (state.checkedFor === session.user.id && state.status !== "unknown") {
+      return;
+    }
+
+    let cancelled = false;
+
     requireAdmin()
-      .then((isAdmin) => setAllowed(isAdmin))
-      .catch(() => setAllowed(false));
-  }, [session]);
+      .then((isAdmin) => {
+        if (cancelled) return;
+        setState({ status: isAdmin ? "allowed" : "denied", checkedFor: session.user.id });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setState({ status: "denied", checkedFor: session.user.id });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session, state.checkedFor, state.status]);
+
+  const isChecking = !!session && (state.checkedFor !== session.user.id || state.status === "unknown");
+  const isAllowed = state.status === "allowed" && state.checkedFor === session?.user.id;
 
   if (loading || !initialized)
     return (
@@ -81,13 +104,13 @@ function RequireAdmin({ children }: { children: JSX.Element }) {
       </div>
     );
   if (!session) return <Navigate to="/login" replace />;
-  if (allowed === null)
+  if (isChecking)
     return (
       <div className="p-6">
         <PageState title="Checking permissions" description="Making sure you have admin access." fullHeight />
       </div>
     );
-  if (!allowed) return <Navigate to="/dashboard" replace />;
+  if (!isAllowed) return <Navigate to="/dashboard" replace />;
   return children;
 }
 

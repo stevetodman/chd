@@ -28,12 +28,13 @@ export default function FormulaPanel({
   showTitle = true,
   asSection = true
 }: Props) {
+  const headingId = useId();
+
   if (!hasContent(formulas, bodyMd)) {
     return null;
   }
 
   const trimmedBody = typeof bodyMd === "string" ? bodyMd.trim() : "";
-  const headingId = useId();
 
   const content = (
     <Card className={showTitle ? undefined : "border-0 bg-transparent shadow-none"}>

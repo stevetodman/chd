@@ -163,8 +163,11 @@ export function usePracticeSession() {
 
   useEffect(() => {
     let active = true;
-    setFilterOptionsLoading(true);
-    setFilterOptionsError(null);
+    const startTimer: ReturnType<typeof setTimeout> = setTimeout(() => {
+      if (!active) return;
+      setFilterOptionsLoading(true);
+      setFilterOptionsError(null);
+    }, 0);
 
     const loadFilterOptions = async () => {
       try {
@@ -202,27 +205,32 @@ export function usePracticeSession() {
         if (!active) return;
         setFilterOptions({ topics: [], lesions: [] });
         setFilterOptionsError("We couldn't load filter options. Try again later.");
-      } finally {
-        if (!active) return;
-        setFilterOptionsLoading(false);
       }
+
+      if (!active) return;
+      setFilterOptionsLoading(false);
     };
 
     void loadFilterOptions();
 
     return () => {
       active = false;
+      clearTimeout(startTimer);
     };
   }, []);
 
   useEffect(() => {
     if (!session) {
-      flaggedIdsRef.current = new Set();
-      seenIdsRef.current = new Set();
-      updateResponses(() => ({}));
-      setFlaggedVersion((version) => version + 1);
-      setSeenVersion((version) => version + 1);
-      return;
+      const resetTimer: ReturnType<typeof setTimeout> = setTimeout(() => {
+        flaggedIdsRef.current = new Set();
+        seenIdsRef.current = new Set();
+        updateResponses(() => ({}));
+        setFlaggedVersion((version) => version + 1);
+        setSeenVersion((version) => version + 1);
+      }, 0);
+      return () => {
+        clearTimeout(resetTimer);
+      };
     }
 
     let active = true;

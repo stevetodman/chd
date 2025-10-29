@@ -20,16 +20,24 @@ export function useElapsedTimer(resetKey?: unknown) {
   }, []);
 
   useEffect(() => {
-    reset();
+    const timeout = setTimeout(() => {
+      reset();
+    }, 0);
+    return () => clearTimeout(timeout);
   }, [reset, resetKey]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setElapsedMs(Date.now() - startTime);
+    const initialize = window.setTimeout(() => {
+      setElapsedMs(Date.now() - startTime);
+    }, 0);
     const interval = window.setInterval(() => {
       setElapsedMs(Date.now() - startTime);
     }, 1000);
-    return () => window.clearInterval(interval);
+    return () => {
+      window.clearTimeout(initialize);
+      window.clearInterval(interval);
+    };
   }, [startTime]);
 
   const elapsedLabel = useMemo(() => formatElapsedTime(elapsedMs), [elapsedMs]);

@@ -16,16 +16,24 @@ export function useMediaQuery(query: string) {
     const mediaQueryList = window.matchMedia(query);
     const handleChange = (event: MediaQueryListEvent) => setMatches(event.matches);
 
-    setMatches(mediaQueryList.matches);
+    const sync = window.setTimeout(() => {
+      setMatches(mediaQueryList.matches);
+    }, 0);
 
     if (typeof mediaQueryList.addEventListener === "function") {
       mediaQueryList.addEventListener("change", handleChange);
-      return () => mediaQueryList.removeEventListener("change", handleChange);
+      return () => {
+        window.clearTimeout(sync);
+        mediaQueryList.removeEventListener("change", handleChange);
+      };
     }
 
     // Safari < 14
     mediaQueryList.addListener(handleChange);
-    return () => mediaQueryList.removeListener(handleChange);
+    return () => {
+      window.clearTimeout(sync);
+      mediaQueryList.removeListener(handleChange);
+    };
   }, [query]);
 
   return matches;

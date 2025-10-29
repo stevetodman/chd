@@ -93,14 +93,21 @@ export default function CxrMatch() {
   const [displaySize, setDisplaySize] = useState<Size | null>(null);
 
   useEffect(() => {
-    setLoading(true);
-    setError(null);
+    let active = true;
+    const loadingTimer: ReturnType<typeof setTimeout> = setTimeout(() => {
+      if (!active) return;
+      setLoading(true);
+      setError(null);
+    }, 0);
+    let finalizeTimer: ReturnType<typeof setTimeout> | null = null;
+
     supabase
       .from("cxr_items")
       .select("id, image_url, caption_md, lesion, cxr_labels(id,label,is_correct,x,y,w,h)")
       .eq("status", "published")
       .limit(20)
       .then(({ data, error: fetchError }) => {
+        if (!active) return;
         if (fetchError) {
           setError(describeFetchError(fetchError));
           setItems([]);
@@ -121,7 +128,20 @@ export default function CxrMatch() {
         setItems(shuffle(normalized));
         setIndex(0);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        finalizeTimer = setTimeout(() => {
+          if (!active) return;
+          setLoading(false);
+        }, 0);
+      });
+
+    return () => {
+      active = false;
+      clearTimeout(loadingTimer);
+      if (finalizeTimer) {
+        clearTimeout(finalizeTimer);
+      }
+    };
   }, []);
 
   const current = items[index];
@@ -141,7 +161,7 @@ export default function CxrMatch() {
       const plainCaption = current.caption_md
         .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
         .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-        .replace(/[\*_`>#~|-]/g, "")
+        .replace(/[*_`>#~|-]/g, "")
         .replace(/\s+/g, " ")
         .trim();
       if (plainCaption) {
@@ -208,7 +228,15 @@ export default function CxrMatch() {
   );
 
   useEffect(() => {
-    setIsDropActive(false);
+    let active = true;
+    const resetTimer: ReturnType<typeof setTimeout> = setTimeout(() => {
+      if (!active) return;
+      setIsDropActive(false);
+    }, 0);
+    return () => {
+      active = false;
+      clearTimeout(resetTimer);
+    };
   }, [current?.id]);
 
   const handleDragStart = (event: DragEvent<HTMLButtonElement>, label: Label) => {
@@ -300,7 +328,15 @@ export default function CxrMatch() {
   }, []);
 
   useEffect(() => {
-    setNaturalSize(null);
+    let active = true;
+    const resetTimer: ReturnType<typeof setTimeout> = setTimeout(() => {
+      if (!active) return;
+      setNaturalSize(null);
+    }, 0);
+    return () => {
+      active = false;
+      clearTimeout(resetTimer);
+    };
   }, [current?.image_url]);
 
   const showBoundingBoxes = useMemo(() => {

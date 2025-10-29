@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useId, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Choice } from "../lib/constants";
 import { classNames } from "../lib/utils";
@@ -21,16 +21,28 @@ export default function ChoiceList({
   showFeedback = false,
   autoFocusFirst = false
 }: Props) {
-  const [struck, setStruck] = useState<Record<string, boolean>>({});
+  const [struckKeys, setStruckKeys] = useState<Set<string>>(() => new Set());
   const firstChoiceRef = useRef<HTMLButtonElement | null>(null);
+  const baseId = useId();
 
-  const toggleStrike = useCallback((id: string) => {
-    setStruck((prev) => ({ ...prev, [id]: !prev[id] }));
-  }, []);
+  const choiceKey = useCallback((choice: Choice) => `${choice.id}:${choice.text_md}`, []);
 
-  useEffect(() => {
-    setStruck({});
-  }, [choices]);
+  const validChoiceKeys = useMemo(() => {
+    return new Set(choices.map((choice) => choiceKey(choice)));
+  }, [choiceKey, choices]);
+
+  const toggleStrike = useCallback((choice: Choice) => {
+    const key = choiceKey(choice);
+    setStruckKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }, [choiceKey]);
 
   useEffect(() => {
     if (!autoFocusFirst || disabled) return;
@@ -51,7 +63,8 @@ export default function ChoiceList({
           const choiceId = activeElement.dataset.choiceId;
           if (choiceId) {
             e.preventDefault();
-            toggleStrike(choiceId);
+            const choice = choices.find((option) => option.id === choiceId);
+            if (choice) toggleStrike(choice);
           }
         }
         return;
@@ -81,18 +94,26 @@ export default function ChoiceList({
         const showAsCorrect = reveal && isCorrect;
         const showAsIncorrectSelection = reveal && isSelected && !isCorrect;
         const showAsCorrectSelection = reveal && isSelected && isCorrect;
-        const isStruck = struck[choice.id];
+        const idKey = choiceKey(choice);
+        const isStruck = struckKeys.has(idKey) && validChoiceKeys.has(idKey);
+        const labelElementId = `${baseId}-${index}-label`;
+        const textElementId = `${baseId}-${index}-text`;
+        const statusElementId = `${baseId}-${index}-status`;
+        const labelledBy = showFeedback && isSelected
+          ? `${labelElementId} ${textElementId} ${statusElementId}`
+          : `${labelElementId} ${textElementId}`;
         return (
           <button
             key={choice.id}
             type="button"
             aria-keyshortcuts={`${choice.label.toLowerCase()},${choice.label}`}
+            aria-labelledby={labelledBy}
             disabled={disabled}
             data-choice-id={choice.id}
             onClick={() => onSelect(choice)}
             onContextMenu={(e) => {
               e.preventDefault();
-              toggleStrike(choice.id);
+              toggleStrike(choice);
             }}
             ref={(element) => {
               if (index === 0) {
@@ -122,10 +143,12 @@ export default function ChoiceList({
                       ? "correct-answer"
                       : "revealed"
             }
-          >
+            >
             <div className="flex items-start gap-3">
-              <span className="font-semibold">{choice.label}.</span>
-              <div className="flex-1 space-y-1">
+              <span className="font-semibold" id={labelElementId}>
+                {choice.label}.
+              </span>
+              <div className="flex-1 space-y-1" id={textElementId}>
                 <ReactMarkdown
                   remarkPlugins={markdownRemarkPlugins}
                   rehypePlugins={markdownRehypePlugins}
@@ -143,6 +166,7 @@ export default function ChoiceList({
                           ? "text-rose-700"
                           : "text-neutral-500"
                     )}
+                    id={statusElementId}
                     role={isSelected ? "status" : undefined}
                   >
                     {showAsCorrectSelection
