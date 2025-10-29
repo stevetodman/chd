@@ -21,8 +21,6 @@ const envSchema = z.object({
   MODE: z.string().optional(),
   DEV: booleanLike.optional(),
   PROD: booleanLike.optional(),
-  SUPABASE_URL: z.string().url().optional(),
-  SUPABASE_ANON_KEY: z.string().min(1).optional(),
 });
 
 const resolveRuntimeEnv = (): RuntimeEnv => {
@@ -39,8 +37,8 @@ const resolveRuntimeEnv = (): RuntimeEnv => {
 
 const env = envSchema.parse(resolveRuntimeEnv());
 
-const supabaseUrl = env.VITE_SUPABASE_URL ?? env.SUPABASE_URL ?? null;
-const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY ?? env.SUPABASE_ANON_KEY ?? null;
+const supabaseUrl = env.VITE_SUPABASE_URL ?? null;
+const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY ?? null;
 
 const optionalSupabase = {
   url: supabaseUrl,
@@ -61,11 +59,11 @@ const ensureSupabaseConfig = (): SupabaseConfig => {
   const missing: string[] = [];
 
   if (!supabaseUrl) {
-    missing.push("VITE_SUPABASE_URL or SUPABASE_URL");
+    missing.push("VITE_SUPABASE_URL");
   }
 
   if (!supabaseAnonKey) {
-    missing.push("VITE_SUPABASE_ANON_KEY or SUPABASE_ANON_KEY");
+    missing.push("VITE_SUPABASE_ANON_KEY");
   }
 
   if (missing.length > 0) {
