@@ -14,16 +14,59 @@ export default function Signup() {
   const [password, setPassword] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [alias, setAlias] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<
+    | {
+        message: string;
+        field?: "email" | "password" | "inviteCode" | "alias" | "form";
+      }
+    | null
+  >(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const errorMessageId = "signup-error-message";
+  const passwordHintId = "signup-password-hint";
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setSubmitting(true);
+    if (submitting) return;
+
+    setSuccessMessage(null);
     setError(null);
+
+    const sanitizedEmail = email.trim();
+    const sanitizedInviteCode = inviteCode.trim();
+    const sanitizedAlias = alias.trim();
+
+    if (sanitizedEmail !== email) {
+      setEmail(sanitizedEmail);
+    }
+
+    if (sanitizedInviteCode !== inviteCode) {
+      setInviteCode(sanitizedInviteCode);
+    }
+
+    if (sanitizedAlias !== alias) {
+      setAlias(sanitizedAlias);
+    }
+
+    if (password.length < 12) {
+      setError({
+        message: t("auth.signup.passwordLength", {
+          defaultValue: "Use at least 12 characters for your password."
+        }),
+        field: "password"
+      });
+      return;
+    }
+
+    setSubmitting(true);
     try {
-      const result = await signUpWithInvite(email, password, inviteCode, alias || undefined);
+      const result = await signUpWithInvite(
+        sanitizedEmail,
+        password,
+        sanitizedInviteCode,
+        sanitizedAlias ? sanitizedAlias : undefined
+      );
       setSuccessMessage(
         result.message ??
           t("auth.signup.success", {
@@ -36,11 +79,12 @@ export default function Signup() {
       setAlias("");
     } catch (err) {
       if (err instanceof SignupServiceUnavailableError) {
-        setError(
-          t("auth.signup.serviceUnavailable", {
+        setError({
+          message: t("auth.signup.serviceUnavailable", {
             defaultValue: "Signup is temporarily unavailable. Try again in a few minutes."
-          })
-        );
+          }),
+          field: "form"
+        });
         return;
       }
       const fallback = t("auth.signup.submitError", {
@@ -50,7 +94,7 @@ export default function Signup() {
       const derived = getErrorMessage(err, fallback);
 
       if (derived === "SIGNUP_FAILED") {
-        setError(fallback);
+        setError({ message: fallback, field: "form" });
         return;
       }
 
@@ -59,11 +103,12 @@ export default function Signup() {
         normalized?.includes("network request failed") ||
         normalized?.includes("network error")
       ) {
-        setError(
-          t("auth.signup.serviceUnavailable", {
+        setError({
+          message: t("auth.signup.serviceUnavailable", {
             defaultValue: "Signup is temporarily unavailable. Try again in a few minutes."
-          })
-        );
+          }),
+          field: "form"
+        });
         return;
       }
 
@@ -73,51 +118,66 @@ export default function Signup() {
         normalized?.includes("duplicate") ||
         normalized?.includes("conflict")
       ) {
-        setError(
-          t("auth.signup.accountExists", {
+        setError({
+          message: t("auth.signup.accountExists", {
             defaultValue: "An account already exists for that email. Sign in instead."
-          })
-        );
+          }),
+          field: "email"
+        });
         return;
       }
 
       if (normalized?.includes("invite code required")) {
-        setError(
-          t("auth.signup.inviteRequired", {
+        setError({
+          message: t("auth.signup.inviteRequired", {
             defaultValue: "Enter the invite code provided by your program lead."
-          })
-        );
+          }),
+          field: "inviteCode"
+        });
         return;
       }
 
       if (normalized?.includes("invalid invite code")) {
-        setError(
-          t("auth.signup.inviteInvalid", {
+        setError({
+          message: t("auth.signup.inviteInvalid", {
             defaultValue: "That invite code isn’t recognized. Double-check the latest code."
-          })
-        );
+          }),
+          field: "inviteCode"
+        });
         return;
       }
 
       if (normalized?.includes("invite expired")) {
-        setError(
-          t("auth.signup.inviteExpired", {
+        setError({
+          message: t("auth.signup.inviteExpired", {
             defaultValue: "That invite code has expired. Request a fresh invite before signing up."
-          })
-        );
+          }),
+          field: "inviteCode"
+        });
         return;
       }
 
       if (normalized?.includes("rate limit") || normalized?.includes("too many requests")) {
-        setError(
-          t("auth.signup.serviceUnavailable", {
+        setError({
+          message: t("auth.signup.serviceUnavailable", {
             defaultValue: "Signup is temporarily unavailable. Try again in a few minutes."
-          })
-        );
+          }),
+          field: "form"
+        });
         return;
       }
 
-      setError(derived);
+      if (normalized?.includes("password") && normalized?.includes("12")) {
+        setError({
+          message: t("auth.signup.passwordLength", {
+            defaultValue: "Use at least 12 characters for your password."
+          }),
+          field: "password"
+        });
+        return;
+      }
+
+      setError({ message: derived, field: "form" });
     } finally {
       setSubmitting(false);
     }
@@ -142,7 +202,7 @@ export default function Signup() {
           </Button>
         </div>
       ) : (
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form className="space-y-4" onSubmit={handleSubmit} aria-busy={submitting}>
           <label className="block text-sm font-medium">
             {t("auth.shared.email", { defaultValue: "Email" })}
             <input
@@ -153,6 +213,12 @@ export default function Signup() {
               required
               autoComplete="email"
               disabled={submitting}
+              aria-invalid={error?.field === "email" ? true : undefined}
+              aria-describedby={
+                [error && (error.field === "email" || error.field === "form") ? errorMessageId : null]
+                  .filter(Boolean)
+                  .join(" ") || undefined
+              }
             />
           </label>
 
@@ -166,7 +232,21 @@ export default function Signup() {
               required
               autoComplete="new-password"
               disabled={submitting}
+              aria-invalid={error?.field === "password" ? true : undefined}
+              aria-describedby={
+                [
+                  passwordHintId,
+                  error && (error.field === "password" || error.field === "form") ? errorMessageId : null
+                ]
+                  .filter(Boolean)
+                  .join(" ") || undefined
+              }
             />
+            <p id={passwordHintId} className="mt-2 text-xs text-neutral-500">
+              {t("auth.signup.passwordHint", {
+                defaultValue: "Use at least 12 characters to create a strong password."
+              })}
+            </p>
           </label>
 
           <label className="block text-sm font-medium">
@@ -178,6 +258,12 @@ export default function Signup() {
               required
               autoComplete="one-time-code"
               disabled={submitting}
+              aria-invalid={error?.field === "inviteCode" ? true : undefined}
+              aria-describedby={
+                [error && (error.field === "inviteCode" || error.field === "form") ? errorMessageId : null]
+                  .filter(Boolean)
+                  .join(" ") || undefined
+              }
             />
           </label>
 
@@ -192,12 +278,13 @@ export default function Signup() {
               })}
               autoComplete="nickname"
               disabled={submitting}
+              aria-invalid={error?.field === "alias" ? true : undefined}
             />
           </label>
 
           {error ? (
-            <p className="text-sm text-red-600" role="alert" aria-live="assertive">
-              {error}
+            <p id={errorMessageId} className="text-sm text-red-600" role="alert" aria-live="assertive">
+              {error.message}
             </p>
           ) : null}
 

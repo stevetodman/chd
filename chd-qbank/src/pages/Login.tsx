@@ -13,7 +13,13 @@ export default function Login() {
   const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<
+    | {
+        message: string;
+        field?: "email" | "password" | "form";
+      }
+    | null
+  >(null);
   const [signingIn, setSigningIn] = useState(false);
   const [activePanel, setActivePanel] = useState<"reset" | null>(null);
   const [resetEmail, setResetEmail] = useState("");
@@ -22,6 +28,9 @@ export default function Login() {
   const [resetSending, setResetSending] = useState(false);
   const resetToggleLabel = t("auth.login.resetToggle", { defaultValue: "Forgot your password?" });
   const resetPanelId = "login-reset-panel";
+  const errorMessageId = "login-error-message";
+  const resetErrorId = "login-reset-error";
+  const resetMessageId = "login-reset-message";
 
   const handleTogglePanel = (panel: "reset") => {
     setActivePanel((current) => (current === panel ? null : panel));
@@ -31,23 +40,37 @@ export default function Login() {
     event.preventDefault();
     setResetError(null);
     setResetMessage(null);
-    if (!resetEmail) return;
+
+    const sanitizedEmail = resetEmail.trim();
+
+    if (sanitizedEmail !== resetEmail) {
+      setResetEmail(sanitizedEmail);
+    }
+
+    if (!sanitizedEmail) {
+      setResetError(
+        t("auth.login.resetEmailRequired", {
+          defaultValue: "Enter the email connected to your account before requesting a reset."
+        })
+      );
+      return;
+    }
 
     setResetSending(true);
     try {
       const redirectTo =
         typeof window !== "undefined"
-          ? `${window.location.origin}/reset-password?email=${encodeURIComponent(resetEmail)}`
+          ? `${window.location.origin}/reset-password?email=${encodeURIComponent(sanitizedEmail)}`
           : undefined;
       const { error: resetErr } = await supabase.auth.resetPasswordForEmail(
-        resetEmail,
+        sanitizedEmail,
         redirectTo ? { redirectTo } : undefined
       );
       if (resetErr) throw resetErr;
       setResetMessage(
         t("auth.login.resetSuccess", {
           defaultValue: "Password reset email sent to {email}. Check your inbox to continue.",
-          email: resetEmail
+          email: sanitizedEmail
         })
       );
       setResetEmail("");
@@ -93,10 +116,39 @@ export default function Login() {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    if (signingIn) return;
+
     setError(null);
+
+    const sanitizedEmail = email.trim();
+
+    if (sanitizedEmail !== email) {
+      setEmail(sanitizedEmail);
+    }
+
+    if (!sanitizedEmail) {
+      setError({
+        message: t("auth.login.emailRequired", {
+          defaultValue: "Enter your email address to continue."
+        }),
+        field: "email"
+      });
+      return;
+    }
+
+    if (!password) {
+      setError({
+        message: t("auth.login.passwordRequired", {
+          defaultValue: "Enter your password to sign in."
+        }),
+        field: "password"
+      });
+      return;
+    }
+
     setSigningIn(true);
     try {
-      await signIn(email, password);
+      await signIn(sanitizedEmail, password);
       navigate("/dashboard");
     } catch (err) {
       const fallback = t("auth.login.signInError", { defaultValue: "Unable to sign in" });
@@ -106,51 +158,56 @@ export default function Login() {
         err instanceof AuthApiError &&
         (err.status === 429 || normalized?.includes("rate limit") || normalized?.includes("too many requests"))
       ) {
-        setError(
-          t("auth.login.rateLimited", {
+        setError({
+          message: t("auth.login.rateLimited", {
             defaultValue: "Too many sign-in attempts. Wait a moment and try again."
-          })
-        );
+          }),
+          field: "form"
+        });
         return;
       }
 
       if (err instanceof AuthApiError && err.status >= 500) {
-        setError(
-          t("auth.login.serviceUnavailable", {
+        setError({
+          message: t("auth.login.serviceUnavailable", {
             defaultValue: "Sign in is temporarily unavailable. Try again in a few minutes."
-          })
-        );
+          }),
+          field: "form"
+        });
         return;
       }
 
       if (normalized?.includes("invalid login credentials") || normalized?.includes("invalid email") || normalized?.includes("invalid password")) {
-        setError(
-          t("auth.login.invalidCredentials", {
+        setError({
+          message: t("auth.login.invalidCredentials", {
             defaultValue: "Incorrect email or password. Try again or reset your password."
-          })
-        );
+          }),
+          field: "form"
+        });
         return;
       }
 
       if (normalized?.includes("email not confirmed") || normalized?.includes("email has not been confirmed") || normalized?.includes("confirm your email")) {
-        setError(
-          t("auth.login.emailNotConfirmed", {
+        setError({
+          message: t("auth.login.emailNotConfirmed", {
             defaultValue: "Confirm your email from the message we sent before signing in."
-          })
-        );
+          }),
+          field: "form"
+        });
         return;
       }
 
       if (normalized?.includes("failed to fetch") || normalized?.includes("network")) {
-        setError(
-          t("auth.login.serviceUnavailable", {
+        setError({
+          message: t("auth.login.serviceUnavailable", {
             defaultValue: "Sign in is temporarily unavailable. Try again in a few minutes."
-          })
-        );
+          }),
+          field: "form"
+        });
         return;
       }
 
-      setError(getErrorMessage(err, fallback));
+      setError({ message: getErrorMessage(err, fallback), field: "form" });
     } finally {
       setSigningIn(false);
     }
@@ -159,7 +216,7 @@ export default function Login() {
   return (
     <div className="mx-auto max-w-md rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
       <h1 className="mb-4 text-xl font-semibold">{t("auth.login.title", { defaultValue: "Welcome back" })}</h1>
-      <form className="space-y-4" onSubmit={handleSubmit}>
+      <form className="space-y-4" onSubmit={handleSubmit} aria-busy={signingIn}>
         <label className="block text-sm font-medium">
           {t("auth.shared.email", { defaultValue: "Email" })}
           <input
@@ -169,6 +226,13 @@ export default function Login() {
             onChange={(e) => setEmail(e.target.value)}
             required
             autoComplete="email"
+            disabled={signingIn}
+            aria-invalid={error?.field === "email" ? true : undefined}
+            aria-describedby={
+              [error && (error.field === "email" || error.field === "form") ? errorMessageId : null]
+                .filter(Boolean)
+                .join(" ") || undefined
+            }
           />
         </label>
         <label className="block text-sm font-medium">
@@ -180,9 +244,25 @@ export default function Login() {
             onChange={(e) => setPassword(e.target.value)}
             required
             autoComplete="current-password"
+            disabled={signingIn}
+            aria-invalid={error?.field === "password" ? true : undefined}
+            aria-describedby={
+              [error && (error.field === "password" || error.field === "form") ? errorMessageId : null]
+                .filter(Boolean)
+                .join(" ") || undefined
+            }
           />
         </label>
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {error ? (
+          <p
+            id={errorMessageId}
+            className="text-sm text-red-600"
+            role="alert"
+            aria-live="assertive"
+          >
+            {error.message}
+          </p>
+        ) : null}
         <Button type="submit" className="w-full" disabled={signingIn}>
           {signingIn
             ? t("auth.login.signingIn", { defaultValue: "Signing in…" })
@@ -203,7 +283,12 @@ export default function Login() {
             <span aria-hidden="true">{activePanel === "reset" ? "−" : "+"}</span>
           </button>
           {activePanel === "reset" ? (
-            <form id={resetPanelId} className="mt-3 space-y-3" onSubmit={handleSubmitPasswordReset}>
+            <form
+              id={resetPanelId}
+              className="mt-3 space-y-3"
+              onSubmit={handleSubmitPasswordReset}
+              aria-busy={resetSending}
+            >
               <p className="text-sm text-neutral-600">
                 {t("auth.login.resetDescription", {
                   defaultValue:
@@ -219,15 +304,26 @@ export default function Login() {
                   onChange={(e) => setResetEmail(e.target.value)}
                   required
                   autoComplete="email"
+                  disabled={resetSending}
+                  aria-describedby={
+                    [resetError ? resetErrorId : null, resetMessage ? resetMessageId : null]
+                      .filter(Boolean)
+                      .join(" ") || undefined
+                  }
                 />
               </label>
               {resetError ? (
-                <p className="text-xs text-red-600" role="alert">
+                <p
+                  id={resetErrorId}
+                  className="text-xs text-red-600"
+                  role="alert"
+                  aria-live="assertive"
+                >
                   {resetError}
                 </p>
               ) : null}
               {resetMessage ? (
-                <p className="text-xs text-emerald-600" role="status">
+                <p id={resetMessageId} className="text-xs text-emerald-600" role="status" aria-live="polite">
                   {resetMessage}
                 </p>
               ) : null}

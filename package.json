@@ -5,6 +5,7 @@
     "chd-qbank"
   ],
   "scripts": {
+    "lint": "npm run lint:auth --workspace chd-qbank",
     "sbom": "cyclonedx-npm --output sbom.xml",
     "license:audit": "node scripts/generate-notice.mjs",
     "license:inventory": "node scripts/build-license-inventory.mjs",
