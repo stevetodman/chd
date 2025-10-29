@@ -77,7 +77,8 @@ const describeSeedIntegrity = hasServiceCredentials
 
 describeSeedIntegrity("database seed integrity", () => {
   if (!supabaseUrl || !supabaseServiceRoleKey) {
-    throw new Error("Supabase service credentials are required to run this test.");
+    test.skip("requires Supabase service role credentials", () => {});
+    return;
   }
 
   beforeAll(async () => {

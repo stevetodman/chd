@@ -18,7 +18,12 @@ const { url: supabaseUrl, anonKey: supabaseAnonKey } = supabaseTestEnv;
 const describeOrSkip = hasAnonCredentials ? describe : describe.skip;
 
 describeOrSkip("analytics RLS policies", () => {
-  const supabase = createClient(supabaseUrl!, supabaseAnonKey!, {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    test.skip("requires Supabase anonymous credentials", () => {});
+    return;
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
@@ -45,10 +50,3 @@ describeOrSkip("analytics RLS policies", () => {
     await expectRpcToReject("analytics_refresh_heatmap");
   });
 });
-
-if (!hasAnonCredentials) {
-  test.skip(
-    "analytics RLS policies",
-    () => {},
-  );
-}
