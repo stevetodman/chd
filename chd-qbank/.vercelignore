@@ -1,0 +1,12 @@
+# Prevent large artifacts and local state from being uploaded to Vercel
+node_modules
+.git
+coverage
+content/_backup_*
+content/_reports
+supabase/.branches
+supabase/.temp
+storage
+scripts/dist
+*.log
+.DS_Store

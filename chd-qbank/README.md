@@ -107,6 +107,17 @@ These defaults ensure fresh environments are navigable without additional setup.
 
 Keep documentation and seed templates updated whenever schemas or user flows change—automation scripts assume they stay in sync.
 
+## Deploying to Vercel
+
+The repo includes `vercel.json` and `.vercelignore` files tailored for the QBank application. To deploy:
+
+1. Create a new Vercel project and select **Import Git Repository**.
+2. Point the root directory to `chd-qbank/` so the install, build, and output commands run against the web client workspace.
+3. Set environment variables that mirror your Supabase project (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, optional service-role keys for automation, and invite seed values when needed).
+4. Trigger a deployment—Vercel will run `npm install`, `npm run build`, and publish the static `dist/` output with SPA rewrites enabled.
+
+The provided `.vercelignore` prevents uploading backups, reports, and other large artifacts during the build step.
+
 ## QBank Tests
 
 Add new question items by placing JSON files under `content/questions/`. Each file should follow the schema defined in `src/schema/question.schema.ts` and include any media assets referenced in `public/media/`.
