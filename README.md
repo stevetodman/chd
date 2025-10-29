@@ -37,17 +37,19 @@ This monorepo packages everything required to operate the **CHD QBank**: a conge
 
 ## Prerequisites
 
-- **Node.js 18+**
+- **Node.js 18 LTS or 20 LTS** – the root `.nvmrc`/`.tool-versions` pin Node 18 for contributors while the frontend workspace is
+  tested against Node 20. Either version works locally; align with your deployment target (Vercel uses Node 20) and avoid mixing
+  major versions across team members.
 - **npm 9+**
 - Access to a **Supabase** project (separate development and production projects are recommended)
 - Service-role credentials for automation tasks (kept out of version control)
 
-Use `nvm use` or `asdf install` to adopt the version pinned in `.nvmrc`/`.tool-versions`.
-This matches Vercel’s Node 18 runtime and prevents version drift.
+Install the pinned runtime with `nvm install` / `nvm use` or `asdf install` before running workspace commands. This keeps the
+tooling (Vite, Vitest, ESLint) aligned with the versions expected in CI.
 
 ## Quick start
 
-1. Clone the repository and install dependencies:
+1. **Clone the repository and install dependencies.**
 
    ```bash
    git clone https://github.com/<your-org>/chd.git
@@ -55,15 +57,48 @@ This matches Vercel’s Node 18 runtime and prevents version drift.
    npm install
    ```
 
-2. Copy `.env.example` to `.env.development` (or `.env`) and populate Supabase credentials (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`). Leave the invite placeholders in place—service-role keys and invite codes are supplied at runtime (see [Environment variables](#environment-variables)).
+2. **Provision a Supabase project.** Create a fresh project (one for development, another for production) and load the schema:
 
-3. Start the development server:
+   - Run `schema.sql`, `storage-policies.sql`, and `cron.sql` in the Supabase SQL editor or by piping them through the Supabase CLI.
+   - Deploy the `signup-with-code` Edge Function from `supabase/functions/signup-with-code` and configure its environment with
+     `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+   - Create the storage buckets `murmurs`, `cxr`, `ekg`, and `diagrams`.
+   - Configure SMTP so Supabase can deliver password resets and invite flows.
+
+3. **Configure environment variables.** Copy `.env.example` to `.env.development` (or `.env`) inside `chd-qbank/` and set:
+
+   ```bash
+   VITE_SUPABASE_URL=<your-supabase-url>
+   VITE_SUPABASE_ANON_KEY=<your-anon-key>
+
+   # Optional: enables automation helpers that require service-role access
+   SUPABASE_URL=<your-supabase-url>
+   SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
+   ```
+
+   Leave the invite placeholders in place—service-role keys and invite codes are supplied at runtime (see [Environment variables](#environment-variables)).
+
+4. **Seed starter content.** With the Supabase project provisioned, run the seeding scripts to load practice questions, media, and
+   invite metadata:
+
+   ```bash
+   npm run seed:full
+   INVITE_CODE="<secure-value>" INVITE_EXPIRES="2025-12-31" npm run seed:invite
+   ```
+
+   The `seed:full` command creates a default administrator (`admin@example.com` / `Admin123!`). Sign in immediately and rotate
+   the credentials inside Supabase Auth.
+
+5. **Start the development server.**
 
    ```bash
    npm run dev
    ```
 
-4. Visit [http://localhost:5173](http://localhost:5173) and sign in with an invited account. Initial content can be loaded by running the seeding scripts after your database is provisioned; provide invite codes via environment variables when invoking `npm run seed:invite`.
+6. **Open the app.** Visit [http://localhost:5173](http://localhost:5173) and sign in with the seeded admin account or an invitee.
+
+These steps cover the minimum setup required to run the question bank locally. For a deeper walkthrough—including project
+creation screenshots, environment variable conventions, and deployment tips—see [docs/installation.md](./docs/installation.md).
 
 ## Provision Supabase services
 
