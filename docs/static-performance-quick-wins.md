@@ -1,0 +1,7 @@
+# Static Performance Quick Wins for Vercel + Vite
+
+1. **Verify hashed asset filenames** – Confirm `build.rollupOptions.output` includes `[hash]` (Vite default) so static assets are long-term cacheable without manual invalidation. This allows Vercel's CDN to keep immutable assets cached aggressively while ensuring updated builds bust the cache automatically.
+2. **Emit modern JavaScript bundles only when possible** – Keep `build.target` at a modern baseline (e.g., `esnext`) and use Vercel's edge caching of the optimized ES module output so browsers skip legacy polyfill payloads. This reduces download size without altering framework-level tooling.
+3. **Inline critical CSS or use async styles** – Audit the `index.html` template and ensure global CSS is either inlined for above-the-fold content or loaded with `rel="preload"` / `media` hints so the initial paint is not blocked by large static stylesheets.
+4. **Leverage Vite's `build.commonjsOptions.transformMixedEsModules`** – Enable mixed module transformation for third-party packages so Vite tree-shakes CommonJS dependencies into smaller static bundles, shrinking cold-start payloads on Vercel.
+5. **Add appropriate `modulepreload` hints** – Ensure Vite's generated `<link rel="modulepreload">` tags remain in the output HTML (avoid stripping during templating) so browsers can parallelize fetching nested static chunks, improving time-to-interactive for cached Vercel deployments.
