@@ -34,10 +34,8 @@ const nodeEnv =
     : undefined;
 
 const supabaseTestEnv: SupabaseTestEnv = {
-  url: normalize(runtimeEnv.VITE_SUPABASE_URL ?? runtimeEnv.SUPABASE_URL ?? nodeEnv?.SUPABASE_URL),
-  anonKey: normalize(
-    runtimeEnv.VITE_SUPABASE_ANON_KEY ?? runtimeEnv.SUPABASE_ANON_KEY ?? nodeEnv?.SUPABASE_ANON_KEY,
-  ),
+  url: normalize(runtimeEnv.VITE_SUPABASE_URL ?? nodeEnv?.SUPABASE_URL),
+  anonKey: normalize(runtimeEnv.VITE_SUPABASE_ANON_KEY ?? nodeEnv?.SUPABASE_ANON_KEY),
   serviceRoleKey: normalize(nodeEnv?.SUPABASE_SERVICE_ROLE_KEY),
 };
 

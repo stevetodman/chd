@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
-    envPrefix: ["VITE_", "SUPABASE_"],
+    envPrefix: "VITE_",
     define: {
       __BUILD_HASH__: JSON.stringify(buildHash),
       __APP_VERSION__: JSON.stringify(appVersion)
