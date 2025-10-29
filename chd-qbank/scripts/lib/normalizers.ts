@@ -10,6 +10,31 @@ type NormResult = {
   errors: string[];
 };
 
+type UnknownRecord = Record<string, unknown>;
+
+type ChoiceShape = UnknownRecord & {
+  id?: string;
+  label?: string;
+  text?: string;
+  title?: string;
+  isCorrect?: boolean;
+};
+
+type MutableQuestion = UnknownRecord & {
+  id?: string;
+  objective?: string;
+  stem?: string;
+  explanation?: string;
+  choices?: Array<ChoiceShape | string>;
+  tags?: unknown;
+  difficulty?: unknown;
+  references?: unknown;
+  mediaBundle?: unknown;
+  media?: unknown;
+  assets?: unknown;
+  offlineRequired?: unknown;
+};
+
 const difficultyMap: Record<string, "easy"|"med"|"hard"> = {
   easy: "easy",
   medium: "med",
@@ -21,14 +46,54 @@ const difficultyMap: Record<string, "easy"|"med"|"hard"> = {
 const choiceKeyCandidates = ["choices", "options", "answers"];
 const answerKeyCandidates = ["answer", "key", "correct", "correctIndex", "correctLetter"];
 
-export function normalizeItem(src: any, filePath: string, QuestionSchema: z.ZodTypeAny): NormResult {
-  const orig = JSON.parse(JSON.stringify(src));
+const isRecord = (value: unknown): value is UnknownRecord =>
+  typeof value === "object" && value !== null;
+
+const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
+
+const toChoiceShape = (choice: ChoiceShape | string, index: number, letters: string[]): ChoiceShape => {
+  if (typeof choice === "string") {
+    const letter = letters[index] ?? String(index + 1);
+    return { id: letters[index] ?? `C${index + 1}`, label: letter, text: choice };
+  }
+
+  const result: ChoiceShape = { ...choice };
+  if (!result.id) result.id = letters[index] ?? `C${index + 1}`;
+  if (!result.label) result.label = letters[index] ?? String(index + 1);
+  if (result.text == null && typeof result.title === "string") {
+    result.text = result.title;
+  }
+  return result;
+};
+
+const ensureArrayOfStrings = (value: unknown) => {
+  if (Array.isArray(value)) return value.map((entry) => String(entry));
+  return value ? [String(value)] : [];
+};
+
+export function normalizeItem(
+  src: unknown,
+  filePath: string,
+  QuestionSchema: z.ZodType<QuestionT>
+): NormResult {
+  if (!isRecord(src)) {
+    return {
+      changedKeys: [],
+      addedKeys: [],
+      warnings: [],
+      errors: [
+        `Expected a question object in ${filePath}, received ${typeof src === "object" ? "null" : typeof src}`
+      ]
+    };
+  }
+
+  const orig = clone(src) as UnknownRecord;
   const changedKeys: string[] = [];
   const addedKeys: string[] = [];
   const warnings: string[] = [];
   const errors: string[] = [];
 
-  const out: any = { ...src };
+  const out: MutableQuestion = { ...src };
 
   // required top-levels
   if (!out.id) { out.id = path.basename(filePath).replace(/\.json$/i, ""); addedKeys.push("id"); }
@@ -37,41 +102,61 @@ export function normalizeItem(src: any, filePath: string, QuestionSchema: z.ZodT
   if (!out.explanation) { out.explanation = "TBD – add explanation"; addedKeys.push("explanation"); warnings.push("explanation missing -> placeholder"); }
 
   // choices
-  let choices = out.choices;
-  if (!choices) for (const k of choiceKeyCandidates) if (out[k]) { choices = out[k]; break; }
-  if (!Array.isArray(choices)) { choices = []; warnings.push("no choices found -> created empty choices"); }
+  let choicesSource: Array<ChoiceShape | string> | undefined;
+  if (Array.isArray(out.choices)) {
+    choicesSource = out.choices;
+  } else {
+    for (const key of choiceKeyCandidates) {
+      const candidate = out[key];
+      if (Array.isArray(candidate)) {
+        choicesSource = candidate as Array<ChoiceShape | string>;
+        break;
+      }
+    }
+  }
+
+  if (!choicesSource) {
+    choicesSource = [];
+    warnings.push("no choices found -> created empty choices");
+  }
 
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-  choices = choices.map((c: any, i: number) => {
-    const cc = { ...c };
-    if (!cc.id) cc.id = letters[i] ?? `C${i+1}`;
-    if (!cc.label) cc.label = letters[i] ?? String(i+1);
-    if (cc.text == null && cc.title != null) cc.text = cc.title;
-    if (cc.text == null && typeof c === "string") return { id: cc.id, label: cc.label, text: c as string };
-    return cc;
-  });
+  let choices = choicesSource.map((choice, index) => toChoiceShape(choice, index, letters));
 
-  if (!choices.some((c: any) => c.isCorrect === true)) {
+  if (!choices.some((choice) => choice.isCorrect === true)) {
     let correctFrom: string | number | undefined;
-    for (const k of answerKeyCandidates) if (out[k] != null) { correctFrom = out[k]; break; }
+    for (const key of answerKeyCandidates) {
+      const candidate = out[key];
+      if (candidate !== undefined) {
+        correctFrom = candidate as string | number | undefined;
+        break;
+      }
+    }
+
     if (typeof correctFrom === "number" && choices[correctFrom]) {
-      choices = choices.map((c: any, i: number) => ({ ...c, isCorrect: i === correctFrom }));
+      choices = choices.map((choice, index) => ({ ...choice, isCorrect: index === correctFrom }));
     } else if (typeof correctFrom === "string") {
       const idxByLetter = letters.indexOf(correctFrom.toUpperCase());
       if (idxByLetter >= 0 && choices[idxByLetter]) {
-        choices = choices.map((c: any, i: number) => ({ ...c, isCorrect: i === idxByLetter }));
+        choices = choices.map((choice, index) => ({ ...choice, isCorrect: index === idxByLetter }));
       } else {
-        const ix = choices.findIndex((c: any) => (c.text ?? "").trim() === correctFrom.trim());
-        if (ix >= 0) choices = choices.map((c: any, i: number) => ({ ...c, isCorrect: i === ix }));
+        const ix = choices.findIndex((choice) => {
+          const text = typeof choice.text === "string" ? choice.text : "";
+          return text.trim() === correctFrom.trim();
+        });
+        if (ix >= 0) {
+          choices = choices.map((choice, index) => ({ ...choice, isCorrect: index === ix }));
+        }
       }
     }
   }
   out.choices = choices;
 
   // tags, difficulty, references, media
-  if (!Array.isArray(out.tags)) out.tags = out.tags ? [String(out.tags)] : [];
-  if (!out.difficulty) out.difficulty = "med"; else out.difficulty = difficultyMap[String(out.difficulty).toLowerCase()] ?? "med";
-  if (!Array.isArray(out.references)) out.references = out.references ? [String(out.references)] : [];
+  out.tags = ensureArrayOfStrings(out.tags);
+  const difficulty = typeof out.difficulty === "string" ? out.difficulty.toLowerCase() : undefined;
+  out.difficulty = (difficulty ? difficultyMap[difficulty] : undefined) ?? "med";
+  out.references = ensureArrayOfStrings(out.references);
   if (!Array.isArray(out.mediaBundle)) {
     const legacy = out.media ?? out.assets ?? [];
     out.mediaBundle = Array.isArray(legacy) ? legacy : (legacy ? [legacy] : []);
