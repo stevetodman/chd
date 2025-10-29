@@ -42,6 +42,9 @@ This monorepo packages everything required to operate the **CHD QBank**: a conge
 - Access to a **Supabase** project (separate development and production projects are recommended)
 - Service-role credentials for automation tasks (kept out of version control)
 
+Use `nvm use` or `asdf install` to adopt the version pinned in `.nvmrc`/`.tool-versions`.
+This matches Vercel’s Node 18 runtime and prevents version drift.
+
 ## Quick start
 
 1. Clone the repository and install dependencies:
