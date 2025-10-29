@@ -1,14 +1,18 @@
 name: Validate QBank
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 on:
   pull_request:
+    branches: [ main ]
+    paths:
+      - 'chd-qbank/**'
+      - '.github/workflows/validate-qbank.yml'
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -25,4 +29,4 @@ jobs:
           cache: "npm"
           cache-dependency-path: "chd-qbank/package-lock.json"
       - run: npm ci
-      - run: npm test
+      - run: npm test -- --run --reporter=dot
